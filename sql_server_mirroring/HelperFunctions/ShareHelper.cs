@@ -12,47 +12,93 @@ namespace HelperFunctions
 {
     public static class ShareHelper
     {
-        public static bool TestReadWriteAccessToLocalShare(string shareName)
+        public static void TestReadWriteAccessToShare(string serverName, string shareName)
         {
-            throw new NotImplementedException();
-        }
-
-        public static bool TestReadWriteAccessToRemoteShare(string serverName, string shareName)
-        {
-            throw new NotImplementedException();
-        }
-
-        public static bool ValidShareDirectoryName(string shareName)
-        {
-            Regex regex = new Regex(@"^\w:\\(\w+\\)*(\w+)?$");
-            if (regex.IsMatch(shareName))
+            string uri = string.Empty;
+            try
             {
-                return true;
+                ValidServerName(serverName);
+                ValidShareDirectoryName(shareName);
+                uri = "\\\\" + serverName + "\\" + shareName + "\\";
+                FileCheckHelper.WriteTestFileToDirectory(uri);
+                FileCheckHelper.ReadTestFileFromDirectoryAndCompare(uri);
+                FileCheckHelper.DeleteTestFileFromDirectory(uri);
             }
-            else
+            catch (Exception ex)
             {
-                return false;
+                throw new DirectoryException(string.Format("Test write and write fails on {0} for share {1} in combined uri {2}.", serverName, shareName, uri), ex);
+            }
+        }
+
+        public static void ValidRemotePath(string path)
+        {
+            try
+            {
+                Uri uri = new Uri(path);
+                if(!uri.IsUnc)
+                {
+                    throw new ShareException(string.Format("Path is not in Unc format: {0}", path));
+                }
+            }
+            catch(ShareException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new ShareException(string.Format("Path is not a valid Uri: {0}", path), ex);
+            }
+        }
+
+        public static void ValidServerName(string serverName)
+        {
+            try
+            {
+                Uri uri = new Uri("\\" + serverName + "\test");
+                if (!uri.IsUnc)
+                {
+                    throw new ShareException(string.Format("Server name {0} is not valid", serverName));
+                }
+            }
+            catch (ShareException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new ShareException(string.Format("The servername {0} is not valid.", serverName), ex);
+            }
+        }
+
+        public static void ValidShareDirectoryName(string shareName)
+        {
+            // name between 1 and 80 characters and not including pipe or mailslot
+            Regex regex = new Regex(@"^(?!pipe|mailslot)\w{1,80}$");
+            if (!regex.IsMatch(shareName))
+            {
+                throw new ShareException(string.Format("Sharename {0} does not conform to word between 1 and 80 characters and not \"pipe\" or \"mailslot\"", shareName));
             }
         }
 
         public static void CreateLocalShareDirectoryIfNotExistingAndGiveEveryoneAccess(string directoryPath, string shareName)
         {
+            CreateLocalShareDirectoryIfNotExisting(directoryPath, shareName, "NT Authority", "Everyone");
+        }
+
+        public static void CreateLocalShareDirectoryIfNotExisting(string directoryPath, string shareName, string domain, string user)
+        {
             try
             {
-                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveEveryoneAccess(directoryPath);
-                if(!DirectoryHelper.TestReadWriteAccessToDirectory(directoryPath))
+                ValidShareDirectoryName(shareName);
+                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToUser(directoryPath, domain, user);
+                DirectoryHelper.TestReadWriteAccessToDirectory(directoryPath);
+                string shareDescription = string.Format("Shared {0} with {1} on {2}", directoryPath, shareName, DateTime.UtcNow.ToLongDateString());
+                if (WindowsShare.GetShareByName(shareName) == null)
                 {
-                    throw new ShareException(string.Format("Read/write test for directory {0} failed for some reason.", directoryPath));
+                    ShareFolder(directoryPath, shareName, shareDescription);
                 }
-                if(!ValidShareDirectoryName(shareName))
-                {
-                    throw new ShareException(string.Format("ShareName {0} is not in valid form", shareName));
-                }
-                QshareFolder(directoryPath, shareName, string.Format("Shared {0} on {1} for everyone",DateTime.UtcNow.ToLongDateString()));
-                if(!TestReadWriteAccessToLocalShare(shareName))
-                {
-                    throw new ShareException(string.Format("Read/write test of share {0} failed for some reason", shareName));
-                }
+                SharePermissions(shareName, domain, user, WindowsShare.AccessMaskTypes.FullControl);
+                TestReadWriteAccessToShare(Environment.MachineName, shareName);
             }
             catch (Exception ex)
             {
@@ -60,87 +106,27 @@ namespace HelperFunctions
             }
         }
 
-        /*
-                 * This method is used to perform the main actions of sharing the folders
-                 * It accepts three arguments: -
-                 * A path of the folder,
-                 * A ShareName by which you would want to share the folder
-                 * Description of the folder
-                 * You cannot have the first two arguments as empty. They should consist of
-                 * data. The third arguments can be an empty string.
-                 */
-        private static void QshareFolder(string FolderPath, string ShareName, string Description)
+
+        private static void ShareFolder(string directoryPath, string shareName, string shareDescription)
         {
-            try
+            WindowsShare.MethodStatus methodStatus = WindowsShare.Create(directoryPath, shareName, WindowsShare.ShareType.DiskDrive, null, shareDescription, null);
+            if (methodStatus != WindowsShare.MethodStatus.Success)
             {
-                // Create a ManagementClass object
-                ManagementClass managementClass = new ManagementClass("Win32_Share");
-
-                // Create ManagementBaseObjects for in and out parameters
-                ManagementBaseObject inParams = managementClass.GetMethodParameters("Create");
-                ManagementBaseObject outParams;
-
-                // Set the input parameters
-                inParams["Description"] = Description;
-                inParams["Name"] = ShareName;
-                inParams["Path"] = FolderPath;
-                inParams["Type"] = 0x0; // Disk Drive
-                //Another Type:
-                //        DISK_DRIVE = 0x0
-                //        PRINT_QUEUE = 0x1
-                //        DEVICE = 0x2
-                //        IPC = 0x3
-                //        DISK_DRIVE_ADMIN = 0x80000000
-                //        PRINT_QUEUE_ADMIN = 0x80000001
-                //        DEVICE_ADMIN = 0x80000002
-                //        IPC_ADMIN = 0x8000003
-                inParams["MaximumAllowed"] = null;
-                inParams["Password"] = null;
-                inParams["Access"] = null; // Make Everyone has full control access.                
-                //inParams["MaximumAllowed"] = int maxConnectionsNum;
-
-                // Invoke the method on the ManagementClass object
-                outParams = managementClass.InvokeMethod("Create", inParams, null);
-                // Check to see if the method invocation was successful
-                if ((uint)(outParams.Properties["ReturnValue"].Value) != 0)
-                {
-                    throw new ShareException("Error sharing MS folders.");
-                }
-
-                //user selection
-                NTAccount ntAccount = new NTAccount("Everyone");
-
-                //SID
-                SecurityIdentifier userSID = (SecurityIdentifier)ntAccount.Translate(typeof(SecurityIdentifier));
-                byte[] utenteSIDArray = new byte[userSID.BinaryLength];
-                userSID.GetBinaryForm(utenteSIDArray, 0);
-
-                //Trustee
-                ManagementObject userTrustee = new ManagementClass(new ManagementPath("Win32_Trustee"), null);
-                userTrustee["Name"] = "Everyone";
-                userTrustee["SID"] = utenteSIDArray;
-
-                //ACE
-                ManagementObject userACE = new ManagementClass(new ManagementPath("Win32_Ace"), null);
-                userACE["AccessMask"] = 2032127;                                 //Full access
-                userACE["AceFlags"] = AceFlags.ObjectInherit | AceFlags.ContainerInherit;
-                userACE["AceType"] = AceType.AccessAllowed;
-                userACE["Trustee"] = userTrustee;
-
-                ManagementObject userSecurityDescriptor = new ManagementClass(new ManagementPath("Win32_SecurityDescriptor"), null);
-                userSecurityDescriptor["ControlFlags"] = 4; //SE_DACL_PRESENT
-                userSecurityDescriptor["DACL"] = new object[] { userACE };
-                //can declare share either way, where "ShareName" is the name used to share the folder
-                //ManagementPath path = new ManagementPath("Win32_Share.Name='" + ShareName + "'");
-                //ManagementObject share = new ManagementObject(path);
-                ManagementObject share = new ManagementObject(managementClass.Path + ".Name='" + ShareName + "'");
-
-                share.InvokeMethod("SetShareInfo", new object[] { Int32.MaxValue, Description, userSecurityDescriptor });
-
+                throw new ShareException(string.Format("Creating share failed for {1} at {0}. Error {2}.", directoryPath, shareName, methodStatus.ToString()));
             }
-            catch (Exception ex)
+        }
+
+        private static void SharePermissions(string shareName, string domain, string user, WindowsShare.AccessMaskTypes accessMask)
+        {
+            WindowsShare windowsShare = WindowsShare.GetShareByName(shareName);
+            if (windowsShare == null)
             {
-                throw new ShareException("Error sharing folders", ex);
+                throw new ShareException(string.Format("Could not find share {0}.", shareName));
+            }
+            WindowsShare.MethodStatus methodStatus = windowsShare.SetPermission(domain, user, accessMask);
+            if (methodStatus != WindowsShare.MethodStatus.Success)
+            {
+                throw new ShareException(string.Format("Could not set AccessMask {0} for user {1}\\{2} on share {3}", accessMask.ToString(), domain, user, shareName));
             }
         }
     }
