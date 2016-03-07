@@ -12,17 +12,18 @@ namespace HelperFunctions
 {
     public static class ShareHelper
     {
-        public static void TestReadWriteAccessToShare(string serverName, string shareName)
+        public static void TestReadWriteAccessToShare(ILogger logger, string serverName, string shareName)
         {
             string uri = string.Empty;
             try
             {
-                ValidServerName(serverName);
-                ValidShareDirectoryName(shareName);
+                ValidServerName(logger, serverName);
+                ValidShareDirectoryName(logger, shareName);
                 uri = "\\\\" + serverName + "\\" + shareName + "\\";
-                FileCheckHelper.WriteTestFileToDirectory(uri);
-                FileCheckHelper.ReadTestFileFromDirectoryAndCompare(uri);
-                FileCheckHelper.DeleteTestFileFromDirectory(uri);
+                logger.LogInfo(string.Format("Trying to test uri {0}.", uri));
+                FileCheckHelper.WriteTestFileToDirectory(logger, uri);
+                FileCheckHelper.ReadTestFileFromDirectoryAndCompare(logger, uri);
+                FileCheckHelper.DeleteTestFileFromDirectory(logger, uri);
             }
             catch (Exception ex)
             {
@@ -30,7 +31,7 @@ namespace HelperFunctions
             }
         }
 
-        public static void ValidRemotePath(string path)
+        public static void ValidRemotePath(ILogger logger, string path)
         {
             try
             {
@@ -39,6 +40,7 @@ namespace HelperFunctions
                 {
                     throw new ShareException(string.Format("Path is not in Unc format: {0}", path));
                 }
+                logger.LogDebug(string.Format("Path {0} seems to be valid uri.", path));
             }
             catch(ShareException)
             {
@@ -50,7 +52,7 @@ namespace HelperFunctions
             }
         }
 
-        public static void ValidServerName(string serverName)
+        public static void ValidServerName(ILogger logger, string serverName)
         {
             try
             {
@@ -59,6 +61,7 @@ namespace HelperFunctions
                 {
                     throw new ShareException(string.Format("Server name {0} is not valid", serverName));
                 }
+                logger.LogDebug(string.Format("Server name {0} in valid format.", serverName));
             }
             catch (ShareException)
             {
@@ -70,7 +73,7 @@ namespace HelperFunctions
             }
         }
 
-        public static void ValidShareDirectoryName(string shareName)
+        public static void ValidShareDirectoryName(ILogger logger, string shareName)
         {
             // name between 1 and 80 characters and not including pipe or mailslot
             Regex regex = new Regex(@"^(?!pipe|mailslot)\w{1,80}$");
@@ -78,45 +81,46 @@ namespace HelperFunctions
             {
                 throw new ShareException(string.Format("Sharename {0} does not conform to word between 1 and 80 characters and not \"pipe\" or \"mailslot\"", shareName));
             }
+            logger.LogDebug(string.Format("Share name {0} is valid. ", shareName));
         }
 
-        public static void CreateLocalShareDirectoryIfNotExistingAndGiveEveryoneAccess(string directoryPath, string shareName)
+        public static void CreateLocalShareDirectoryIfNotExistingAndGiveEveryoneAccess(ILogger logger, string directoryPath, string shareName)
         {
-            CreateLocalShareDirectoryIfNotExisting(directoryPath, shareName, "NT Authority", "Everyone");
+            CreateLocalShareDirectoryIfNotExisting(logger, directoryPath, shareName, "NT Authority", "Everyone");
         }
 
-        public static void CreateLocalShareDirectoryIfNotExisting(string directoryPath, string shareName, string domain, string user)
+        public static void CreateLocalShareDirectoryIfNotExisting(ILogger logger, string directoryPath, string shareName, string domain, string user)
         {
             try
             {
-                ValidShareDirectoryName(shareName);
-                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToUser(directoryPath, domain, user);
-                DirectoryHelper.TestReadWriteAccessToDirectory(directoryPath);
+                ValidShareDirectoryName(logger, shareName);
+                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToUser(logger, directoryPath, domain, user);
+                DirectoryHelper.TestReadWriteAccessToDirectory(logger, directoryPath);
                 string shareDescription = string.Format("Shared {0} with {1} on {2}", directoryPath, shareName, DateTime.UtcNow.ToLongDateString());
                 if (WindowsShare.GetShareByName(shareName) == null)
                 {
-                    ShareFolder(directoryPath, shareName, shareDescription);
+                    ShareFolder(logger, directoryPath, shareName, shareDescription);
                 }
-                SharePermissions(shareName, domain, user, WindowsShare.AccessMaskTypes.FullControl);
-                TestReadWriteAccessToShare(Environment.MachineName, shareName);
+                SharePermissions(logger, shareName, domain, user, WindowsShare.AccessMaskTypes.FullControl);
+                TestReadWriteAccessToShare(logger, Environment.MachineName, shareName);
             }
             catch (Exception ex)
             {
                 throw new ShareException("Error sharing folders.", ex);
             }
         }
-
-
-        private static void ShareFolder(string directoryPath, string shareName, string shareDescription)
+        
+        private static void ShareFolder(ILogger logger, string directoryPath, string shareName, string shareDescription)
         {
             WindowsShare.MethodStatus methodStatus = WindowsShare.Create(directoryPath, shareName, WindowsShare.ShareType.DiskDrive, null, shareDescription, null);
             if (methodStatus != WindowsShare.MethodStatus.Success)
             {
-                throw new ShareException(string.Format("Creating share failed for {1} at {0}. Error {2}.", directoryPath, shareName, methodStatus.ToString()));
+                throw new ShareException(string.Format("Creating share failed for {0} at {1}. Error {2}.", shareName, directoryPath, methodStatus.ToString()));
             }
+            logger.LogInfo(string.Format("Share {0} created for {1}.", shareName, directoryPath));
         }
 
-        private static void SharePermissions(string shareName, string domain, string user, WindowsShare.AccessMaskTypes accessMask)
+        private static void SharePermissions(ILogger logger, string shareName, string domain, string user, WindowsShare.AccessMaskTypes accessMask)
         {
             WindowsShare windowsShare = WindowsShare.GetShareByName(shareName);
             if (windowsShare == null)
@@ -128,6 +132,7 @@ namespace HelperFunctions
             {
                 throw new ShareException(string.Format("Could not set AccessMask {0} for user {1}\\{2} on share {3}", accessMask.ToString(), domain, user, shareName));
             }
+            logger.LogInfo(string.Format("Share permissings set for {0}.", shareName));
         }
     }
 }

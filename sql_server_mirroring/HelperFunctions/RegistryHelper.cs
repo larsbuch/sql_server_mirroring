@@ -25,7 +25,7 @@ namespace HelperFunctions
             }
         }
 
-        public static object GetRegistryValue(string regKey, string regValue, out RegistryValueKind registryValueKind)
+        public static object GetRegistryValue(ILogger logger, string regKey, string regValue, out RegistryValueKind registryValueKind)
         {
             RegistryKey registryKey = GetRegistryKey(regKey);
             if(registryKey == null)
@@ -33,6 +33,7 @@ namespace HelperFunctions
                 throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
             }
             registryValueKind = registryKey.GetValueKind(regValue);
+            logger.LogDebug(string.Format("Registry value {0}/{1} has kind {2}", regKey, regValue, registryValueKind.ToString()));
             object returnObject = registryKey.GetValue(regValue, null);
             if(returnObject == null)
             {
@@ -71,53 +72,59 @@ namespace HelperFunctions
             }
         }
 
-        public static bool Exists(string regKey, string regValue)
+        public static bool Exists(ILogger logger, string regKey, string regValue)
         {
-            ValidRegistryKey(regKey);
-            regKey = Correct64Or32bit(regKey);
+            ValidRegistryKey(logger, regKey);
+            regKey = Correct64Or32bit(logger, regKey);
             if (Registry.GetValue(regKey, regValue, null) == null)
             {
                 //code if key Not Exist
+                logger.LogDebug(string.Format("Registry key {0}/{1} does not exist.", regKey, regValue));
                 return false;
             }
             else
             {
                 //code if key Exist
+                logger.LogDebug(string.Format("Registry key {0}/{1} does exist.", regKey, regValue));
                 return true;
             }
         }
 
-        public static bool HasReadWriteAccess(string regKey, string regValue)
+        public static bool HasReadWriteAccess(ILogger logger, string regKey, string regValue)
         {
-            ValidRegistryKey(regKey);
-            regKey = Correct64Or32bit(regKey);
+            ValidRegistryKey(logger, regKey);
+            regKey = Correct64Or32bit(logger, regKey);
             try
             {
                 RegistryPermission perm1 = new RegistryPermission(RegistryPermissionAccess.Write, regKey + "\\" + regValue);
                 perm1.Demand();
+                logger.LogInfo(string.Format("Has read/write access to registry key {0}.", regKey + "\\" + regValue));
                 return true;
             }
             catch (System.Security.SecurityException)
             {
+                logger.LogWarning(string.Format("Not correct read/write access to registry key {0}.", regKey + "\\" + regValue));
                 return false;
             }
         }
 
-        public static void ValidRegistryKey(string regKey)
+        public static void ValidRegistryKey(ILogger logger, string regKey)
         {
             if (!ValidRegistryKeyRegex.IsMatch(regKey))
             {
                 throw new RegistryException(string.Format("Registry key {0} is not in valid format. Regex check |{1}|.", regKey, ValidRegistryKeyRegex.ToString()));
             }
+            logger.LogDebug(string.Format("Registry key {0} seems to be in valid format.", regKey));
         }
 
-        public static string Correct64Or32bit(string regKey)
+        public static string Correct64Or32bit(ILogger logger, string regKey)
         {
             if(Environment.Is64BitOperatingSystem)
             {
                 if(Environment.Is64BitProcess)
                 {
                     //same so assume everything is peacy
+                    logger.LogDebug("64 bit process on 64 bit system.");
                     return regKey;
                 }
                 else
@@ -129,6 +136,7 @@ namespace HelperFunctions
                     }
                     else
                     {
+                        logger.LogDebug("32 bit process on 64 bit system trying for key through Wow6432Node.");
                         return regKey;
                     }    
                 }
@@ -143,6 +151,7 @@ namespace HelperFunctions
                 {
                     if(RegKeyIsNonWOW(regKey))
                     {
+                        logger.LogDebug("32 bit process on 32 bit system.");
                         return regKey;
                     }
                     else
