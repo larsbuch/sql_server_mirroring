@@ -46,6 +46,7 @@
     <Compile Include="DirectoryHelper.cs" />
     <Compile Include="FileCheckException.cs" />
     <Compile Include="FileCheckHelper.cs" />
+    <Compile Include="ILogger.cs" />
     <Compile Include="RegistryException.cs" />
     <Compile Include="RegistryHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
