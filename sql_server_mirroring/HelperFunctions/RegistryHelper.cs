@@ -46,7 +46,7 @@ namespace HelperFunctions
             }
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.Binary)
             {
-                byte[] bytes = (byte[]) registryKey.GetValue(regValue, null);
+                byte[] bytes = (byte[])registryKey.GetValue(regValue, null);
                 if (bytes == null)
                 {
                     throw new RegistryException(string.Format("Registry key {0} value {1} does not contain anything", regKey, regValue));
@@ -59,7 +59,7 @@ namespace HelperFunctions
             }
         }
 
-        public static object GetRegistryValue_DWord(ILogger logger, string regKey, string regValue)
+        public static UInt32 GetRegistryValue_DWord(ILogger logger, string regKey, string regValue)
         {
             RegistryKey registryKey = GetRegistryKey(regKey);
             if (registryKey == null)
@@ -68,8 +68,8 @@ namespace HelperFunctions
             }
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.DWord)
             {
-                object returnObject = registryKey.GetValue(regValue, null);
-                if (returnObject == null)
+                UInt32 returnObject = (UInt32)registryKey.GetValue(regValue, UInt32.MaxValue);
+                if (returnObject == UInt32.MaxValue)
                 {
                     throw new RegistryException(string.Format("Registry key {0} value {1} does not contain anything", regKey, regValue));
                 }
@@ -77,11 +77,11 @@ namespace HelperFunctions
             }
             else
             {
-                throw new RegistryException(string.Format("Registry key {0} value {1} is not Binary", regKey, regValue));
+                throw new RegistryException(string.Format("Registry key {0} value {1} is not DWord", regKey, regValue));
             }
         }
 
-        public static object GetRegistryValue_ExpandString(ILogger logger, string regKey, string regValue)
+        public static string GetRegistryValue_ExpandString(ILogger logger, string regKey, string regValue)
         {
             RegistryKey registryKey = GetRegistryKey(regKey);
             if (registryKey == null)
@@ -90,7 +90,7 @@ namespace HelperFunctions
             }
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.ExpandString)
             {
-                object returnObject = registryKey.GetValue(regValue, null);
+                string returnObject = (string)registryKey.GetValue(regValue, null);
                 if (returnObject == null)
                 {
                     throw new RegistryException(string.Format("Registry key {0} value {1} does not contain anything", regKey, regValue));
@@ -99,7 +99,7 @@ namespace HelperFunctions
             }
             else
             {
-                throw new RegistryException(string.Format("Registry key {0} value {1} is not Binary", regKey, regValue));
+                throw new RegistryException(string.Format("Registry key {0} value {1} is not ExpandString", regKey, regValue));
             }
         }
 
@@ -112,7 +112,7 @@ namespace HelperFunctions
             }
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.MultiString)
             {
-                string[] values = (string[]) registryKey.GetValue(regValue, null);
+                string[] values = (string[])registryKey.GetValue(regValue, null);
                 if (values == null)
                 {
                     throw new RegistryException(string.Format("Registry key {0} value {1} does not contain anything", regKey, regValue));
@@ -125,7 +125,7 @@ namespace HelperFunctions
             }
         }
 
-        public static object GetRegistryValue_QWord(ILogger logger, string regKey, string regValue)
+        public static UInt64 GetRegistryValue_QWord(ILogger logger, string regKey, string regValue)
         {
             RegistryKey registryKey = GetRegistryKey(regKey);
             if (registryKey == null)
@@ -134,8 +134,8 @@ namespace HelperFunctions
             }
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.QWord)
             {
-                object returnObject = registryKey.GetValue(regValue, null);
-                if (returnObject == null)
+                UInt64 returnObject = (UInt64)registryKey.GetValue(regValue, UInt64.MaxValue);
+                if (returnObject == UInt64.MaxValue)
                 {
                     throw new RegistryException(string.Format("Registry key {0} value {1} does not contain anything", regKey, regValue));
                 }
@@ -147,7 +147,7 @@ namespace HelperFunctions
             }
         }
 
-        public static object GetRegistryValue_String(ILogger logger, string regKey, string regValue)
+        public static string GetRegistryValue_String(ILogger logger, string regKey, string regValue)
         {
             RegistryKey registryKey = GetRegistryKey(regKey);
             if (registryKey == null)
@@ -156,12 +156,114 @@ namespace HelperFunctions
             }
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.String)
             {
-                object returnObject = registryKey.GetValue(regValue, null);
+                string returnObject = (string)registryKey.GetValue(regValue, null);
                 if (returnObject == null)
                 {
                     throw new RegistryException(string.Format("Registry key {0} value {1} does not contain anything", regKey, regValue));
                 }
                 return returnObject;
+            }
+            else
+            {
+                throw new RegistryException(string.Format("Registry key {0} value {1} is not String", regKey, regValue));
+            }
+        }
+
+        public static void SetRegistryValue_Binary(ILogger logger, string regKey, string regValue, byte[] value)
+        {
+            RegistryKey registryKey = GetRegistryKey(regKey);
+            if (registryKey == null)
+            {
+                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
+            }
+            if (registryKey.GetValueKind(regValue) == RegistryValueKind.Binary)
+            {
+                registryKey.SetValue(regValue,value, RegistryValueKind.Binary);
+            }
+            else
+            {
+                throw new RegistryException(string.Format("Registry key {0} value {1} is not Binary", regKey, regValue));
+            }
+        }
+
+        public static void SetRegistryValue_DWord(ILogger logger, string regKey, string regValue, UInt32 value)
+        {
+            RegistryKey registryKey = GetRegistryKey(regKey);
+            if (registryKey == null)
+            {
+                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
+            }
+            if (registryKey.GetValueKind(regValue) == RegistryValueKind.DWord)
+            {
+                registryKey.SetValue(regValue,value, RegistryValueKind.DWord);
+            }
+            else
+            {
+                throw new RegistryException(string.Format("Registry key {0} value {1} is not DWord", regKey, regValue));
+            }
+        }
+
+        public static void SetRegistryValue_ExpandString(ILogger logger, string regKey, string regValue, string value)
+        {
+            RegistryKey registryKey = GetRegistryKey(regKey);
+            if (registryKey == null)
+            {
+                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
+            }
+            if (registryKey.GetValueKind(regValue) == RegistryValueKind.ExpandString)
+            {
+                registryKey.SetValue(regValue,value, RegistryValueKind.ExpandString);
+            }
+            else
+            {
+                throw new RegistryException(string.Format("Registry key {0} value {1} is not ExpandString", regKey, regValue));
+            }
+        }
+
+        public static void SetRegistryValue_MultiString(ILogger logger, string regKey, string regValue, string[] value)
+        {
+            RegistryKey registryKey = GetRegistryKey(regKey);
+            if (registryKey == null)
+            {
+                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
+            }
+            if (registryKey.GetValueKind(regValue) == RegistryValueKind.MultiString)
+            {
+                registryKey.SetValue(regValue, value, RegistryValueKind.MultiString);
+            }
+            else
+            {
+                throw new RegistryException(string.Format("Registry key {0} value {1} is not MultiString", regKey, regValue));
+            }
+        }
+
+        public static void SetRegistryValue_QWord(ILogger logger, string regKey, string regValue, UInt64 value)
+        {
+            RegistryKey registryKey = GetRegistryKey(regKey);
+            if (registryKey == null)
+            {
+                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
+            }
+            if (registryKey.GetValueKind(regValue) == RegistryValueKind.QWord)
+            {
+                registryKey.SetValue(regValue, value, RegistryValueKind.QWord);
+            }
+            else
+            {
+                throw new RegistryException(string.Format("Registry key {0} value {1} is not QWord", regKey, regValue));
+            }
+        }
+
+        public static void SetRegistryValue_String(ILogger logger, string regKey, string regValue, string value)
+        {
+            RegistryKey registryKey = GetRegistryKey(regKey);
+            if (registryKey == null)
+            {
+                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
+            }
+            if (registryKey.GetValueKind(regValue) == RegistryValueKind.String)
+            {
+                registryKey.SetValue(regValue, value, RegistryValueKind.String);
             }
             else
             {

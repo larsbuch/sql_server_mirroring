@@ -25,8 +25,12 @@ namespace HelperFunctions
             AddTest("Test valid registry key.", () => TestValidRegistryKey());
             AddTest("Test of existance of registry key.", () => TestRegistryKeyExists());
             AddTest("Test user has read/write access to registry key.", () => TestRegistryKeyUserHasReadWriteAccess());
-            AddTest("Test of existance of registry key.", () => TestRegistryKeyExists());
-            AddTest("Test of existance of registry key.", () => TestRegistryKeyExists());
+            AddTest("Test of write/read of Binary registry key.", () => TestRegistryKeyReadWriteBinary());
+            AddTest("Test of write/read of DWord registry key.", () => TestRegistryKeyReadWriteDWord());
+            AddTest("Test of write/read of ExpandString registry key.", () => TestRegistryKeyReadWriteExpandString());
+            AddTest("Test of write/read of MultiString registry key.", () => TestRegistryKeyReadWriteMultiString());
+            AddTest("Test of write/read of QWord registry key.", () => TestRegistryKeyReadWriteQWord());
+            AddTest("Test of write/read of String registry key.", () => TestRegistryKeyReadWriteString());
 
             string inputLine = string.Empty;
             bool exit = false;
@@ -215,9 +219,134 @@ namespace HelperFunctions
             GetNextInput("Press Enter to end test");
         }
 
+        private static void TestRegistryKeyReadWriteExpandString()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            string regValue = GetNextInput("Registry Value: ", "R_ExpandString");
+            string value = "TestValue with %Path%";
+
+            RegistryHelper.SetRegistryValue_ExpandString(Logger, regKey, regValue, value);
+            if(RegistryHelper.GetRegistryValue_ExpandString(Logger, regKey, regValue).Equals(value))
+            {
+                Console.WriteLine("Success");
+            }
+            else
+            {
+                Console.WriteLine("Failure");
+            }
+
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestRegistryKeyReadWriteString()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            string regValue = GetNextInput("Registry Value: ", "R_String");
+            string value = "TestValue";
+
+            RegistryHelper.SetRegistryValue_String(Logger, regKey, regValue, value);
+            if (RegistryHelper.GetRegistryValue_String(Logger, regKey, regValue).Equals(value))
+            {
+                Console.WriteLine("Success");
+            }
+            else
+            {
+                Console.WriteLine("Failure");
+            }
+
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestRegistryKeyReadWriteQWord()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            string regValue = GetNextInput("Registry Value: ", "R_QWord");
+            UInt64 value = 158156464545;
+
+            RegistryHelper.SetRegistryValue_QWord(Logger, regKey, regValue, value);
+            if (RegistryHelper.GetRegistryValue_QWord(Logger, regKey, regValue) == value)
+            {
+                Console.WriteLine("Success");
+            }
+            else
+            {
+                Console.WriteLine("Failure");
+            }
+
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestRegistryKeyReadWriteMultiString()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            string regValue = GetNextInput("Registry Value: ", "R_MultiString");
+            string[] value = new string[] { "TestValue1", "TestValue2", "TestValue3" };
+
+            RegistryHelper.SetRegistryValue_MultiString(Logger, regKey, regValue, value);
+            if (CompareStringArray(RegistryHelper.GetRegistryValue_MultiString(Logger, regKey, regValue), value))
+            {
+                Console.WriteLine("Success");
+            }
+            else
+            {
+                Console.WriteLine("Failure");
+            }
+
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestRegistryKeyReadWriteDWord()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            string regValue = GetNextInput("Registry Value: ", "R_DWord");
+            UInt32 value = 15874;
+
+            RegistryHelper.SetRegistryValue_DWord(Logger, regKey, regValue, value);
+            if (RegistryHelper.GetRegistryValue_DWord(Logger, regKey, regValue) == value)
+            {
+                Console.WriteLine("Success");
+            }
+            else
+            {
+                Console.WriteLine("Failure");
+            }
+
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestRegistryKeyReadWriteBinary()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            string regValue = GetNextInput("Registry Value: ", "R_Binary");
+            byte[] value = { 1, 2, 4, 8, 16, 32 };
+
+            RegistryHelper.SetRegistryValue_Binary(Logger, regKey, regValue, value);
+            if (CompareByteArray(RegistryHelper.GetRegistryValue_Binary(Logger, regKey, regValue),value))
+            {
+                Console.WriteLine("Success");
+            }
+            else
+            {
+                Console.WriteLine("Failure");
+            }
+
+            GetNextInput("Press Enter to end test");
+        }
+
         #endregion
 
         #region Helper functions and constructs
+
+        private static bool CompareByteArray(byte[] byteArray1, byte[] byteArray2)
+        {
+            //throw new NotImplementedException();
+        }
+
+        private static bool CompareStringArray(string[] array1, string[] array2)
+        {
+            //throw new NotImplementedException();
+        }
+
         private static string DirectoryCreateAbsolutePath(string subDirectory)
         {
             return Directory.GetCurrentDirectory() + "\\" + subDirectory;
