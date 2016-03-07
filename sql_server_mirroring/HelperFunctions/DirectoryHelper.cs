@@ -48,7 +48,11 @@ namespace HelperFunctions
         {
             CreateLocalDirectoryIfNotExistingAndGiveFullControlToUser(logger, directoryPath, "NT Authority", "Everyone");
         }
-
+        public static void CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(ILogger logger, string directoryPath)
+        {
+            CreateLocalDirectoryIfNotExistingAndGiveFullControlToUser(logger, directoryPath, "NT Authority", "Authenticated Users");
+        }
+        
         public static void CreateLocalDirectoryIfNotExistingAndGiveFullControlToUser(ILogger logger, string directoryPath, string domain, string user)
         {
             try
@@ -84,6 +88,10 @@ namespace HelperFunctions
         private static string BuildAccount(ILogger logger, string domain, string user)
         {
             if (user.Equals("Everyone"))
+            {
+                return user;
+            }
+            else if (user.Equals("Authenticated Users"))
             {
                 return user;
             }

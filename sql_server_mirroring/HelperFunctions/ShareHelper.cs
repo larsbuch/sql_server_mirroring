@@ -56,7 +56,7 @@ namespace HelperFunctions
         {
             try
             {
-                Uri uri = new Uri("\\" + serverName + "\test");
+                Uri uri = new Uri("//" + serverName + "/test");
                 if (!uri.IsUnc)
                 {
                     throw new ShareException(string.Format("Server name {0} is not valid", serverName));
@@ -89,6 +89,11 @@ namespace HelperFunctions
             CreateLocalShareDirectoryIfNotExisting(logger, directoryPath, shareName, "NT Authority", "Everyone");
         }
 
+        public static void CreateLocalShareDirectoryIfNotExistingAndGiveAuthenticatedUsersAccess(ILogger logger, string directoryPath, string shareName)
+        {
+            CreateLocalShareDirectoryIfNotExisting(logger, directoryPath, shareName, "NT Authority", "Authenticated Users");
+        }
+
         public static void CreateLocalShareDirectoryIfNotExisting(ILogger logger, string directoryPath, string shareName, string domain, string user)
         {
             try
@@ -99,6 +104,7 @@ namespace HelperFunctions
                 string shareDescription = string.Format("Shared {0} with {1} on {2}", directoryPath, shareName, DateTime.UtcNow.ToLongDateString());
                 if (WindowsShare.GetShareByName(shareName) == null)
                 {
+                    logger.LogDebug(string.Format("No share existing. Creating share {0}.", shareName));
                     ShareFolder(logger, directoryPath, shareName, shareDescription);
                 }
                 SharePermissions(logger, shareName, domain, user, WindowsShare.AccessMaskTypes.FullControl);

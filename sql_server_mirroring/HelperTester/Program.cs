@@ -15,6 +15,18 @@ namespace HelperFunctions
             AddTest("Test read write access in current dircetory.", () => TestReadWriteAccessToDirectory());
             AddTest("Test creation of local directory run once.", () => TestCreateLocalDirectory(1));
             AddTest("Test creation of local directory run twice.", () => TestCreateLocalDirectory(2));
+            AddTest("Test creation of local directory with access for Everyone.", () => TestCreateLocalDirectoryWithAccessForEveryone(1));
+            AddTest("Test local machine name as server name.", () => TestValidServerName());
+            AddTest("Test creation of local share run once.", () => TestCreateShareDirectory(1));
+            AddTest("Test creation of local share run twice.", () => TestCreateShareDirectory(2));
+            AddTest("Test creation of local share with access for Everyone.", () => TestCreateLocalShareWithAccessForEveryone(1));
+            AddTest("Test of read/write access to share.", () => TestReadWriteAccessToShare());
+            AddTest("Test of correct WOW registry key.", () => TestCorrect64Or32bit());
+            AddTest("Test valid registry key.", () => TestValidRegistryKey());
+            AddTest("Test of existance of registry key.", () => TestRegistryKeyExists());
+            AddTest("Test user has read/write access to registry key.", () => TestRegistryKeyUserHasReadWriteAccess());
+            AddTest("Test of existance of registry key.", () => TestRegistryKeyExists());
+            AddTest("Test of existance of registry key.", () => TestRegistryKeyExists());
 
             string inputLine = string.Empty;
             bool exit = false;
@@ -83,11 +95,124 @@ namespace HelperFunctions
             Console.WriteLine(string.Format("Testing creation of local directory {0} with absolute path {1} {2} timers.", subDirectoryString, directoryString, runs));
             for (int counter = 0; counter < runs; counter += 1)
             {
+                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, directoryString);
+            }
+
+            GetNextInput("Press Enter to clean up test");
+            Directory.Delete(directoryString, true);
+        }
+
+        private static void TestCreateLocalDirectoryWithAccessForEveryone(int runs)
+        {
+            string subDirectoryString = GetNextInput("Enter sub dircetory to test. End with Enter.");
+            string directoryString = DirectoryCreateAbsolutePath(subDirectoryString);
+            Console.WriteLine(string.Format("Testing creation of local directory {0} with absolute path {1} {2} timers for Everyone.", subDirectoryString, directoryString, runs));
+            for (int counter = 0; counter < runs; counter += 1)
+            {
                 DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToEveryone(Logger, directoryString);
             }
 
             GetNextInput("Press Enter to clean up test");
             Directory.Delete(directoryString, true);
+        }
+
+        private static void TestValidServerName()
+        {
+            ShareHelper.ValidServerName(Logger, Environment.MachineName);
+
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestCreateShareDirectory(int runs)
+        {
+            string subDirectoryString = GetNextInput("Enter sub dircetory to test. End with Enter.");
+            string shareName = GetNextInput("Enter share name to test. End with Enter.");
+            string directoryString = DirectoryCreateAbsolutePath(subDirectoryString);
+            Console.WriteLine(string.Format("Testing creation of local share {0} with absolute path {1} {2} timers.", shareName, directoryString, runs));
+            for (int counter = 0; counter < runs; counter += 1)
+            {
+                ShareHelper.CreateLocalShareDirectoryIfNotExistingAndGiveAuthenticatedUsersAccess(Logger, directoryString, shareName);
+            }
+
+            GetNextInput("Press Enter to clean up test");
+            Directory.Delete(directoryString, true);
+        }
+
+        private static void TestCreateLocalShareWithAccessForEveryone(int runs)
+        {
+            string subDirectoryString = GetNextInput("Enter sub dircetory to test. End with Enter.");
+            string shareName = GetNextInput("Enter share name to test. End with Enter.");
+            string directoryString = DirectoryCreateAbsolutePath(subDirectoryString);
+            Console.WriteLine(string.Format("Testing creation of local share {0} with absolute path {1} {2} timers for Everyone.", shareName, directoryString, runs));
+            for (int counter = 0; counter < runs; counter += 1)
+            {
+                ShareHelper.CreateLocalShareDirectoryIfNotExistingAndGiveEveryoneAccess(Logger, directoryString, shareName);
+            }
+
+            GetNextInput("Press Enter to clean up test");
+            Directory.Delete(directoryString, true);
+        }
+
+        private static void TestReadWriteAccessToShare()
+        {
+            string serverName = GetNextInput("Enter server name to test. End with Enter.", Environment.MachineName);
+            string shareName = GetNextInput("Enter share name to test. End with Enter.", "Test");
+
+            ShareHelper.TestReadWriteAccessToShare(Logger, serverName, shareName);
+
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestCorrect64Or32bit()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            RegistryHelper.Correct64Or32bit(Logger, regKey);
+
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestValidRegistryKey()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            RegistryHelper.ValidRegistryKey(Logger, regKey);
+
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestRegistryKeyExists()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            string regValue = GetNextInput("Registry Value: ", "Status");
+            RegistryHelper.Exists(Logger, regKey, regValue);
+
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestRegistryKeyUserHasReadWriteAccess()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            string regValue = GetNextInput("Registry Value: ", "Status");
+            if (RegistryHelper.HasReadWriteAccess(Logger, regKey, regValue))
+            {
+                Console.WriteLine(string.Format("User has read/write accessto {0}\\{1}", regKey, regValue));
+            }
+            else
+            {
+                Console.WriteLine(string.Format("User does not have write access {0}\\{1}", regKey, regValue));
+            }
+
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestRegistryKeyGetRegistryValueKind()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            string regValue = GetNextInput("Registry Value: ", "Status");
+
+            Microsoft.Win32.RegistryValueKind registryValueKind = RegistryHelper.GetRegistryValueKind(Logger, regKey, regValue);
+            Console.WriteLine(string.Format("RegistryValueKind: {0}",registryValueKind.ToString()));
+
+            GetNextInput("Press Enter to end test");
         }
 
         #endregion
@@ -100,8 +225,21 @@ namespace HelperFunctions
 
         private static string GetNextInput(string inputRequest)
         {
+            return GetNextInput(inputRequest, null);
+        }
+
+
+        private static string GetNextInput(string inputRequest, string defaultValue)
+        {
             Console.WriteLine();
-            Console.WriteLine(inputRequest);
+            if (inputRequest == null)
+            {
+                Console.Write(inputRequest);
+            }
+            if (defaultValue == null)
+            {
+                System.Windows.Forms.SendKeys.SendWait(defaultValue);
+            }
             return Console.ReadLine();
         }
 
