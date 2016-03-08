@@ -27,11 +27,7 @@ namespace HelperFunctions
 
         public static RegistryValueKind GetRegistryValueKind(ILogger logger, string regKey, string regValue)
         {
-            RegistryKey registryKey = GetRegistryKey(regKey);
-            if (registryKey == null)
-            {
-                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
-            }
+            RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
             RegistryValueKind registryValueKind = registryKey.GetValueKind(regValue);
             logger.LogDebug(string.Format("Registry value {0}/{1} has kind {2}", regKey, regValue, registryValueKind.ToString()));
             return registryValueKind;
@@ -39,11 +35,7 @@ namespace HelperFunctions
 
         public static byte[] GetRegistryValue_Binary(ILogger logger, string regKey, string regValue)
         {
-            RegistryKey registryKey = GetRegistryKey(regKey);
-            if (registryKey == null)
-            {
-                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
-            }
+            RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.Binary)
             {
                 byte[] bytes = (byte[])registryKey.GetValue(regValue, null);
@@ -61,11 +53,7 @@ namespace HelperFunctions
 
         public static UInt32 GetRegistryValue_DWord(ILogger logger, string regKey, string regValue)
         {
-            RegistryKey registryKey = GetRegistryKey(regKey);
-            if (registryKey == null)
-            {
-                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
-            }
+            RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.DWord)
             {
                 UInt32 returnObject = (UInt32)registryKey.GetValue(regValue, UInt32.MaxValue);
@@ -83,11 +71,7 @@ namespace HelperFunctions
 
         public static string GetRegistryValue_ExpandString(ILogger logger, string regKey, string regValue)
         {
-            RegistryKey registryKey = GetRegistryKey(regKey);
-            if (registryKey == null)
-            {
-                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
-            }
+            RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.ExpandString)
             {
                 string returnObject = (string)registryKey.GetValue(regValue, null);
@@ -105,11 +89,7 @@ namespace HelperFunctions
 
         public static string[] GetRegistryValue_MultiString(ILogger logger, string regKey, string regValue)
         {
-            RegistryKey registryKey = GetRegistryKey(regKey);
-            if (registryKey == null)
-            {
-                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
-            }
+            RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.MultiString)
             {
                 string[] values = (string[])registryKey.GetValue(regValue, null);
@@ -127,11 +107,7 @@ namespace HelperFunctions
 
         public static UInt64 GetRegistryValue_QWord(ILogger logger, string regKey, string regValue)
         {
-            RegistryKey registryKey = GetRegistryKey(regKey);
-            if (registryKey == null)
-            {
-                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
-            }
+            RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.QWord)
             {
                 UInt64 returnObject = (UInt64)registryKey.GetValue(regValue, UInt64.MaxValue);
@@ -149,11 +125,7 @@ namespace HelperFunctions
 
         public static string GetRegistryValue_String(ILogger logger, string regKey, string regValue)
         {
-            RegistryKey registryKey = GetRegistryKey(regKey);
-            if (registryKey == null)
-            {
-                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
-            }
+            RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.String)
             {
                 string returnObject = (string)registryKey.GetValue(regValue, null);
@@ -171,12 +143,8 @@ namespace HelperFunctions
 
         public static void SetRegistryValue_Binary(ILogger logger, string regKey, string regValue, byte[] value)
         {
-            RegistryKey registryKey = GetRegistryKey(regKey);
-            if (registryKey == null)
-            {
-                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
-            }
-            if (registryKey.GetValueKind(regValue) == RegistryValueKind.Binary)
+            RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
+            if (!RegistryValueExists(logger, regKey, regValue) || registryKey.GetValueKind(regValue) == RegistryValueKind.Binary)
             {
                 registryKey.SetValue(regValue,value, RegistryValueKind.Binary);
             }
@@ -188,12 +156,8 @@ namespace HelperFunctions
 
         public static void SetRegistryValue_DWord(ILogger logger, string regKey, string regValue, UInt32 value)
         {
-            RegistryKey registryKey = GetRegistryKey(regKey);
-            if (registryKey == null)
-            {
-                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
-            }
-            if (registryKey.GetValueKind(regValue) == RegistryValueKind.DWord)
+            RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
+            if (!RegistryValueExists(logger, regKey, regValue) || registryKey.GetValueKind(regValue) == RegistryValueKind.DWord)
             {
                 registryKey.SetValue(regValue,value, RegistryValueKind.DWord);
             }
@@ -205,12 +169,8 @@ namespace HelperFunctions
 
         public static void SetRegistryValue_ExpandString(ILogger logger, string regKey, string regValue, string value)
         {
-            RegistryKey registryKey = GetRegistryKey(regKey);
-            if (registryKey == null)
-            {
-                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
-            }
-            if (registryKey.GetValueKind(regValue) == RegistryValueKind.ExpandString)
+            RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
+            if (!RegistryValueExists(logger, regKey, regValue) || registryKey.GetValueKind(regValue) == RegistryValueKind.ExpandString)
             {
                 registryKey.SetValue(regValue,value, RegistryValueKind.ExpandString);
             }
@@ -222,12 +182,8 @@ namespace HelperFunctions
 
         public static void SetRegistryValue_MultiString(ILogger logger, string regKey, string regValue, string[] value)
         {
-            RegistryKey registryKey = GetRegistryKey(regKey);
-            if (registryKey == null)
-            {
-                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
-            }
-            if (registryKey.GetValueKind(regValue) == RegistryValueKind.MultiString)
+            RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
+            if (!RegistryValueExists(logger, regKey, regValue) || registryKey.GetValueKind(regValue) == RegistryValueKind.MultiString)
             {
                 registryKey.SetValue(regValue, value, RegistryValueKind.MultiString);
             }
@@ -239,12 +195,8 @@ namespace HelperFunctions
 
         public static void SetRegistryValue_QWord(ILogger logger, string regKey, string regValue, UInt64 value)
         {
-            RegistryKey registryKey = GetRegistryKey(regKey);
-            if (registryKey == null)
-            {
-                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
-            }
-            if (registryKey.GetValueKind(regValue) == RegistryValueKind.QWord)
+            RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
+            if (!RegistryValueExists(logger, regKey, regValue) || registryKey.GetValueKind(regValue) == RegistryValueKind.QWord)
             {
                 registryKey.SetValue(regValue, value, RegistryValueKind.QWord);
             }
@@ -256,12 +208,8 @@ namespace HelperFunctions
 
         public static void SetRegistryValue_String(ILogger logger, string regKey, string regValue, string value)
         {
-            RegistryKey registryKey = GetRegistryKey(regKey);
-            if (registryKey == null)
-            {
-                throw new RegistryException(string.Format("Registry key {0} could not be found", regKey));
-            }
-            if (registryKey.GetValueKind(regValue) == RegistryValueKind.String)
+            RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
+            if (!RegistryValueExists(logger, regKey, regValue) || registryKey.GetValueKind(regValue) == RegistryValueKind.String)
             {
                 registryKey.SetValue(regValue, value, RegistryValueKind.String);
             }
@@ -270,10 +218,19 @@ namespace HelperFunctions
                 throw new RegistryException(string.Format("Registry key {0} value {1} is not String", regKey, regValue));
             }
         }
-
-        private static RegistryKey GetRegistryKey(string regKey)
+        public static void DeleteRegistryValue(ILogger logger, string regKey, string regValue)
         {
-            string[] baseRegistryList = regKey.Split(new char[] { '\\' }, 1);
+            if (RegistryValueExists(logger, regKey, regValue))
+            {
+                GetRegistryKey(logger, regKey, true).DeleteValue(regValue);
+                logger.LogDebug(string.Format("Registry key {0} value {1} deleted", regKey, regValue));
+            }
+            
+        }
+
+        private static RegistryKey GetRegistryKey(ILogger logger, string regKey, bool throwExceptionOnMissing)
+        {
+            string[] baseRegistryList = regKey.Split(new string[]{ "\\"}, 1, StringSplitOptions.None);
             if (baseRegistryList.Length == 2)
             {
                 string baseRegistry = baseRegistryList[0];
@@ -297,24 +254,41 @@ namespace HelperFunctions
             }
             else
             {
+                if (throwExceptionOnMissing)
+                {
+                    throw new RegistryException(string.Format("Registry key {0} does not exist.", regKey));
+                }
                 return null;
             }
         }
 
-        public static bool Exists(ILogger logger, string regKey, string regValue)
+        public static bool RegistryKeyExists(ILogger logger, string regKey)
+        {
+            if(GetRegistryKey(logger, regKey, false) == null)
+            {
+                return false;
+            }
+            else
+            {
+                return true;
+            }
+        }
+
+
+        public static bool RegistryValueExists(ILogger logger, string regKey, string regValue)
         {
             ValidRegistryKey(logger, regKey);
             regKey = Correct64Or32bit(logger, regKey);
             if (Registry.GetValue(regKey, regValue, null) == null)
             {
                 //code if key Not Exist
-                logger.LogDebug(string.Format("Registry key {0}/{1} does not exist.", regKey, regValue));
+                logger.LogDebug(string.Format("Registry key {0}\\{1} does not exist.", regKey, regValue));
                 return false;
             }
             else
             {
                 //code if key Exist
-                logger.LogDebug(string.Format("Registry key {0}/{1} does exist.", regKey, regValue));
+                logger.LogDebug(string.Format("Registry key {0}\\{1} does exist.", regKey, regValue));
                 return true;
             }
         }

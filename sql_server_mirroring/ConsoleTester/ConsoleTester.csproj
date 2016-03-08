@@ -4,14 +4,13 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{0A7CE25F-AA7E-42EC-903C-68FFF3FA2827}</ProjectGuid>
+    <ProjectGuid>{1E751C8A-9C2F-47DD-92A2-D3CADD316C58}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>HelperFunctions</RootNamespace>
-    <AssemblyName>HelperFunctions</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <RootNamespace>ConsoleTester</RootNamespace>
+    <AssemblyName>ConsoleTester</AssemblyName>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -33,7 +32,6 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Management" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -42,17 +40,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DirectoryException.cs" />
-    <Compile Include="DirectoryHelper.cs" />
-    <Compile Include="FileCheckException.cs" />
-    <Compile Include="FileCheckHelper.cs" />
-    <Compile Include="ILogger.cs" />
-    <Compile Include="RegistryException.cs" />
-    <Compile Include="RegistryHelper.cs" />
+    <Compile Include="ConsoleTester.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ShareException.cs" />
-    <Compile Include="ShareHelper.cs" />
-    <Compile Include="WindowsShare.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Licence.txt" />

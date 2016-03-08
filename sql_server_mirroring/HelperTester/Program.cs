@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using WindowsInput;
 
 namespace HelperFunctions
 {
@@ -11,67 +12,106 @@ namespace HelperFunctions
     {
         static void Main(string[] args)
         {
-            AddTest("Test validate local directory.", () => TestValidateDirectory());
-            AddTest("Test read write access in current dircetory.", () => TestReadWriteAccessToDirectory());
-            AddTest("Test creation of local directory run once.", () => TestCreateLocalDirectory(1));
-            AddTest("Test creation of local directory run twice.", () => TestCreateLocalDirectory(2));
-            AddTest("Test creation of local directory with access for Everyone.", () => TestCreateLocalDirectoryWithAccessForEveryone(1));
-            AddTest("Test local machine name as server name.", () => TestValidServerName());
-            AddTest("Test creation of local share run once.", () => TestCreateShareDirectory(1));
-            AddTest("Test creation of local share run twice.", () => TestCreateShareDirectory(2));
-            AddTest("Test creation of local share with access for Everyone.", () => TestCreateLocalShareWithAccessForEveryone(1));
-            AddTest("Test of read/write access to share.", () => TestReadWriteAccessToShare());
-            AddTest("Test of correct WOW registry key.", () => TestCorrect64Or32bit());
-            AddTest("Test valid registry key.", () => TestValidRegistryKey());
-            AddTest("Test of existance of registry key.", () => TestRegistryKeyExists());
-            AddTest("Test user has read/write access to registry key.", () => TestRegistryKeyUserHasReadWriteAccess());
-            AddTest("Test of write/read of Binary registry key.", () => TestRegistryKeyReadWriteBinary());
-            AddTest("Test of write/read of DWord registry key.", () => TestRegistryKeyReadWriteDWord());
-            AddTest("Test of write/read of ExpandString registry key.", () => TestRegistryKeyReadWriteExpandString());
-            AddTest("Test of write/read of MultiString registry key.", () => TestRegistryKeyReadWriteMultiString());
-            AddTest("Test of write/read of QWord registry key.", () => TestRegistryKeyReadWriteQWord());
-            AddTest("Test of write/read of String registry key.", () => TestRegistryKeyReadWriteString());
+            AddTest("DirectoryHelper","Test validate local directory.", () => TestValidateDirectory());
+            AddTest("DirectoryHelper", "Test read write access in current dircetory.", () => TestReadWriteAccessToDirectory());
+            AddTest("DirectoryHelper", "Test creation of local directory run once.", () => TestCreateLocalDirectory(1));
+            AddTest("DirectoryHelper", "Test creation of local directory run twice.", () => TestCreateLocalDirectory(2));
+            AddTest("DirectoryHelper", "Test creation of local directory with access for Everyone.", () => TestCreateLocalDirectoryWithAccessForEveryone(1));
+            AddTest("ShareHelper", "Test local machine name as server name.", () => TestValidServerName());
+            AddTest("ShareHelper", "Test creation of local share run once.", () => TestCreateShareDirectory(1));
+            AddTest("ShareHelper", "Test creation of local share run twice.", () => TestCreateShareDirectory(2));
+            AddTest("ShareHelper", "Test creation of local share with access for Everyone.", () => TestCreateLocalShareWithAccessForEveryone(1));
+            AddTest("ShareHelper", "Test of read/write access to share.", () => TestReadWriteAccessToShare());
+            AddTest("RegistryHelper", "Test of correct WOW registry key.", () => TestCorrect64Or32bit());
+            AddTest("RegistryHelper", "Test valid registry key.", () => TestValidRegistryKey());
+            AddTest("RegistryHelper", "Test registry value creation.", () => TestRegistryCreateValue());
+            AddTest("RegistryHelper", "Test of existance of registry key.", () => TestRegistryValueExists());
+            AddTest("RegistryHelper", "Test user has read/write access to registry key.", () => TestRegistryUserHasReadWriteAccess());
+            AddTest("RegistryHelper", "Test deletion of registry value.", () => TestRegistryDeleteRegistryValue());
+            AddTest("RegistryHelper", "Test of write/read of Binary registry key.", () => TestRegistryKeyReadWriteBinary());
+            AddTest("RegistryHelper", "Test of write/read of DWord registry key.", () => TestRegistryKeyReadWriteDWord());
+            AddTest("RegistryHelper", "Test of write/read of ExpandString registry key.", () => TestRegistryKeyReadWriteExpandString());
+            AddTest("RegistryHelper", "Test of write/read of MultiString registry key.", () => TestRegistryKeyReadWriteMultiString());
+            AddTest("RegistryHelper", "Test of write/read of QWord registry key.", () => TestRegistryKeyReadWriteQWord());
+            AddTest("RegistryHelper", "Test of write/read of String registry key.", () => TestRegistryKeyReadWriteString());
 
             string inputLine = string.Empty;
             bool exit = false;
-            while(!exit)
+            string selectedGroupName = null;
+            while (!exit)
             {
                 Console.Clear();
-                Console.WriteLine("Use: Select a test to run of the following by entering number and hit Enter.");
-                Console.WriteLine("0) Exit");
-                foreach (Test test in TestsToRun.Values)
+                if (string.IsNullOrWhiteSpace(selectedGroupName))
                 {
-                    Console.WriteLine(test.ListNumber.ToString() + ") " + test.Explanation);
-                }
-                inputLine = Console.ReadLine();
-                if(inputLine.Equals("0"))
-                {
-                    exit = true;
-                }
-                else
-                {
-                    Test test = null;
-                    if(TestsToRun.TryGetValue(inputLine, out test))
+                    Console.WriteLine("Use: Select a test group to run of the following by entering number and hit Enter.");
+                    Console.WriteLine("0) Exit");
+                    Dictionary<string, string> selectionList = new Dictionary<string, string>();
+                    int counter = 1;
+                    foreach (string groupName in TestGroupsToRun.Keys)
                     {
-                        try
-                        {
-                            test.TestToRun.Invoke();
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine(string.Format("Exception cast. Type : {0}", ex.GetType().ToString()));
-                            Console.WriteLine(string.Format("Exception message: {0}", ex.Message));
-                            Console.WriteLine(string.Format("Exception stacktrace: {0}", ex.StackTrace));
-                            GetNextInput("Press Enter to end test");
-                        }
+                        selectionList.Add(counter.ToString(), groupName);
+                        Console.WriteLine(counter.ToString() + ") " + groupName);
+                        counter += 1;
+                    }
+                    inputLine = Console.ReadLine();
+                    if (inputLine.Equals("0"))
+                    {
+                        exit = true;
                     }
                     else
                     {
-                        Console.WriteLine(string.Format("Unknown input: |{0}|. Please try again.", inputLine));
+                        if (!selectionList.TryGetValue(inputLine, out selectedGroupName))
+                        {
+                            GetNextInput(string.Format("Unknown input: |{0}|. Please try again. Press Enter to procede.", inputLine));
+                        }
                     }
                 }
-            }
-        }
+                else
+                {
+                    Dictionary<string, Test> testGroup;
+                    if (!TestGroupsToRun.TryGetValue(selectedGroupName, out testGroup))
+                    {
+                        GetNextInput(string.Format("Could not get {0}. Returning to group selection. Press Enter to procede.", selectedGroupName));
+                        selectedGroupName = null;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Use: Select a test to run of the following by entering number and hit Enter.");
+                        Console.WriteLine("0) Return to previous list.");
+                        foreach (Test test in testGroup.Values)
+                        {
+                            Console.WriteLine(test.ListNumber.ToString() + ") " + test.Explanation);
+                        }
+                        inputLine = Console.ReadLine();
+                        if (inputLine.Equals("0"))
+                        {
+                            selectedGroupName = null;
+                        }
+                        else
+                        {
+                            Test test = null;
+                            if (testGroup.TryGetValue(inputLine, out test))
+                            {
+                                try
+                                {
+                                    test.TestToRun.Invoke();
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine(string.Format("Exception cast. Type : {0}", ex.GetType().ToString()));
+                                    Console.WriteLine(string.Format("Exception message: {0}", ex.Message));
+                                    Console.WriteLine(string.Format("Exception stacktrace: {0}", ex.StackTrace));
+                                    GetNextInput("Press Enter to end test");
+                                }
+                            }
+                            else
+                            {
+                                GetNextInput(string.Format("Unknown input: |{0}|. Please try again. Press Enter to procede.", inputLine));
+                            }
+                        }
+                    }
+                }
+            } }
 
         #region Tests
         private static void TestValidateDirectory()
@@ -183,22 +223,46 @@ namespace HelperFunctions
             GetNextInput("Press Enter to end test");
         }
 
-        private static void TestRegistryKeyExists()
+        private static void TestRegistryCreateValue()
         {
             string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
             string regValue = GetNextInput("Registry Value: ", "Status");
-            RegistryHelper.Exists(Logger, regKey, regValue);
+
+            RegistryHelper.SetRegistryValue_String(Logger, regKey, regValue, "TestValue");
 
             GetNextInput("Press Enter to end test");
         }
 
-        private static void TestRegistryKeyUserHasReadWriteAccess()
+        private static void TestRegistryKeyExists()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            if(RegistryHelper.RegistryKeyExists(Logger, regKey))
+            {
+                Console.WriteLine(string.Format("Registry key {0} exists.", regKey));
+            }
+            else
+            {
+                Console.WriteLine(string.Format("Registry key {0} does not exists.", regKey));
+            }
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestRegistryValueExists()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            string regValue = GetNextInput("Registry Value: ", "Status");
+            RegistryHelper.RegistryValueExists(Logger, regKey, regValue);
+
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestRegistryUserHasReadWriteAccess()
         {
             string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
             string regValue = GetNextInput("Registry Value: ", "Status");
             if (RegistryHelper.HasReadWriteAccess(Logger, regKey, regValue))
             {
-                Console.WriteLine(string.Format("User has read/write accessto {0}\\{1}", regKey, regValue));
+                Console.WriteLine(string.Format("User has read/write access to {0}\\{1}", regKey, regValue));
             }
             else
             {
@@ -208,13 +272,23 @@ namespace HelperFunctions
             GetNextInput("Press Enter to end test");
         }
 
-        private static void TestRegistryKeyGetRegistryValueKind()
+        private static void TestRegistryGetRegistryValueKind()
         {
             string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
             string regValue = GetNextInput("Registry Value: ", "Status");
 
             Microsoft.Win32.RegistryValueKind registryValueKind = RegistryHelper.GetRegistryValueKind(Logger, regKey, regValue);
             Console.WriteLine(string.Format("RegistryValueKind: {0}",registryValueKind.ToString()));
+
+            GetNextInput("Press Enter to end test");
+        }
+
+        private static void TestRegistryDeleteRegistryValue()
+        {
+            string regKey = GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
+            string regValue = GetNextInput("Registry Value: ", "Status");
+
+            RegistryHelper.DeleteRegistryValue(Logger, regKey, regValue);
 
             GetNextInput("Press Enter to end test");
         }
@@ -235,7 +309,8 @@ namespace HelperFunctions
                 Console.WriteLine("Failure");
             }
 
-            GetNextInput("Press Enter to end test");
+            GetNextInput("Press Enter to clean up after test");
+            RegistryHelper.DeleteRegistryValue(Logger, regKey, regValue);
         }
 
         private static void TestRegistryKeyReadWriteString()
@@ -254,7 +329,8 @@ namespace HelperFunctions
                 Console.WriteLine("Failure");
             }
 
-            GetNextInput("Press Enter to end test");
+            GetNextInput("Press Enter to clean up after test");
+            RegistryHelper.DeleteRegistryValue(Logger, regKey, regValue);
         }
 
         private static void TestRegistryKeyReadWriteQWord()
@@ -273,7 +349,8 @@ namespace HelperFunctions
                 Console.WriteLine("Failure");
             }
 
-            GetNextInput("Press Enter to end test");
+            GetNextInput("Press Enter to clean up after test");
+            RegistryHelper.DeleteRegistryValue(Logger, regKey, regValue);
         }
 
         private static void TestRegistryKeyReadWriteMultiString()
@@ -292,7 +369,8 @@ namespace HelperFunctions
                 Console.WriteLine("Failure");
             }
 
-            GetNextInput("Press Enter to end test");
+            GetNextInput("Press Enter to clean up after test");
+            RegistryHelper.DeleteRegistryValue(Logger, regKey, regValue);
         }
 
         private static void TestRegistryKeyReadWriteDWord()
@@ -311,7 +389,8 @@ namespace HelperFunctions
                 Console.WriteLine("Failure");
             }
 
-            GetNextInput("Press Enter to end test");
+            GetNextInput("Press Enter to clean up after test");
+            RegistryHelper.DeleteRegistryValue(Logger, regKey, regValue);
         }
 
         private static void TestRegistryKeyReadWriteBinary()
@@ -330,7 +409,8 @@ namespace HelperFunctions
                 Console.WriteLine("Failure");
             }
 
-            GetNextInput("Press Enter to end test");
+            GetNextInput("Press Enter to clean up after test");
+            RegistryHelper.DeleteRegistryValue(Logger, regKey, regValue);
         }
 
         #endregion
@@ -339,12 +419,40 @@ namespace HelperFunctions
 
         private static bool CompareByteArray(byte[] byteArray1, byte[] byteArray2)
         {
-            //throw new NotImplementedException();
+            if(byteArray1 != null && byteArray2 != null && byteArray1.Length == byteArray2.Length)
+            {
+                for(int counter = 0; counter < byteArray1.Length;counter+=1)
+                {
+                    if(byteArray1[counter] != byteArray2[counter])
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
-        private static bool CompareStringArray(string[] array1, string[] array2)
+        private static bool CompareStringArray(string[] stringArray1, string[] stringArray2)
         {
-            //throw new NotImplementedException();
+            if (stringArray1 != null && stringArray2 != null && stringArray1.Length == stringArray2.Length)
+            {
+                for (int counter = 0; counter < stringArray1.Length; counter += 1)
+                {
+                    if (stringArray1[counter] != stringArray2[counter])
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         private static string DirectoryCreateAbsolutePath(string subDirectory)
@@ -361,27 +469,26 @@ namespace HelperFunctions
         private static string GetNextInput(string inputRequest, string defaultValue)
         {
             Console.WriteLine();
-            if (inputRequest == null)
+            if (inputRequest != null)
             {
                 Console.Write(inputRequest);
             }
-            if (defaultValue == null)
+            if (defaultValue != null)
             {
-                System.Windows.Forms.SendKeys.SendWait(defaultValue);
+                InputSimulator.SimulateTextEntry(defaultValue);
             }
-            return Console.ReadLine();
+            string capturedString = Console.ReadLine();
+            Console.WriteLine(string.Format("Captured: {0}", capturedString));
+
+            return capturedString;
         }
 
-        static Dictionary<string, Test> _testsToRun = new Dictionary<string, Test>();
-        static int _highestTestNumber = 1;
+        static Dictionary<string,Dictionary<string, Test>> _testsToRun = new Dictionary<string, Dictionary<string, Test>>();
         static ILogger _logger = new ConsoleLogger();
 
-        private static int HighestTestNumber
+        private static int NewTestNumber(string groupName)
         {
-            get
-            {
-                return _highestTestNumber++;
-            }
+            return TestsToRun(groupName).Count + 1;
         }
 
         private static ILogger Logger
@@ -392,17 +499,39 @@ namespace HelperFunctions
             }
         }
 
-        private static void AddTest(string explanation, Action testToRun)
+        private static void AddTest(string groupName, string explanation, Action testToRun)
         {
-            Test test = new Test(HighestTestNumber, explanation, testToRun);
-            _testsToRun.Add(test.ListNumber.ToString(), test);
+            Test test = new Test(NewTestNumber(groupName), explanation, testToRun);
+            TestsToRun(groupName).Add(test.ListNumber.ToString(), test);
         }
 
-        private static Dictionary<string, Test> TestsToRun
+        private static Dictionary<string, Dictionary<string, Test>> TestGroupsToRun
         {
             get
             {
                 return _testsToRun;
+            }
+        }
+
+        private static Dictionary<string, Test> TestsToRun(string groupName)
+        {
+            Dictionary<string, Test> testsToRun;
+            if (TestGroupsToRun.ContainsKey(groupName))
+            {
+                if (TestGroupsToRun.TryGetValue(groupName, out testsToRun))
+                {
+                    return testsToRun;
+                }
+                else
+                {
+                    throw new Exception("Could not get test group out.");
+                }
+            }
+            else
+            {
+                testsToRun = new Dictionary<string, Test>();
+                TestGroupsToRun.Add(groupName, testsToRun);
+                return testsToRun;
             }
         }
 
