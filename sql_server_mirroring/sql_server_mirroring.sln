@@ -11,8 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelperTester", "HelperTeste
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{FFB196FC-846A-4D31-B7AC-F5F34596F5B2}"
 	ProjectSection(SolutionItems) = preProject
-		InputSimulator.dll = InputSimulator.dll
-		InputSimulator_Licence.txt = InputSimulator_Licence.txt
+		External\InputSimulator.dll = External\InputSimulator.dll
+		External\InputSimulator_Licence.txt = External\InputSimulator_Licence.txt
 		Solution dependencies.dgml = Solution dependencies.dgml
 	EndProjectSection
 EndProject

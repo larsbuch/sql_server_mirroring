@@ -56,13 +56,19 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\ConsoleTester\ConsoleTester.csproj">
+      <Project>{1e751c8a-9c2f-47dd-92a2-d3cadd316c58}</Project>
+      <Name>ConsoleTester</Name>
+    </ProjectReference>
     <ProjectReference Include="..\HelperFunctions\HelperFunctions.csproj">
       <Project>{0a7ce25f-aa7e-42ec-903c-68fff3fa2827}</Project>
       <Name>HelperFunctions</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Licence.txt" />
+    <Content Include="Licence.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
