@@ -27,7 +27,7 @@ namespace HelperFunctions
             ConsoleTest.AddTest("RegistryHelper", "Test valid registry key.", () => TestValidRegistryKey());
             ConsoleTest.AddTest("RegistryHelper", "Test registry value creation.", () => TestRegistryCreateValue());
             ConsoleTest.AddTest("RegistryHelper", "Test of existance of registry key.", () => TestRegistryValueExists());
-            ConsoleTest.AddTest("RegistryHelper", "Test user has read/write access to registry key.", () => TestRegistryUserHasReadWriteAccess());
+            ConsoleTest.AddTest("RegistryHelper", "Test user has all access to registry key.", () => TestRegistryValueUserHasAllAccess());
             ConsoleTest.AddTest("RegistryHelper", "Test deletion of registry value.", () => TestRegistryDeleteRegistryValue());
             ConsoleTest.AddTest("RegistryHelper", "Test of write/read of Binary registry key.", () => TestRegistryKeyReadWriteBinary());
             ConsoleTest.AddTest("RegistryHelper", "Test of write/read of DWord registry key.", () => TestRegistryKeyReadWriteDWord());
@@ -182,17 +182,17 @@ namespace HelperFunctions
             ConsoleTest.GetNextInput("Press Enter to end test");
         }
 
-        private static void TestRegistryUserHasReadWriteAccess()
+        private static void TestRegistryValueUserHasAllAccess()
         {
             string regKey = ConsoleTest.GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
             string regValue = ConsoleTest.GetNextInput("Registry Value: ", "Status");
-            if (RegistryHelper.HasReadWriteAccess(Logger, regKey, regValue))
+            if (RegistryHelper.HasRegistryKeyAllAccess(Logger, regKey, regValue))
             {
-                Console.WriteLine(string.Format("User has read/write access to {0}\\{1}", regKey, regValue));
+                Console.WriteLine(string.Format("User has all access to {0}\\{1}", regKey, regValue));
             }
             else
             {
-                Console.WriteLine(string.Format("User does not have write access {0}\\{1}", regKey, regValue));
+                Console.WriteLine(string.Format("User does not have all access {0}\\{1}", regKey, regValue));
             }
 
             ConsoleTest.GetNextInput("Press Enter to end test");

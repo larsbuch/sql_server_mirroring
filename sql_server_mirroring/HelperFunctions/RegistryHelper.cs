@@ -230,26 +230,27 @@ namespace HelperFunctions
 
         private static RegistryKey GetRegistryKey(ILogger logger, string regKey, bool throwExceptionOnMissing)
         {
-            string[] baseRegistryList = regKey.Split(new string[]{ "\\"}, 1, StringSplitOptions.None);
-            if (baseRegistryList.Length == 2)
+            int splitPoint = regKey.IndexOf('\\');
+            if (splitPoint > 0)
             {
-                string baseRegistry = baseRegistryList[0];
+                string baseRegistry = regKey.Substring(0, splitPoint);
+                string subKey = regKey.Substring(splitPoint + 1);
                 switch (baseRegistry)
                 {
                     case "HKEY_CURRENT_USER":
-                        return Registry.CurrentUser.OpenSubKey(baseRegistryList[1]);
+                        return Registry.CurrentUser.OpenSubKey(subKey, true);
                     case "HKEY_LOCAL_MACHINE":
-                        return Registry.LocalMachine.OpenSubKey(baseRegistryList[1]);
+                        return Registry.LocalMachine.OpenSubKey(subKey, true);
                     case "HKEY_CLASSES_ROOT":
-                        return Registry.ClassesRoot.OpenSubKey(baseRegistryList[1]);
+                        return Registry.ClassesRoot.OpenSubKey(subKey, true);
                     case "HKEY_USERS":
-                        return Registry.Users.OpenSubKey(baseRegistryList[1]);
+                        return Registry.Users.OpenSubKey(subKey, true);
                     case "HKEY_PERFORMANCE_DATA":
-                        return Registry.PerformanceData.OpenSubKey(baseRegistryList[1]);
+                        return Registry.PerformanceData.OpenSubKey(subKey, true);
                     case "HKEY_CURRENT_CONFIG":
-                        return Registry.CurrentConfig.OpenSubKey(baseRegistryList[1]);
+                        return Registry.CurrentConfig.OpenSubKey(subKey, true);
                     default:
-                        throw new RegistryException(string.Format("Unknown base registry {0}", baseRegistryList[0]));
+                        throw new RegistryException(string.Format("Unknown base registry {0}", baseRegistry));
                 }
             }
             else
@@ -293,20 +294,20 @@ namespace HelperFunctions
             }
         }
 
-        public static bool HasReadWriteAccess(ILogger logger, string regKey, string regValue)
+        public static bool HasRegistryKeyAllAccess(ILogger logger, string regKey, string regValue)
         {
             ValidRegistryKey(logger, regKey);
             regKey = Correct64Or32bit(logger, regKey);
             try
             {
-                RegistryPermission perm1 = new RegistryPermission(RegistryPermissionAccess.Write, regKey + "\\" + regValue);
+                RegistryPermission perm1 = new RegistryPermission(RegistryPermissionAccess.AllAccess, regKey + "\\" + regValue);
                 perm1.Demand();
-                logger.LogInfo(string.Format("Has read/write access to registry key {0}.", regKey + "\\" + regValue));
+                logger.LogInfo(string.Format("Has all access to registry key {0}.", regKey + "\\" + regValue));
                 return true;
             }
             catch (System.Security.SecurityException)
             {
-                logger.LogWarning(string.Format("Not correct read/write access to registry key {0}.", regKey + "\\" + regValue));
+                logger.LogWarning(string.Format("Not correct all access to registry key {0}.", regKey + "\\" + regValue));
                 return false;
             }
         }
