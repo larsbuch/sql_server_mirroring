@@ -265,10 +265,12 @@ namespace HelperFunctions
         {
             string regKey = ConsoleTest.GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
             string regValue = ConsoleTest.GetNextInput("Registry Value: ", "R_QWord");
-            UInt64 value = 158156464545;
+            UInt64 inputValue = 158156464545;
 
-            RegistryHelper.SetRegistryValue_QWord(Logger, regKey, regValue, value);
-            if (RegistryHelper.GetRegistryValue_QWord(Logger, regKey, regValue) == value)
+            RegistryHelper.SetRegistryValue_QWord(Logger, regKey, regValue, inputValue);
+            UInt64 registryValue = RegistryHelper.GetRegistryValue_QWord(Logger, regKey, regValue, true);
+            Console.WriteLine(string.Format("Compares original |{0}| and registry |{1}|", inputValue, registryValue));
+            if (RegistryHelper.GetRegistryValue_QWord(Logger, regKey, regValue, true) == inputValue)
             {
                 Console.WriteLine("Success");
             }
@@ -276,7 +278,6 @@ namespace HelperFunctions
             {
                 Console.WriteLine("Failure");
             }
-
             ConsoleTest.GetNextInput("Press Enter to clean up after test");
             RegistryHelper.DeleteRegistryValue(Logger, regKey, regValue);
         }
@@ -305,10 +306,12 @@ namespace HelperFunctions
         {
             string regKey = ConsoleTest.GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
             string regValue = ConsoleTest.GetNextInput("Registry Value: ", "R_DWord");
-            UInt32 value = 15874;
+            UInt32 inputValue = 15874;
 
-            RegistryHelper.SetRegistryValue_DWord(Logger, regKey, regValue, value);
-            if (RegistryHelper.GetRegistryValue_DWord(Logger, regKey, regValue) == value)
+            RegistryHelper.SetRegistryValue_DWord(Logger, regKey, regValue, inputValue);
+            UInt32 registryValue = RegistryHelper.GetRegistryValue_DWord(Logger, regKey, regValue, true);
+            Console.WriteLine(string.Format("Compares original |{0}| and registry |{1}|", inputValue, registryValue));
+            if (RegistryHelper.GetRegistryValue_DWord(Logger, regKey, regValue, true) == inputValue)
             {
                 Console.WriteLine("Success");
             }

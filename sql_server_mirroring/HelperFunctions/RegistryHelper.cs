@@ -51,24 +51,31 @@ namespace HelperFunctions
             }
         }
 
-        public static UInt32 GetRegistryValue_DWord(ILogger logger, string regKey, string regValue)
+        public static UInt32 GetRegistryValue_DWord(ILogger logger, string regKey, string regValue, bool throwExceptionOnNullValue)
         {
             RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.DWord)
             {
-                // TODO Cast invalid
-                UInt32 returnObject = (UInt32)registryKey.GetValue(regValue, UInt32.MaxValue);
-                if (returnObject == UInt32.MaxValue)
+                object registryDWordObject = registryKey.GetValue(regValue, null);
+                if (registryDWordObject == null)
                 {
-                    throw new RegistryException(string.Format("Registry key {0} value {1} does not contain anything", regKey, regValue));
+                    if (throwExceptionOnNullValue)
+                    {
+                        throw new RegistryException(string.Format("Registry key {0} value {1} does contain |{2}| which is not a valid DWord", regKey, regValue, registryDWordObject.ToString()));
+                    }
+                    else
+                    {
+                        return UInt32.MaxValue;
+                    }
                 }
-                return returnObject;
+                return unchecked((UInt32)((Int32)registryDWordObject));
             }
             else
             {
                 throw new RegistryException(string.Format("Registry key {0} value {1} is not DWord", regKey, regValue));
             }
         }
+
 
         public static string GetRegistryValue_ExpandString(ILogger logger, string regKey, string regValue)
         {
@@ -106,18 +113,24 @@ namespace HelperFunctions
             }
         }
 
-        public static UInt64 GetRegistryValue_QWord(ILogger logger, string regKey, string regValue)
+        public static UInt64 GetRegistryValue_QWord(ILogger logger, string regKey, string regValue, bool throwExceptionOnNullValue)
         {
             RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.QWord)
             {
-                // TODO Cast invalid
-                UInt64 returnObject = (UInt64)registryKey.GetValue(regValue, UInt64.MaxValue);
-                if (returnObject == UInt64.MaxValue)
+                object registryDWordObject = registryKey.GetValue(regValue, null);
+                if (registryDWordObject == null)
                 {
-                    throw new RegistryException(string.Format("Registry key {0} value {1} does not contain anything", regKey, regValue));
+                    if (throwExceptionOnNullValue)
+                    {
+                        throw new RegistryException(string.Format("Registry key {0} value {1} does contain |{2}| which is not a valid QWord", regKey, regValue, registryDWordObject.ToString()));
+                    }
+                    else
+                    {
+                        return UInt64.MaxValue;
+                    }
                 }
-                return returnObject;
+                return unchecked((UInt64)((Int64)registryDWordObject));
             }
             else
             {
