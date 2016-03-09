@@ -224,9 +224,11 @@ namespace HelperFunctions
             string regKey = ConsoleTest.GetNextInput("Registry Key: ", "HKEY_CURRENT_USER\\Software\\SqlMirror");
             string regValue = ConsoleTest.GetNextInput("Registry Value: ", "R_ExpandString");
             string value = "TestValue with %Path%";
+            int compareLength = 15;
 
             RegistryHelper.SetRegistryValue_ExpandString(Logger, regKey, regValue, value);
-            if(RegistryHelper.GetRegistryValue_ExpandString(Logger, regKey, regValue).Equals(value))
+            Console.WriteLine(string.Format("Comparing first {0} char in |{1}| with original |{2}|.", compareLength, RegistryHelper.GetRegistryValue_ExpandString(Logger, regKey, regValue), value));
+            if (RegistryHelper.GetRegistryValue_ExpandString(Logger, regKey, regValue).Substring(0, compareLength).Equals(value.Substring(0, compareLength)))
             {
                 Console.WriteLine("Success");
             }

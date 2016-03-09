@@ -56,6 +56,7 @@ namespace HelperFunctions
             RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.DWord)
             {
+                // TODO Cast invalid
                 UInt32 returnObject = (UInt32)registryKey.GetValue(regValue, UInt32.MaxValue);
                 if (returnObject == UInt32.MaxValue)
                 {
@@ -110,6 +111,7 @@ namespace HelperFunctions
             RegistryKey registryKey = GetRegistryKey(logger, regKey, true);
             if (registryKey.GetValueKind(regValue) == RegistryValueKind.QWord)
             {
+                // TODO Cast invalid
                 UInt64 returnObject = (UInt64)registryKey.GetValue(regValue, UInt64.MaxValue);
                 if (returnObject == UInt64.MaxValue)
                 {
@@ -147,6 +149,7 @@ namespace HelperFunctions
             if (!RegistryValueExists(logger, regKey, regValue) || registryKey.GetValueKind(regValue) == RegistryValueKind.Binary)
             {
                 registryKey.SetValue(regValue,value, RegistryValueKind.Binary);
+                logger.LogDebug(string.Format("Registry value {0} for key {1} created/updated with data {2} as Binary.", regValue, regKey, value));
             }
             else
             {
@@ -160,6 +163,7 @@ namespace HelperFunctions
             if (!RegistryValueExists(logger, regKey, regValue) || registryKey.GetValueKind(regValue) == RegistryValueKind.DWord)
             {
                 registryKey.SetValue(regValue,value, RegistryValueKind.DWord);
+                logger.LogDebug(string.Format("Registry value {0} for key {1} created/updated with data {2} as DWord.", regValue, regKey, value));
             }
             else
             {
@@ -173,6 +177,7 @@ namespace HelperFunctions
             if (!RegistryValueExists(logger, regKey, regValue) || registryKey.GetValueKind(regValue) == RegistryValueKind.ExpandString)
             {
                 registryKey.SetValue(regValue,value, RegistryValueKind.ExpandString);
+                logger.LogDebug(string.Format("Registry value {0} for key {1} created/updated with data {2} as ExpandString.", regValue, regKey, value));
             }
             else
             {
@@ -186,6 +191,7 @@ namespace HelperFunctions
             if (!RegistryValueExists(logger, regKey, regValue) || registryKey.GetValueKind(regValue) == RegistryValueKind.MultiString)
             {
                 registryKey.SetValue(regValue, value, RegistryValueKind.MultiString);
+                logger.LogDebug(string.Format("Registry value {0} for key {1} created/updated with data {2} as MultiString.", regValue, regKey, value));
             }
             else
             {
@@ -199,6 +205,7 @@ namespace HelperFunctions
             if (!RegistryValueExists(logger, regKey, regValue) || registryKey.GetValueKind(regValue) == RegistryValueKind.QWord)
             {
                 registryKey.SetValue(regValue, value, RegistryValueKind.QWord);
+                logger.LogDebug(string.Format("Registry value {0} for key {1} created/updated with data {2} as QWord.", regValue, regKey, value));
             }
             else
             {
@@ -212,12 +219,14 @@ namespace HelperFunctions
             if (!RegistryValueExists(logger, regKey, regValue) || registryKey.GetValueKind(regValue) == RegistryValueKind.String)
             {
                 registryKey.SetValue(regValue, value, RegistryValueKind.String);
+                logger.LogDebug(string.Format("Registry value {0} for key {1} created/updated with data {2} as String.", regValue, regKey, value));
             }
             else
             {
                 throw new RegistryException(string.Format("Registry key {0} value {1} is not String", regKey, regValue));
             }
         }
+
         public static void DeleteRegistryValue(ILogger logger, string regKey, string regValue)
         {
             if (RegistryValueExists(logger, regKey, regValue))
