@@ -1,0 +1,2 @@
+﻿Requirements for redistributable SMO is "Shared Mamagement Objects.msi" from https://www.microsoft.com/en-us/download/details.aspx?id=42295
+Added to solution on 2016-03-09

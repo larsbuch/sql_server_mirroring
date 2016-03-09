@@ -15,6 +15,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		External\ConsoleTester_License.txt = External\ConsoleTester_License.txt
 		External\InputSimulator.dll = External\InputSimulator.dll
 		External\InputSimulator_Licence.txt = External\InputSimulator_Licence.txt
+		External\SharedManagementObjects_32bit.msi = External\SharedManagementObjects_32bit.msi
+		External\SharedManagementObjects_64bit.msi = External\SharedManagementObjects_64bit.msi
 		Solution dependencies.dgml = Solution dependencies.dgml
 	EndProjectSection
 EndProject
