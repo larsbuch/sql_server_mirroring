@@ -33,6 +33,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>console-multi-size.ico</ApplicationIcon>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="ConsoleTester">
       <HintPath>..\External\ConsoleTester.dll</HintPath>
@@ -51,15 +54,24 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SqlServerMirroringTesterException.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\HelperFunctions\HelperFunctions.csproj">
+      <Project>{0a7ce25f-aa7e-42ec-903c-68fff3fa2827}</Project>
+      <Name>HelperFunctions</Name>
+    </ProjectReference>
     <ProjectReference Include="..\SqlServerMirroring\SqlServerMirroring.csproj">
       <Project>{7d048b24-b28f-4ecf-996a-bb5f1ef33e90}</Project>
       <Name>SqlServerMirroring</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="console-multi-size.ico" />
+    <Content Include="SqlServerMirroringTester_Licence.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

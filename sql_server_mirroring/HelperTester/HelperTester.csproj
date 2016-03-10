@@ -70,7 +70,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="console-multi-size.ico" />
-    <Content Include="Licence.txt">
+    <Content Include="HelperTester_Licence.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

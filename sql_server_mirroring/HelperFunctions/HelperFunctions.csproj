@@ -55,7 +55,7 @@
     <Compile Include="WindowsShare.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Licence.txt">
+    <Content Include="HelperFunctions_Licence.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
