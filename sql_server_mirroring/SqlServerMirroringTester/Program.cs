@@ -14,16 +14,58 @@ namespace SqlServerMirroringTester
         {
             Configuration.Add(CONNECTION_STRING, "Server=localhost;Trusted_Connection=True;");
 
-            ConsoleTest.AddTest("SQL Server Instance", "Try to connect to server with SMO", () => TestConnectToSMO());
+            ConsoleTest.AddTest("SQL Server Instance", "Try to connect to server with SMO", () => Test_ConnectToSMO());
+            ConsoleTest.AddTest("SQL Server Instance", "Get instance information", () => Test_InstanceInformation());
+            ConsoleTest.AddTest("SQL Server Instance", "Check for instance readyness for mirroring", () => Test_CheckInstanceForMirroring());
+            ConsoleTest.AddTest("SQL Server Instance", "Setup for instance for mirroring", () => Test_SetupInstanceForMirroring());
+            ConsoleTest.AddTest("SQL Server Agent", "Get sql agent information", () => Test_SqlServerAgentInformation());
 
             ConsoleTest.Run();
         }
 
         #region Tests
 
-        private static void TestConnectToSMO()
+        private static void Test_ConnectToSMO()
         {
             Console.WriteLine(string.Format("Instance Status: {0}", SqlServer.Instance_Status()));
+
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
+
+        private static void Test_InstanceInformation()
+        {
+            Console.WriteLine("Instance Information:");
+            foreach (KeyValuePair<string, string> pair in SqlServer.Instance_Information())
+            {
+                Console.WriteLine(string.Format("{0}: {1}", pair.Key, pair.Value));
+            }
+
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
+
+        private static void Test_CheckInstanceForMirroring()
+        {
+            Console.WriteLine(string.Format("Instance Ready for mirroring: {0}", SqlServer.CheckInstanceForMirroring()?"Yes":"No"));
+
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
+
+        private static void Test_SetupInstanceForMirroring()
+        {
+            Console.WriteLine("Start setup instance for mirroring");
+
+            SqlServer.SetupInstanceForMirroring();
+
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
+
+        private static void Test_SqlServerAgentInformation()
+        {
+            Console.WriteLine("Sql Server Agent Information:");
+            foreach (KeyValuePair<string, string> pair in SqlServer.SqlAgent_Information())
+            {
+                Console.WriteLine(string.Format("{0}: {1}", pair.Key, pair.Value));
+            }
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
