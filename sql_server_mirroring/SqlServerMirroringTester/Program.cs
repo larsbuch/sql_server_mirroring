@@ -18,6 +18,8 @@ namespace SqlServerMirroringTester
             ConsoleTest.AddTest("SQL Server Instance", "Get instance information", () => Test_InstanceInformation());
             ConsoleTest.AddTest("SQL Server Instance", "Check for instance readyness for mirroring", () => Test_CheckInstanceForMirroring());
             ConsoleTest.AddTest("SQL Server Instance", "Setup for instance for mirroring", () => Test_SetupInstanceForMirroring());
+            ConsoleTest.AddTest("SQL Server Instance", "Run startup mirror check on principal", () => Test_StartUpMirrorCheck_Principal());
+            ConsoleTest.AddTest("SQL Server Instance", "Run startup mirror check on mirror", () => Test_StartUpMirrorCheck_Mirror());
             ConsoleTest.AddTest("SQL Server Agent", "Get sql agent information", () => Test_SqlServerAgentInformation());
 
             ConsoleTest.Run();
@@ -66,6 +68,56 @@ namespace SqlServerMirroringTester
             {
                 Console.WriteLine(string.Format("{0}: {1}", pair.Key, pair.Value));
             }
+
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
+
+        private static void Test_StartUpMirrorCheck_Principal()
+        {
+            //Build data
+            Dictionary<string, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<string, ConfiguredDatabaseForMirroring>();
+
+            SqlServer.StartUpMirrorCheck(configuredMirrorDatabases, true);
+
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
+
+        private static void Test_StartUpMirrorCheck_Mirror()
+        {
+            //Build data
+            Dictionary<string, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<string, ConfiguredDatabaseForMirroring>();
+
+            SqlServer.StartUpMirrorCheck(configuredMirrorDatabases, false);
+
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
+
+        private static void Test_ResumeMirroringForAllDatabases()
+        {
+            //Build data
+            Dictionary<string, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<string, ConfiguredDatabaseForMirroring>();
+
+            SqlServer.ResumeMirroringForAllDatabases(configuredMirrorDatabases);
+
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
+
+        private static void Test_ForceFailoverWithDataLossForAllMirrorDatabases()
+        {
+            //Build data
+            Dictionary<string, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<string, ConfiguredDatabaseForMirroring>();
+
+            SqlServer.ForceFailoverWithDataLossForAllMirrorDatabases(configuredMirrorDatabases);
+
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
+
+        private static void Test_FailoverForAllMirrorDatabases()
+        {
+            //Build data
+            Dictionary<string, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<string, ConfiguredDatabaseForMirroring>();
+
+            SqlServer.FailoverForAllMirrorDatabases(configuredMirrorDatabases);
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }

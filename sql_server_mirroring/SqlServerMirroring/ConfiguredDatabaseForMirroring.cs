@@ -19,6 +19,7 @@ namespace SqlServerMirroring
         private string _remoteShareForBackup;
         private int _endpoint_SslPort;
         private int _endpoint_ListenerPort;
+        private double _backupExpirationTime;
 
         public ConfiguredDatabaseForMirroring(
             string databaseName, 
@@ -32,7 +33,8 @@ namespace SqlServerMirroring
             string remoteServer,
             string remoteShareForBackup,
             int endpoint_SslPort,
-            int endpoint_ListenerPort
+            int endpoint_ListenerPort,
+            double backupExpirationTime
             )
         {
             _databaseName = databaseName;
@@ -47,6 +49,7 @@ namespace SqlServerMirroring
             _remoteShareForBackup = remoteShareForBackup;
             _endpoint_SslPort = endpoint_SslPort;
             _endpoint_ListenerPort = endpoint_ListenerPort;
+            _backupExpirationTime = backupExpirationTime;
         }
 
         public string DatabaseName
@@ -151,6 +154,14 @@ namespace SqlServerMirroring
             get
             {
                 return "Mirroring_Endpoint_" + DatabaseName;
+            }
+        }
+
+        public double BackupExpirationTime
+        {
+            get
+            {
+                return _backupExpirationTime;
             }
         }
     }

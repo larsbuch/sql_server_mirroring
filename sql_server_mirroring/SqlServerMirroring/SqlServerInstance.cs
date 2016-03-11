@@ -85,7 +85,7 @@ namespace SqlServerMirroring
         public List<string> Instance_Endpoints()
         {
             List<string> returnList = new List<string>();
-            foreach(Endpoint endpoint in DatabaseServerInstance.Endpoints)
+            foreach (Endpoint endpoint in DatabaseServerInstance.Endpoints)
             {
                 returnList.Add(endpoint.ToString());
             }
@@ -165,7 +165,7 @@ namespace SqlServerMirroring
 
         public bool WindowsAuthentificationActive()
         {
-            if(DatabaseServerInstance.LoginMode == ServerLoginMode.Integrated || DatabaseServerInstance.LoginMode == ServerLoginMode.Mixed)
+            if (DatabaseServerInstance.LoginMode == ServerLoginMode.Integrated || DatabaseServerInstance.LoginMode == ServerLoginMode.Mixed)
             {
                 return true;
             }
@@ -244,7 +244,7 @@ namespace SqlServerMirroring
         {
             get
             {
-                foreach(Service service in ComputerInstance.Services)
+                foreach (Service service in ComputerInstance.Services)
                 {
                     yield return service;
                 }
@@ -254,7 +254,7 @@ namespace SqlServerMirroring
         public void SetupInstanceForMirroring()
         {
             EnableAgentXps();
-            if (DatabaseServerInstance.ServiceStartMode == Microsoft.SqlServer.Management.Smo.ServiceStartMode.Manual || 
+            if (DatabaseServerInstance.ServiceStartMode == Microsoft.SqlServer.Management.Smo.ServiceStartMode.Manual ||
                 DatabaseServerInstance.ServiceStartMode == Microsoft.SqlServer.Management.Smo.ServiceStartMode.Disabled)
             {
                 // TODO fix security issue (guess)
@@ -317,10 +317,10 @@ namespace SqlServerMirroring
                     {
                         timeoutCounter += ServiceStartTimeoutStep;
                         System.Threading.Thread.Sleep(ServiceStartTimeoutStep);
-                        Console.WriteLine(string.Format("Waited {0} seconds for Sql Agent {1}({2}) starting: {3}", (timeoutCounter/1000), service.Name, service.DisplayName, service.ServiceState));
+                        Console.WriteLine(string.Format("Waited {0} seconds for Sql Agent {1}({2}) starting: {3}", (timeoutCounter / 1000), service.Name, service.DisplayName, service.ServiceState));
                         service.Refresh();
                     }
-                    if(timeoutCounter > ServiceStartTimeout)
+                    if (timeoutCounter > ServiceStartTimeout)
                     {
                         throw new SqlServerMirroringException(string.Format("Timed out waiting for Sql Agent {1}({2}) starting", service.Name, service.DisplayName));
                     }
@@ -360,13 +360,13 @@ namespace SqlServerMirroring
             }
         }
 
-        public void StartUpMirrorCheck(Dictionary<string,ConfiguredDatabaseForMirroring> configuredMirrorDatabases, bool serverPrincipal)
+        public void StartUpMirrorCheck(Dictionary<string, ConfiguredDatabaseForMirroring> configuredMirrorDatabases, bool serverPrincipal)
         {
-            foreach(MirrorState mirrorState in DatabaseMirrorStates)
+            foreach (MirrorState mirrorState in DatabaseMirrorStates)
             {
-                if(mirrorState.IsConfiguredForMirroring)
+                if (mirrorState.IsConfiguredForMirroring)
                 {
-                    if(!configuredMirrorDatabases.ContainsKey(mirrorState.DatabaseName))
+                    if (!configuredMirrorDatabases.ContainsKey(mirrorState.DatabaseName))
                     {
                         Logger.LogWarning(string.Format("Database {0} was set up for mirroring but is not in configuration", mirrorState.DatabaseName));
                         RemoveDatabaseFromMirroring(mirrorState, serverPrincipal);
@@ -374,7 +374,7 @@ namespace SqlServerMirroring
                 }
                 else
                 {
-                    if(configuredMirrorDatabases.ContainsKey(mirrorState.DatabaseName))
+                    if (configuredMirrorDatabases.ContainsKey(mirrorState.DatabaseName))
                     {
                         Logger.LogWarning(string.Format("Database {0} is not set up for mirroring but is in configuration", mirrorState.DatabaseName));
                         ConfiguredDatabaseForMirroring configuredDatabase;
@@ -409,9 +409,9 @@ namespace SqlServerMirroring
                 database.BrokerEnabled = true;
                 database.Alter(TerminationClause.RollbackTransactionsImmediately);
             }
-            if(serverPrincipal)
+            if (serverPrincipal)
             {
-                if(BackupDatabaseForMirrorServer(configuredDatabase))
+                if (BackupDatabaseForMirrorServer(configuredDatabase))
                 {
                     Logger.LogInfo("Backup created and moved to remote share");
                 }
@@ -422,7 +422,7 @@ namespace SqlServerMirroring
             }
             else
             {
-                if(RestoreDatabase(configuredDatabase))
+                if (RestoreDatabase(configuredDatabase))
                 {
                     Logger.LogInfo("Restored backup");
                 }
@@ -431,11 +431,20 @@ namespace SqlServerMirroring
                     Logger.LogInfo("Moved database from remote share and restored Backup");
                 }
             }
-            
+
             CreateEndpoint(configuredDatabase, serverPrincipal);
 
             // Create mirroring
             CreateMirroring(configuredDatabase, serverPrincipal);
+        }
+
+        private void CreateMirroring(ConfiguredDatabaseForMirroring configuredDatabase, bool serverPrincipal)
+        {
+            Database database = UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+
+            database.mi
+            database.ChangeMirroringState(MirroringOption.);
+            throw new NotImplementedException();
         }
 
         private void CreateEndpoint(ConfiguredDatabaseForMirroring configuredDatabase, bool serverPrincipal)
@@ -461,7 +470,7 @@ namespace SqlServerMirroring
                 ep.Start();
                 Logger.LogDebug(string.Format("Created endpoint for {0}. Endpoint in state {1}.", configuredDatabase.DatabaseName, ep.EndpointState));
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 throw new SqlServerMirroringException(string.Format("Creation of endpoint for {0} failed", configuredDatabase.DatabaseName), ex);
             }
@@ -469,32 +478,21 @@ namespace SqlServerMirroring
 
         private void RemoveDatabaseFromMirroring(MirrorState mirrorState, bool serverPrincipal)
         {
-            Database database = UserDatabases.Where(s => s.Name.Equals(mirrorState.DatabaseName)).First();
-            // Full recovery
             // ServiceBroker
-            // EndPoints Needed for each mirror database ?
-            throw new NotImplementedException();
+            // TODO EndPoints for database
+                try
+                {
+                    Database database = UserDatabases.Where(s => s.Name.Equals(mirrorState.DatabaseName)).First();
+
+                    database.ChangeMirroringState(MirroringOption.Off);
+                    database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                }
+                catch (Exception ex)
+                {
+                    throw new SqlServerMirroringException(string.Format("Removing mirroring failed for {0}", mirrorState.DatabaseName), ex);
+                }
         }
 
-        //public void SetupPrincipalDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> databasesToBeMirrored)
-        //{
-        //    foreach(ConfiguredDatabaseForMirroring)
-        //    SetupDatabasesForMirroring(databasesToBeMirrored);
-        //    // Setup mirroring with MirrorDatabase
-        //    // backup database and move to shared drive on remote machine if possible
-        //}
-        //public void SetupSecondaryDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> databasesToBeMirrored)
-        //{
-        //    SetupDatabasesForMirroring(databasesToBeMirrored);
-        //    // Setup mirroring with MirrorDatabase (Database.ChangeMirroringState)
-        //    // restore database
-        //}
-
-
-        //public void RemoveDatabasesFromMirroring(Dictionary<string, ConfiguredDatabaseForMirroring> mirroredDatabasesToBeRemovedFromMirroring)
-        //{
-
-        //}
 
         // Use MirrorState to find the existing state
         public bool CheckMirrorStateForSwitchingNeeded(Dictionary<string, ConfiguredDatabaseForMirroring> databasesToBeChecked)
@@ -506,76 +504,59 @@ namespace SqlServerMirroring
         // Setup Backup with BackupDatabase (daily)
         public string BackupDatabase(ConfiguredDatabaseForMirroring configuredDatabase)
         {
-            string localDirectoryForBackup = configuredDatabase.LocalDirectoryForBackup;
-            DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localDirectoryForBackup);
+            try
+            {
+                string localDirectoryForBackup = configuredDatabase.LocalDirectoryForBackup;
+                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localDirectoryForBackup);
 
-            Database database = UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+                Database database = UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
 
+                string fileName = configuredDatabase.DatabaseName + "_" + DateTime.Now.ToFileTime() + ".bak";
+                string fullFileName = localDirectoryForBackup + DIRECTORY_SPLITTER + fileName;
+                //// Store the current recovery model in a variable. 
+                //int recoverymod;
+                //recoverymod = (int)db.DatabaseOptions.RecoveryModel;
 
-            // Store the current recovery model in a variable. 
-            int recoverymod;
-            recoverymod = (int)db.DatabaseOptions.RecoveryModel;
+                // Define a Backup object variable. 
+                Backup bk = new Backup();
 
-            // Define a Backup object variable. 
-            Backup bk = new Backup();
+                // Specify the type of backup, the description, the name, and the database to be backed up. 
+                bk.Action = BackupActionType.Database;
+                bk.BackupSetDescription = "Full backup of " + configuredDatabase.DatabaseName;
+                bk.BackupSetName = configuredDatabase.DatabaseName + " Backup";
+                bk.Database = configuredDatabase.DatabaseName;
 
-            // Specify the type of backup, the description, the name, and the database to be backed up. 
-            bk.Action = BackupActionType.Database;
-            bk.BackupSetDescription = "Full backup of Adventureworks2012";
-            bk.BackupSetName = "AdventureWorks2012 Backup";
-            bk.Database = "AdventureWorks2012";
+                // Declare a BackupDeviceItem by supplying the backup device file name in the constructor, and the type of device is a file. 
+                BackupDeviceItem bdi = default(BackupDeviceItem);
+                bdi = new BackupDeviceItem(fullFileName, DeviceType.File);
 
-            // Declare a BackupDeviceItem by supplying the backup device file name in the constructor, and the type of device is a file. 
-            BackupDeviceItem bdi = default(BackupDeviceItem);
-            bdi = new BackupDeviceItem("Test_Full_Backup1", DeviceType.File);
+                // Add the device to the Backup object. 
+                bk.Devices.Add(bdi);
+                // Set the Incremental property to False to specify that this is a full database backup. 
+                bk.Incremental = false;
 
-            // Add the device to the Backup object. 
-            bk.Devices.Add(bdi);
-            // Set the Incremental property to False to specify that this is a full database backup. 
-            bk.Incremental = false;
+                // Set the expiration date. 
+                System.DateTime backupdate = System.DateTime.Now.AddDays(configuredDatabase.BackupExpirationTime);
+                bk.ExpirationDate = backupdate;
 
-            // Set the expiration date. 
-            System.DateTime backupdate = new System.DateTime();
-            backupdate = new System.DateTime(2006, 10, 5);
-            bk.ExpirationDate = backupdate;
+                // Specify that the log must be truncated after the backup is complete. 
+                bk.LogTruncation = BackupTruncateLogType.Truncate;
 
-            // Specify that the log must be truncated after the backup is complete. 
-            bk.LogTruncation = BackupTruncateLogType.Truncate;
+                // Run SqlBackup to perform the full database backup on the instance of SQL Server. 
+                bk.SqlBackup(DatabaseServerInstance);
 
-            // Run SqlBackup to perform the full database backup on the instance of SQL Server. 
-            bk.SqlBackup(srv);
+                // Inform the user that the backup has been completed. 
+                Logger.LogInfo(string.Format("Full backup of {0} done", configuredDatabase.DatabaseName));
 
-            // Inform the user that the backup has been completed. 
-            System.Console.WriteLine("Full Backup complete.");
+                // Remove the backup device from the Backup object. 
+                bk.Devices.Remove(bdi);
 
-            // Remove the backup device from the Backup object. 
-            bk.Devices.Remove(bdi);
-
-
-            // Create another file device for the differential backup and add the Backup object. 
-            BackupDeviceItem bdid = default(BackupDeviceItem);
-            bdid = new BackupDeviceItem("Test_Differential_Backup1", DeviceType.File);
-
-            // Add the device to the Backup object. 
-            bk.Devices.Add(bdid);
-
-            // Set the Incremental property to True for a differential backup. 
-            bk.Incremental = true;
-
-            // Run SqlBackup to perform the incremental database backup on the instance of SQL Server. 
-            bk.SqlBackup(srv);
-
-            // Inform the user that the differential backup is complete. 
-            System.Console.WriteLine("Differential Backup complete.");
-
-            // Remove the device from the Backup object. 
-            bk.Devices.Remove(bdid);
-
-
-
-
-
-
+                return fileName;
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException(string.Format("Backup of database {0} failed", configuredDatabase.DatabaseName), ex);
+            }
         }
 
         // Setup Backup with BackupDatabase (responsible for moving database backup to remote share)
@@ -619,77 +600,162 @@ namespace SqlServerMirroring
         // Setup Restore with RestoreDatabase (responsible for restoring database)
         public bool RestoreDatabase(ConfiguredDatabaseForMirroring configuredDatabase)
         {
-            MoveRemoteFileToLocalRestore(configuredDatabase);
+            string fileName;
+            try {
+                MoveRemoteFileToLocalRestore(configuredDatabase);
 
-            string localDriveForRestore = configuredDatabase.LocalDriveForRestore;
+                string localDriveForRestore = configuredDatabase.LocalDriveForRestore;
 
+                fileName = GetNewesteFilename(configuredDatabase.DatabaseName, localDriveForRestore);
 
-            string fileName = GetNewesteFilename(configuredDatabase.DatabaseName, localDriveForRestore);
+                // Define a Restore object variable.
+                Restore rs = new Restore();
 
-            // Define a Restore object variable.
-            Restore rs = new Restore();
+                // Set the NoRecovery property to true, so the transactions are not recovered. 
+                rs.NoRecovery = true;
+                rs.ReplaceDatabase = true;
 
-            // Set the NoRecovery property to true, so the transactions are not recovered. 
-            rs.NoRecovery = true;
+                // Declare a BackupDeviceItem by supplying the backup device file name in the constructor, and the type of device is a file. 
+                BackupDeviceItem bdi = default(BackupDeviceItem);
+                bdi = new BackupDeviceItem(fileName, DeviceType.File);
 
-            // Add the device that contains the full database backup to the Restore object. 
-            rs.Devices.Add(bdi);
+                // Add the device that contains the full database backup to the Restore object. 
+                rs.Devices.Add(bdi);
 
-            // Specify the database name. 
-            rs.Database = "AdventureWorks2012";
+                // Specify the database name. 
+                rs.Database = configuredDatabase.DatabaseName;
 
-            // Restore the full database backup with no recovery. 
-            rs.SqlRestore(srv);
+                // Restore the full database backup with no recovery. 
+                rs.SqlRestore(DatabaseServerInstance);
 
-            // Inform the user that the Full Database Restore is complete. 
-            Console.WriteLine("Full Database Restore complete.");
-
-            // reacquire a reference to the database
-            db = srv.Databases["AdventureWorks2012"];
-
-            // Remove the device from the Restore object.
-            rs.Devices.Remove(bdi);
-
-            // Set the NoRecovery property to False. 
-            rs.NoRecovery = false;
-
-            // Add the device that contains the differential backup to the Restore object. 
-            rs.Devices.Add(bdid);
-
-            // Restore the differential database backup with recovery. 
-            rs.SqlRestore(srv);
-
-            // Inform the user that the differential database restore is complete. 
-            System.Console.WriteLine("Differential Database Restore complete.");
-
-            // Remove the device. 
-            rs.Devices.Remove(bdid);
+                // Inform the user that the Full Database Restore is complete. 
+                Console.WriteLine("Full Database Restore complete.");
 
 
-
-            throw new NotImplementedException();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException(string.Format("Restore failed for {0}", configuredDatabase.DatabaseName), ex);
+            }
         }
 
-        private string GetNewesteFilename(string databaseName, string localDriveForRestore)
+        private string GetNewesteFilename(string databaseName, string fullPath)
         {
-            throw new NotImplementedException();
+            FileInfo result = null;
+            var directory = new DirectoryInfo(fullPath);
+            var list = directory.GetFiles("*.bak");
+            if (list.Count() > 0)
+            {
+                result = list.Where(s=>s.Name.StartsWith(databaseName)).OrderByDescending(f => f.LastWriteTime).First();
+            }
+            if(result != null)
+            {
+                return result.Name;
+            }
+            else
+            {
+                return null;
+            }
         }
 
         private void MoveRemoteFileToLocalRestore(ConfiguredDatabaseForMirroring configuredDatabase)
         {
+            bal
             //TODO implement with creation of folders
         }
 
-        public bool SetAllMirrorDatabasesForMaintainanceState(Dictionary<string, ConfiguredDatabaseForMirroring> databasesToBeRestored)
+        public bool ResumeMirroringForAllDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> configuredDatabases)
         {
-            throw new NotImplementedException();
+            foreach (ConfiguredDatabaseForMirroring configuredDatabase in configuredDatabases.Values)
+            {
+                try
+                {
+                    Database database = UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+
+                    database.ChangeMirroringState(MirroringOption.Resume);
+                    database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                }
+                catch (Exception ex)
+                {
+                    throw new SqlServerMirroringException(string.Format("Resume failed for {0}", configuredDatabase.DatabaseName), ex);
+                }
+            }
+            return true;
         }
 
-        public bool RemoveAllMirrorDatabasesForMaintainanceState(Dictionary<string, ConfiguredDatabaseForMirroring> databasesToBeRestored)
+        public bool SuspendMirroringForAllMirrorDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> configuredDatabases)
         {
-            throw new NotImplementedException();
+            foreach(ConfiguredDatabaseForMirroring configuredDatabase in configuredDatabases.Values)
+            {
+                try
+                {
+                    Database database = UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+
+                    database.ChangeMirroringState(MirroringOption.Suspend);
+                    database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                }
+                catch (Exception ex)
+                {
+                    throw new SqlServerMirroringException(string.Format("Suspend failed for {0}", configuredDatabase.DatabaseName), ex);
+                }
+            }
+            return true;
         }
 
+        public bool ForceFailoverWithDataLossForAllMirrorDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> configuredDatabases)
+        {
+            foreach (ConfiguredDatabaseForMirroring configuredDatabase in configuredDatabases.Values)
+            {
+                try
+                {
+                    Database database = UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+
+                    database.ChangeMirroringState(MirroringOption.ForceFailoverAndAllowDataLoss);
+                    database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                }
+                catch (Exception ex)
+                {
+                    throw new SqlServerMirroringException(string.Format("ForceFailoverWithDataLoss failed for {0}", configuredDatabase.DatabaseName), ex);
+                }
+            }
+            return true;
+        }
+
+        public bool FailoverForAllMirrorDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> configuredDatabases)
+        {
+            foreach (ConfiguredDatabaseForMirroring configuredDatabase in configuredDatabases.Values)
+            {
+                try
+                {
+                    Database database = UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+
+                    database.ChangeMirroringState(MirroringOption.Failover);
+                    database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                }
+                catch (Exception ex)
+                {
+                    throw new SqlServerMirroringException(string.Format("Failover failed for {0}", configuredDatabase.DatabaseName), ex);
+                }
+            }
+            return true;
+        }
+
+        public bool BackupForAllMirrorDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> configuredDatabases)
+        {
+            foreach (ConfiguredDatabaseForMirroring configuredDatabase in configuredDatabases.Values)
+            {
+                try
+                {
+                    BackupDatabase(configuredDatabase);
+                }
+                catch (Exception ex)
+                {
+                    throw new SqlServerMirroringException(string.Format("Backup failed for {0}", configuredDatabase.DatabaseName), ex);
+                }
+            }
+            return true;
+        }
 
         #endregion
     }
