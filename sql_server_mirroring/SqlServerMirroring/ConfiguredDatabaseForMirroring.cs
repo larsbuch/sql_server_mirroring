@@ -60,7 +60,7 @@ namespace SqlServerMirroring
             }
         }
 
-        public string LocalDirectoryForBackup
+        public Path LocalDirectoryForBackup
         {
             get
             {

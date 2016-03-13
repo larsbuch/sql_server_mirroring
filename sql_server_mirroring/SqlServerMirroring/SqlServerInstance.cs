@@ -661,6 +661,7 @@ namespace SqlServerMirroring
 
         private void MoveRemoteFileToLocalRestore(ConfiguredDatabaseForMirroring configuredDatabase)
         {
+            string remoteTransfer = configuredDatabase.
             bal
             //TODO implement with creation of folders
         }
@@ -705,6 +706,7 @@ namespace SqlServerMirroring
 
         public bool ForceFailoverWithDataLossForAllMirrorDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> configuredDatabases)
         {
+            /* TODO Only fail over the fist as all others will join */
             foreach (ConfiguredDatabaseForMirroring configuredDatabase in configuredDatabases.Values)
             {
                 try
@@ -724,14 +726,14 @@ namespace SqlServerMirroring
 
         public bool FailoverForAllMirrorDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> configuredDatabases)
         {
+            /* TODO Only fail over the fist as all others will join */
             foreach (ConfiguredDatabaseForMirroring configuredDatabase in configuredDatabases.Values)
             {
                 try
                 {
                     Database database = UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
-
-                    database.ChangeMirroringState(MirroringOption.Failover);
-                    database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                        database.ChangeMirroringState(MirroringOption.Failover);
+                        database.Alter(TerminationClause.RollbackTransactionsImmediately);
                 }
                 catch (Exception ex)
                 {
