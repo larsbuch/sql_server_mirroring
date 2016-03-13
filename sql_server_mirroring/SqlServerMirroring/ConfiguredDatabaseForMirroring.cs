@@ -1,5 +1,7 @@
-﻿using System;
+﻿using HelperFunctions;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -7,31 +9,29 @@ namespace SqlServerMirroring
 {
     public class ConfiguredDatabaseForMirroring
     {
-        private string _databaseName;
-        private string _localDirectoryForBackup;
-        private string _localShareForBackup;
-        private string _localShareName;
-        private string _remoteTempFolderForBackup;
-        private string _remoteDeliveryFolderForBackup;
-        private string _localDriveForRestore;
-        private string _remoteShareForRestore;
-        private string _remoteServer;
-        private string _remoteShareForBackup;
+        private DatabaseName _databaseName;
+        private DirectoryPath _localDirectoryForBackup;
+        private DirectoryPath _localShareForBackup;
+        private DirectoryPath _localDircetoryForRestore;
+        private ShareName _localShareName;
+        private RemoteServer _remoteServer;
+        private ShareName _remoteShareName;
+        private SubDirectory _remoteTransferSubDircetory;
+        private SubDirectory _remoteDeliverySubDirectory;
         private int _endpoint_SslPort;
         private int _endpoint_ListenerPort;
         private double _backupExpirationTime;
 
         public ConfiguredDatabaseForMirroring(
-            string databaseName, 
-            string localDirectoryForBackup,
-            string localShareForBackup,
-            string localShareName,
-            string remoteTempFolderForBackup, 
-            string remoteDeliveryFolderForBackup,
-            string localDriveForRestore,
-            string remoteShareForRestore,
-            string remoteServer,
-            string remoteShareForBackup,
+            DatabaseName databaseName,
+            DirectoryPath localDirectoryForBackup,
+            DirectoryPath localShareForBackup,
+            DirectoryPath localDircetoryForRestore,
+            ShareName localShareName,
+            RemoteServer remoteServer,
+            ShareName remoteShareName,
+            SubDirectory remoteTransferSubDircetory,
+            SubDirectory remoteDeliverySubDirectory,
             int endpoint_SslPort,
             int endpoint_ListenerPort,
             double backupExpirationTime
@@ -40,19 +40,18 @@ namespace SqlServerMirroring
             _databaseName = databaseName;
             _localDirectoryForBackup = localDirectoryForBackup;
             _localShareForBackup = localShareForBackup;
+            _localDircetoryForRestore = localDircetoryForRestore;
             _localShareName = localShareName;
-            _remoteTempFolderForBackup = remoteTempFolderForBackup;
-            _remoteDeliveryFolderForBackup = remoteDeliveryFolderForBackup;
-            _localDriveForRestore = localDriveForRestore;
-            _remoteShareForRestore = remoteShareForRestore;
             _remoteServer = remoteServer;
-            _remoteShareForBackup = remoteShareForBackup;
+            _remoteShareName = remoteShareName;
+            _remoteTransferSubDircetory = remoteTransferSubDircetory;
+            _remoteDeliverySubDirectory = remoteDeliverySubDirectory;
             _endpoint_SslPort = endpoint_SslPort;
             _endpoint_ListenerPort = endpoint_ListenerPort;
             _backupExpirationTime = backupExpirationTime;
         }
 
-        public string DatabaseName
+        public DatabaseName DatabaseName
         {
             get
             {
@@ -124,6 +123,7 @@ namespace SqlServerMirroring
                 return _remoteServer;
             }
         }
+        //uri = new Uri("\\\\" + serverName + "\\" + shareName + "\\");
 
         public string RemoteShareForBackup
         {

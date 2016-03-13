@@ -11,12 +11,10 @@ namespace HelperFunctions
 {
     public static class DirectoryHelper
     {
-        public static void TestReadWriteAccessToDirectory(ILogger logger, string directoryPath)
+        public static void TestReadWriteAccessToDirectory(ILogger logger, DirectoryPath directoryPath)
         {
             try
             {
-                ValidDirectoryName(logger, directoryPath);
-
                 FileCheckHelper.WriteTestFileToDirectory(logger, directoryPath);
                 FileCheckHelper.ReadTestFileFromDirectoryAndCompare(logger, directoryPath);
                 FileCheckHelper.DeleteTestFileFromDirectory(logger, directoryPath);
@@ -31,40 +29,26 @@ namespace HelperFunctions
             }
         }
 
-        public static void ValidDirectoryName(ILogger logger, string directoryPath)
-        {
-            try
-            {
-                Path.GetDirectoryName(directoryPath);
-                logger.LogDebug(string.Format("Directory {0} valid format.", directoryPath));
-            }
-            catch (Exception ex)
-            {
-                throw new DirectoryException(string.Format("DirectoryPath {0} is not valid", directoryPath), ex);
-            }
-        }
-
-        public static void CreateLocalDirectoryIfNotExistingAndGiveFullControlToEveryone(ILogger logger, string directoryPath)
+        public static void CreateLocalDirectoryIfNotExistingAndGiveFullControlToEveryone(ILogger logger, DirectoryPath directoryPath)
         {
             CreateLocalDirectoryIfNotExistingAndGiveFullControlToUser(logger, directoryPath, "NT Authority", "Everyone");
         }
-        public static void CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(ILogger logger, string directoryPath)
+        public static void CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(ILogger logger, DirectoryPath directoryPath)
         {
             CreateLocalDirectoryIfNotExistingAndGiveFullControlToUser(logger, directoryPath, "NT Authority", "Authenticated Users");
         }
         
-        public static void CreateLocalDirectoryIfNotExistingAndGiveFullControlToUser(ILogger logger, string directoryPath, string domain, string user)
+        public static void CreateLocalDirectoryIfNotExistingAndGiveFullControlToUser(ILogger logger, DirectoryPath directoryPath, string domain, string user)
         {
             try
             {
-                ValidDirectoryName(logger, directoryPath);
                 string account = BuildAccount(logger, domain, user);
-                if (!Directory.Exists(directoryPath))
+                if (!directoryPath.Exists)
                 {
                     logger.LogDebug(string.Format("Creating directory {0}.", directoryPath));
-                    Directory.CreateDirectory(directoryPath);
+                    directoryPath.CreateDirectory();
                 }
-                DirectoryInfo directoryInfo = new DirectoryInfo(directoryPath);
+                DirectoryInfo directoryInfo = new DirectoryInfo(directoryPath.PathString);
                 DirectorySecurity dSecurity = directoryInfo.GetAccessControl();
                 dSecurity.AddAccessRule(new FileSystemAccessRule(account, FileSystemRights.FullControl, InheritanceFlags.ObjectInherit | InheritanceFlags.ContainerInherit, PropagationFlags.NoPropagateInherit, AccessControlType.Allow));
                 logger.LogDebug(string.Format("Setting Full control for folder to {0}", account));

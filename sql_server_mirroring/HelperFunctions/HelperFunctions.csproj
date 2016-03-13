@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="DirectoryException.cs" />
     <Compile Include="DirectoryHelper.cs" />
+    <Compile Include="DirectoryPath.cs" />
     <Compile Include="FileCheckException.cs" />
     <Compile Include="FileCheckHelper.cs" />
     <Compile Include="ILogger.cs" />
