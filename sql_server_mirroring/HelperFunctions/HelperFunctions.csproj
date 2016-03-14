@@ -57,6 +57,7 @@
     <Compile Include="ShareHelper.cs" />
     <Compile Include="ShareName.cs" />
     <Compile Include="SubDirectory.cs" />
+    <Compile Include="UncPath.cs" />
     <Compile Include="WindowsShare.cs" />
   </ItemGroup>
   <ItemGroup>

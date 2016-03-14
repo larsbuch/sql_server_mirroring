@@ -34,24 +34,6 @@ namespace HelperFunctions
                 throw new ShareException(string.Format("Remote server name {0} is not valid.", remoteServerName), ex);
             }
         }
-        public Uri BuildUri(ShareName remoteShareName)
-        {
-            Uri uri = new Uri("\\\\" + _remoteServerName + "\\" + remoteShareName.ToString());
-            return uri;
-        }
-
-        public Uri BuildUri(ShareName remoteShareName, SubDirectory subDirectory)
-        {
-            Uri uri = new Uri("\\\\" + _remoteServerName + "\\" + remoteShareName.ToString() + "\\" + subDirectory.ToString());
-            return uri;
-        }
-
-        public Uri BuildUri(ShareName remoteShareName, SubDirectory subDirectory, string subSubDirectory)
-        {
-            Uri uri = new Uri("\\\\" + _remoteServerName + "\\" + remoteShareName.ToString() + "\\" + subDirectory.ToString() + "\\" + subSubDirectory);
-            return uri;
-        }
-
 
         public override string ToString()
         {

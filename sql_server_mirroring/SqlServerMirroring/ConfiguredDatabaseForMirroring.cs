@@ -110,19 +110,19 @@ namespace SqlServerMirroring
             }
         }
 
-        public Uri RemoteLocalTransferDirectory
+        public UncPath RemoteLocalTransferDirectory
         {
             get
             {
-                return RemoteServer.BuildUri(RemoteShareName, LocalTransferSubDircetory);
+                return new UncPath(RemoteServer,RemoteShareName, LocalTransferSubDircetory);
             }
         }
 
-        public Uri RemoteLocalTransferDirectoryWithSubDirectory
+        public UncPath RemoteLocalTransferDirectoryWithSubDirectory
         {
             get
             {
-                return RemoteServer.BuildUri(RemoteShareName, LocalTransferSubDircetory, DatabaseName.ToString());
+                return new UncPath(RemoteServer, RemoteShareName, LocalTransferSubDircetory, new SubDirectory( DatabaseName.ToString()));
             }
         }
 
@@ -150,19 +150,19 @@ namespace SqlServerMirroring
             }
         }
 
-        public Uri RemoteRemoteTransferDirectory
+        public UncPath RemoteRemoteTransferDirectory
         {
             get
             {
-                return RemoteServer.BuildUri(RemoteShareName, LocalTransferSubDircetory);
+                return new UncPath(RemoteServer, RemoteShareName, LocalTransferSubDircetory);
             }
         }
 
-        public Uri RemoteRemoteTransferDirectoryWithSubDirectory
+        public UncPath RemoteRemoteTransferDirectoryWithSubDirectory
         {
             get
             {
-                return RemoteServer.BuildUri(RemoteShareName, LocalTransferSubDircetory,DatabaseName.ToString());
+                return new UncPath(RemoteServer, RemoteShareName, LocalTransferSubDircetory,new SubDirectory(DatabaseName.ToString()));
             }
         }
 
@@ -190,19 +190,19 @@ namespace SqlServerMirroring
             }
         }
 
-        public Uri RemoteRemoteDeliveryDirectory
+        public UncPath RemoteRemoteDeliveryDirectory
         {
             get
             {
-                return RemoteServer.BuildUri(RemoteShareName,RemoteDeliverySubDircetory);
+                return new UncPath(RemoteServer,RemoteShareName,RemoteDeliverySubDircetory);
             }
         }
 
-        public Uri RemoteRemoteDeliveryDirectoryWithSubDirectory
+        public UncPath RemoteRemoteDeliveryDirectoryWithSubDirectory
         {
             get
             {
-                return RemoteServer.BuildUri(RemoteShareName, RemoteDeliverySubDircetory, DatabaseName.ToString());
+                return new UncPath(RemoteServer, RemoteShareName, RemoteDeliverySubDircetory, new SubDirectory(DatabaseName.ToString()));
             }
         }
 
@@ -229,39 +229,6 @@ namespace SqlServerMirroring
                 return _localShareName;
             }
         }
-
-        //public SubDirectory RemoteTransferSubDirectory
-        //{
-        //    get
-        //    {
-        //        return _remoteTransferSubDircetory;
-        //    }
-        //}
-
-        //public SubDirectory RemoteDeliverySubDirectory
-        //{
-        //    get
-        //    {
-        //        return _remoteDeliverySubDirectory;
-        //    }
-        //}
-
-        //public Uri RemoteTransferDirectory
-        //{
-        //    get
-        //    {
-        //        return RemoteServer.BuildUri(RemoteShareName, RemoteTransferSubDirectory);
-        //    }
-        //}
-
-        //public Uri RemoteDeliveryDirectory
-        //{
-        //    get
-        //    {
-        //        return RemoteServer.BuildUri(RemoteShareName, RemoteDeliverySubDirectory);
-        //    }
-        //}
-
 
         public RemoteServer RemoteServer
         {

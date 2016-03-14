@@ -41,16 +41,18 @@ namespace HelperFunctions
             File.Delete(directoryPath.PathString + DIRECTORYTESTFILE);
             logger.LogDebug(string.Format("Test file {0} deleted.", directoryPath.PathString + DIRECTORYTESTFILE));
         }
-        public static void WriteTestFileToDirectory(ILogger logger, Uri uriPath)
+        public static void WriteTestFileToDirectory(ILogger logger, UncPath uncPath)
         {
-            File.WriteAllLines(uriPath.ToString() + DIRECTORYTESTFILE, lines);
-            logger.LogDebug(string.Format("Test file written {0}.", uriPath.ToString() + DIRECTORYTESTFILE));
+            logger.LogDebug(string.Format("Writing file to Uri {0} comprised of {1} and {2}.", uncPath.BuildUncPath() + DIRECTORYTESTFILE, uncPath.BuildUncPath(), DIRECTORYTESTFILE));
+            File.WriteAllLines(uncPath.BuildUncPath() + DIRECTORYTESTFILE, lines);
+            logger.LogDebug(string.Format("Test file written {0}.", uncPath.BuildUncPath() + DIRECTORYTESTFILE));
         }
 
-        public static void ReadTestFileFromDirectoryAndCompare(ILogger logger, Uri uriPath)
+        public static void ReadTestFileFromDirectoryAndCompare(ILogger logger, UncPath uncPath)
         {
+            logger.LogDebug(string.Format("Reading file to Uri {0} comprised of {1} and {2}.", uncPath.BuildUncPath() + DIRECTORYTESTFILE, uncPath.BuildUncPath(), DIRECTORYTESTFILE));
             bool match = false;
-            string[] readLines = File.ReadAllLines(uriPath.ToString() + DIRECTORYTESTFILE);
+            string[] readLines = File.ReadAllLines(uncPath.BuildUncPath() + DIRECTORYTESTFILE);
             if (readLines.Length == 3)
             {
                 if (readLines[0].Equals(lines[0]) && readLines[1].Equals(lines[1]) && readLines[2].Equals(lines[2]))
@@ -62,14 +64,15 @@ namespace HelperFunctions
 
             if (!match)
             {
-                throw new FileCheckException(string.Format("Filecheck failed for {0}", uriPath.ToString()));
+                throw new FileCheckException(string.Format("Filecheck failed for {0}", uncPath.BuildUncPath()));
             }
         }
 
-        public static void DeleteTestFileFromDirectory(ILogger logger, Uri uriPath)
+        public static void DeleteTestFileFromDirectory(ILogger logger, UncPath uncPath)
         {
-            File.Delete(uriPath.ToString() + DIRECTORYTESTFILE);
-            logger.LogDebug(string.Format("Test file {0} deleted.", uriPath.ToString() + DIRECTORYTESTFILE));
+            logger.LogDebug(string.Format("Reading file to Uri {0} comprised of {1} and {2}.", uncPath.BuildUncPath() + DIRECTORYTESTFILE, uncPath.BuildUncPath(), DIRECTORYTESTFILE));
+            File.Delete(uncPath.BuildUncPath() + DIRECTORYTESTFILE);
+            logger.LogDebug(string.Format("Test file {0} deleted.", uncPath.BuildUncPath() + DIRECTORYTESTFILE));
         }
     }
 }

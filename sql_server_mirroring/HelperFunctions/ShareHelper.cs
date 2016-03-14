@@ -12,19 +12,19 @@ namespace HelperFunctions
 {
     public static class ShareHelper
     {
-        public static void TestReadWriteAccessToShare(ILogger logger, Uri uri)
+        public static void TestReadWriteAccessToShare(ILogger logger, UncPath uncPath)
         {
             try
             {
-                logger.LogInfo(string.Format("Trying to test uri {0}.", uri.ToString()));
-                FileCheckHelper.WriteTestFileToDirectory(logger, uri);
-                FileCheckHelper.ReadTestFileFromDirectoryAndCompare(logger, uri);
-                FileCheckHelper.DeleteTestFileFromDirectory(logger, uri);
-                logger.LogInfo(string.Format("Test uri {0} succeeded.", uri.ToString()));
+                logger.LogInfo(string.Format("Trying to test unc {0}.", uncPath));
+                FileCheckHelper.WriteTestFileToDirectory(logger, uncPath);
+                FileCheckHelper.ReadTestFileFromDirectoryAndCompare(logger, uncPath);
+                FileCheckHelper.DeleteTestFileFromDirectory(logger, uncPath);
+                logger.LogInfo(string.Format("Test uri {0} succeeded.", uncPath));
             }
             catch (Exception ex)
             {
-                throw new DirectoryException(string.Format("Test write and write fails on uri {0}.", uri), ex);
+                throw new DirectoryException(string.Format("Test write and write fails on unc {0}.", uncPath), ex);
             }
         }
 
@@ -51,7 +51,7 @@ namespace HelperFunctions
                     ShareFolder(logger, directoryPath, shareName, shareDescription);
                 }
                 SharePermissions(logger, shareName, domain, user, WindowsShare.AccessMaskTypes.FullControl);
-                TestReadWriteAccessToShare(logger, (new RemoteServer(Environment.MachineName)).BuildUri(shareName));
+                TestReadWriteAccessToShare(logger, new UncPath(new RemoteServer(Environment.MachineName), shareName));
             }
             catch (Exception ex)
             {

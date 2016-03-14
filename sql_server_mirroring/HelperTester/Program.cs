@@ -45,7 +45,15 @@ namespace HelperFunctions
             string subDirectoryString = ConsoleTest.GetNextInput("Enter sub dircetory to validate. End with Enter: ", "test");
             string directoryString = DirectoryCreateAbsolutePath(subDirectoryString);
             Console.WriteLine(string.Format("Testing validation of {0} with {1}.", subDirectoryString, directoryString));
-            DirectoryHelper.ValidDirectoryName(Logger, directoryString);
+            try
+            {
+                DirectoryPath directoryPath = new DirectoryPath(directoryString);
+                Console.WriteLine("Directory path is valid.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Validation failed", ex);
+            }
 
             ConsoleTest.GetNextInput("Press Enter to end test");
         }
@@ -53,7 +61,7 @@ namespace HelperFunctions
         private static void TestReadWriteAccessToDirectory()
         {
             string subDirectoryString = ConsoleTest.GetNextInput("Testing read write access test. End with Enter: ", "test");
-            DirectoryHelper.TestReadWriteAccessToDirectory(Logger, Directory.GetCurrentDirectory());
+            DirectoryHelper.TestReadWriteAccessToDirectory(Logger, new DirectoryPath(Directory.GetCurrentDirectory()));
 
             ConsoleTest.GetNextInput("Press Enter to end test");
         }
@@ -65,11 +73,18 @@ namespace HelperFunctions
             Console.WriteLine(string.Format("Testing creation of local directory {0} with absolute path {1} {2} timers.", subDirectoryString, directoryString, runs));
             for (int counter = 0; counter < runs; counter += 1)
             {
-                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, directoryString);
+                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, new DirectoryPath(directoryString));
             }
 
             ConsoleTest.GetNextInput("Press Enter to clean up test");
-            Directory.Delete(directoryString, true);
+            try
+            {
+                Directory.Delete(directoryString, true);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Delete failed");
+            }
         }
 
         private static void TestCreateLocalDirectoryWithAccessForEveryone(int runs)
@@ -79,16 +94,31 @@ namespace HelperFunctions
             Console.WriteLine(string.Format("Testing creation of local directory {0} with absolute path {1} {2} timers for Everyone.", subDirectoryString, directoryString, runs));
             for (int counter = 0; counter < runs; counter += 1)
             {
-                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToEveryone(Logger, directoryString);
+                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToEveryone(Logger, new DirectoryPath(directoryString));
             }
 
             ConsoleTest.GetNextInput("Press Enter to clean up test");
-            Directory.Delete(directoryString, true);
+            try
+            {
+                Directory.Delete(directoryString, true);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Delete failed");
+            }
         }
 
         private static void TestValidServerName()
         {
-            ShareHelper.ValidServerName(Logger, Environment.MachineName);
+            try
+            {
+                RemoteServer remoteServer = new RemoteServer(Environment.MachineName);
+                Logger.LogDebug(string.Format("Server name {0} is valid", Environment.MachineName));
+            }
+            catch(Exception ex)
+            {
+                Logger.LogError(string.Format("Server name {0} seems to be invalid", Environment.MachineName), ex);
+            }
 
             ConsoleTest.GetNextInput("Press Enter to end test");
         }
@@ -101,11 +131,19 @@ namespace HelperFunctions
             Console.WriteLine(string.Format("Testing creation of local share {0} with absolute path {1} {2} timers.", shareName, directoryString, runs));
             for (int counter = 0; counter < runs; counter += 1)
             {
-                ShareHelper.CreateLocalShareDirectoryIfNotExistingAndGiveAuthenticatedUsersAccess(Logger, directoryString, shareName);
+                ShareHelper.CreateLocalShareDirectoryIfNotExistingAndGiveAuthenticatedUsersAccess(Logger, new DirectoryPath( directoryString), new ShareName(shareName));
             }
 
             ConsoleTest.GetNextInput("Press Enter to clean up test");
-            Directory.Delete(directoryString, true);
+
+            try
+            {
+                Directory.Delete(directoryString, true);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Delete failed");
+            }
         }
 
         private static void TestCreateLocalShareWithAccessForEveryone(int runs)
@@ -116,11 +154,18 @@ namespace HelperFunctions
             Console.WriteLine(string.Format("Testing creation of local share {0} with absolute path {1} {2} timers for Everyone.", shareName, directoryString, runs));
             for (int counter = 0; counter < runs; counter += 1)
             {
-                ShareHelper.CreateLocalShareDirectoryIfNotExistingAndGiveEveryoneAccess(Logger, directoryString, shareName);
+                ShareHelper.CreateLocalShareDirectoryIfNotExistingAndGiveEveryoneAccess(Logger, new DirectoryPath(directoryString), new ShareName(shareName));
             }
 
             ConsoleTest.GetNextInput("Press Enter to clean up test");
-            Directory.Delete(directoryString, true);
+            try
+            {
+                Directory.Delete(directoryString, true);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Delete failed");
+            }
         }
 
         private static void TestReadWriteAccessToShare()
@@ -128,7 +173,7 @@ namespace HelperFunctions
             string serverName = ConsoleTest.GetNextInput("Enter server name to test. End with Enter: ", Environment.MachineName);
             string shareName = ConsoleTest.GetNextInput("Enter share name to test. End with Enter: ", "Test");
 
-            ShareHelper.TestReadWriteAccessToShare(Logger, serverName, shareName);
+            ShareHelper.TestReadWriteAccessToShare(Logger, new UncPath(new RemoteServer(serverName),new ShareName(shareName)));
 
             ConsoleTest.GetNextInput("Press Enter to end test");
         }
@@ -416,6 +461,16 @@ namespace HelperFunctions
             public void LogWarning(string message)
             {
                 Console.WriteLine("LogWarning: " + message);
+            }
+            public void LogError(string message)
+            {
+                Console.WriteLine("LogError: " + message);
+            }
+            public void LogError(string message, Exception exception)
+            {
+                Console.WriteLine("LogError: " + message);
+                Console.WriteLine("Exception Message: " + exception.Message);
+                Console.WriteLine("Exception StackTrace: " + exception.StackTrace);
             }
         }
         #endregion

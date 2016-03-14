@@ -51,6 +51,7 @@
   <ItemGroup>
     <Compile Include="BackupDatabase.cs" />
     <Compile Include="ConfiguredDatabaseForMirroring.cs" />
+    <Compile Include="ServerState.cs" />
     <Compile Include="SqlServerInstance.cs" />
     <Compile Include="MirrorState.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

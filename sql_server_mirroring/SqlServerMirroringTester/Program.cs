@@ -75,7 +75,7 @@ namespace SqlServerMirroringTester
         private static void Test_StartUpMirrorCheck_Principal()
         {
             //Build data
-            Dictionary<string, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<string, ConfiguredDatabaseForMirroring>();
+            Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<DatabaseName, ConfiguredDatabaseForMirroring>();
 
             SqlServer.StartUpMirrorCheck(configuredMirrorDatabases, true);
 
@@ -85,7 +85,7 @@ namespace SqlServerMirroringTester
         private static void Test_StartUpMirrorCheck_Mirror()
         {
             //Build data
-            Dictionary<string, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<string, ConfiguredDatabaseForMirroring>();
+            Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<DatabaseName, ConfiguredDatabaseForMirroring>();
 
             SqlServer.StartUpMirrorCheck(configuredMirrorDatabases, false);
 
@@ -95,7 +95,7 @@ namespace SqlServerMirroringTester
         private static void Test_ResumeMirroringForAllDatabases()
         {
             //Build data
-            Dictionary<string, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<string, ConfiguredDatabaseForMirroring>();
+            Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<DatabaseName, ConfiguredDatabaseForMirroring>();
 
             SqlServer.ResumeMirroringForAllDatabases(configuredMirrorDatabases);
 
@@ -105,7 +105,7 @@ namespace SqlServerMirroringTester
         private static void Test_ForceFailoverWithDataLossForAllMirrorDatabases()
         {
             //Build data
-            Dictionary<string, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<string, ConfiguredDatabaseForMirroring>();
+            Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<DatabaseName, ConfiguredDatabaseForMirroring>();
 
             SqlServer.ForceFailoverWithDataLossForAllMirrorDatabases(configuredMirrorDatabases);
 
@@ -115,7 +115,7 @@ namespace SqlServerMirroringTester
         private static void Test_FailoverForAllMirrorDatabases()
         {
             //Build data
-            Dictionary<string, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<string, ConfiguredDatabaseForMirroring>();
+            Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<DatabaseName, ConfiguredDatabaseForMirroring>();
 
             SqlServer.FailoverForAllMirrorDatabases(configuredMirrorDatabases);
 
@@ -230,6 +230,16 @@ namespace SqlServerMirroringTester
             public void LogWarning(string message)
             {
                 Console.WriteLine("LogWarning: " + message);
+            }
+            public void LogError(string message)
+            {
+                Console.WriteLine("LogError: " + message);
+            }
+            public void LogError(string message, Exception exception)
+            {
+                Console.WriteLine("LogError: " + message);
+                Console.WriteLine("Exception Message: " + exception.Message);
+                Console.WriteLine("Exception StackTrace: " + exception.StackTrace);
             }
         }
         #endregion
