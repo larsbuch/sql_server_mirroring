@@ -4,20 +4,36 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.SqlServer.Management.Smo;
+using HelperFunctions;
 
 namespace SqlServerMirroring
 {
     public class MirrorState
     {
-        private Database database;
+        private DatabaseName _databaseName;
+        private bool _isConfiguredForMirroring;
 
         public MirrorState(Database database)
         {
-            this.database = database;
+            // TODO interrogate database for mirroring
+            _databaseName = new DatabaseName(database.Name);
+            _isConfiguredForMirroring = (database.MirroringStatus != MirroringStatus.None);
         }
 
-        public string DatabaseName { get; internal set; }
-        public bool IsConfiguredForMirroring { get; internal set; }
-        public bool IsGoodMirrorState { get; internal set; }
+        public DatabaseName DatabaseName
+        {
+            get
+            {
+                return _databaseName;
+            }
+        }
+
+        public bool IsConfiguredForMirroring
+        {
+            get
+            {
+                return _isConfiguredForMirroring;
+            }
+        }
     }
 }

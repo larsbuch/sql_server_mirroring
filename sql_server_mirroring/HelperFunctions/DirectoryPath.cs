@@ -38,9 +38,9 @@ namespace HelperFunctions
 
         #region Public
 
-        public void AddSubDirectory(string subDirectory)
+        public DirectoryPath AddSubDirectory(string subDirectory)
         {
-            _pathString = Path.Combine(_pathString, subDirectory);
+            return new DirectoryPath( Path.Combine(_pathString, subDirectory));
         }
 
         public void CreateDirectory()
@@ -51,6 +51,11 @@ namespace HelperFunctions
         public override string ToString()
         {
             return _pathString;
+        }
+
+        public DirectoryPath Clone()
+        {
+            return new DirectoryPath(_pathString);
         }
 
         #endregion
@@ -68,6 +73,7 @@ namespace HelperFunctions
                 throw new DirectoryException(string.Format("DirectoryPath pathString {0} is not valid directory", pathString), ex);
             }
         }
-#endregion
+
+        #endregion
     }
 }

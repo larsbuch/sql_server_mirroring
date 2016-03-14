@@ -11,6 +11,7 @@ using HelperFunctions;
 using Microsoft.SqlServer.Management.Smo.Wmi;
 using System.ServiceProcess;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace SqlServerMirroring
 {
@@ -360,7 +361,7 @@ namespace SqlServerMirroring
             }
         }
 
-        public void StartUpMirrorCheck(Dictionary<string, ConfiguredDatabaseForMirroring> configuredMirrorDatabases, bool serverPrincipal)
+        public void StartUpMirrorCheck(Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases, bool serverPrincipal)
         {
             foreach (MirrorState mirrorState in DatabaseMirrorStates)
             {
@@ -442,8 +443,6 @@ namespace SqlServerMirroring
         {
             Database database = UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
 
-            database.mi
-            database.ChangeMirroringState(MirroringOption.);
             throw new NotImplementedException();
         }
 
@@ -482,7 +481,7 @@ namespace SqlServerMirroring
             // TODO EndPoints for database
                 try
                 {
-                    Database database = UserDatabases.Where(s => s.Name.Equals(mirrorState.DatabaseName)).First();
+                    Database database = UserDatabases.Where(s => s.Name.Equals(mirrorState.DatabaseName.ToString())).First();
 
                     database.ChangeMirroringState(MirroringOption.Off);
                     database.Alter(TerminationClause.RollbackTransactionsImmediately);
@@ -491,11 +490,13 @@ namespace SqlServerMirroring
                 {
                     throw new SqlServerMirroringException(string.Format("Removing mirroring failed for {0}", mirrorState.DatabaseName), ex);
                 }
+            try
+
         }
 
 
         // Use MirrorState to find the existing state
-        public bool CheckMirrorStateForSwitchingNeeded(Dictionary<string, ConfiguredDatabaseForMirroring> databasesToBeChecked)
+        public bool CheckMirrorStateForSwitchingNeeded(Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> databasesToBeChecked)
         {
             //SMO: Database.MirroringStatus
             throw new NotImplementedException();
@@ -506,25 +507,22 @@ namespace SqlServerMirroring
         {
             try
             {
-                string localDirectoryForBackup = configuredDatabase.LocalDirectoryForBackup;
+                DirectoryPath localDirectoryForBackup = configuredDatabase.LocalBackupDirectoryWithSubDirectory;
                 DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localDirectoryForBackup);
 
-                Database database = UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+                Database database = UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).First();
 
                 string fileName = configuredDatabase.DatabaseName + "_" + DateTime.Now.ToFileTime() + ".bak";
-                string fullFileName = localDirectoryForBackup + DIRECTORY_SPLITTER + fileName;
-                //// Store the current recovery model in a variable. 
-                //int recoverymod;
-                //recoverymod = (int)db.DatabaseOptions.RecoveryModel;
+                string fullFileName = localDirectoryForBackup.PathString + DIRECTORY_SPLITTER + fileName;
 
                 // Define a Backup object variable. 
                 Backup bk = new Backup();
 
                 // Specify the type of backup, the description, the name, and the database to be backed up. 
                 bk.Action = BackupActionType.Database;
-                bk.BackupSetDescription = "Full backup of " + configuredDatabase.DatabaseName;
-                bk.BackupSetName = configuredDatabase.DatabaseName + " Backup";
-                bk.Database = configuredDatabase.DatabaseName;
+                bk.BackupSetDescription = "Full backup of " + configuredDatabase.DatabaseName.ToString();
+                bk.BackupSetName = configuredDatabase.DatabaseName.ToString() + " Backup";
+                bk.Database = configuredDatabase.DatabaseName.ToString();
 
                 // Declare a BackupDeviceItem by supplying the backup device file name in the constructor, and the type of device is a file. 
                 BackupDeviceItem bdi = default(BackupDeviceItem);
@@ -563,14 +561,14 @@ namespace SqlServerMirroring
         public bool BackupDatabaseForMirrorServer(ConfiguredDatabaseForMirroring configuredDatabase)
         {
             string fileName = BackupDatabase(configuredDatabase);
-            string localDirectoryForBackup = configuredDatabase.LocalDirectoryForBackup;
-            DirectoryHelper.TestReadWriteAccessToDirectory(Logger, localDirectoryForBackup);
-            string localShareForBackup = configuredDatabase.LocalShareForBackup;
-            string localShareName = configuredDatabase.LocalShareName;
+            DirectoryPath localBackupDirectoryWithSubDirectory = configuredDatabase.LocalBackupDirectoryWithSubDirectory;
+            DirectoryHelper.TestReadWriteAccessToDirectory(Logger, localBackupDirectoryWithSubDirectory);
+            DirectoryPath localLocalTransferDirectoryWithSubDirectory = configuredDatabase.LocalLocalTransferDirectoryWithSubDirectory;
+            ShareName localShareName = configuredDatabase.LocalShareName;
             try
             {
-                ShareHelper.CreateLocalShareDirectoryIfNotExistingAndGiveAuthenticatedUsersAccess(Logger, localShareForBackup, localShareName);
-                File.Move(localDirectoryForBackup + DIRECTORY_SPLITTER + fileName, localShareForBackup + DIRECTORY_SPLITTER + fileName);
+                ShareHelper.CreateLocalShareDirectoryIfNotExistingAndGiveAuthenticatedUsersAccess(Logger, localLocalTransferDirectoryWithSubDirectory, localShareName);
+                File.Move(localBackupDirectoryWithSubDirectory + DIRECTORY_SPLITTER + fileName, localLocalTransferDirectoryWithSubDirectory + DIRECTORY_SPLITTER + fileName);
             }
             catch (Exception e)
             {
@@ -578,16 +576,10 @@ namespace SqlServerMirroring
             }
             try
             {
-                string remoteServer = configuredDatabase.RemoteServer;
-                string remoteShare = configuredDatabase.RemoteShareForBackup;
-                string remoteTempFolderForBackup = configuredDatabase.RemoteTempFolderForBackup;
-                string fullRemoteTempFolderForBackup = URI_SPLITTER + URI_SPLITTER + remoteServer + URI_SPLITTER + remoteShare + URI_SPLITTER + remoteTempFolderForBackup;
-                ShareHelper.ValidRemotePath(Logger, fullRemoteTempFolderForBackup);
-                string remoteDeliveryFolderForBackup = configuredDatabase.RemoteDeliveryFolderForBackup;
-                string fullRemoteDeliveryFolderForBackup = URI_SPLITTER + URI_SPLITTER + remoteServer + URI_SPLITTER + remoteShare + URI_SPLITTER + remoteDeliveryFolderForBackup;
-                ShareHelper.ValidRemotePath(Logger, fullRemoteTempFolderForBackup);
-                File.Move(localShareForBackup + DIRECTORY_SPLITTER + fileName, fullRemoteTempFolderForBackup + URI_SPLITTER + fileName);
-                File.Move(fullRemoteTempFolderForBackup + URI_SPLITTER + fileName, fullRemoteDeliveryFolderForBackup + URI_SPLITTER + fileName);
+                Uri remoteRemoteTransferDirectoryWithSubDirectory = configuredDatabase.RemoteRemoteTransferDirectoryWithSubDirectory;
+                Uri remoteRemoteDeliveryDirectoryWithSubDirectory = configuredDatabase.RemoteRemoteDeliveryDirectoryWithSubDirectory;
+                File.Move(localLocalTransferDirectoryWithSubDirectory + DIRECTORY_SPLITTER + fileName, remoteRemoteTransferDirectoryWithSubDirectory + URI_SPLITTER + fileName);
+                File.Move(remoteRemoteTransferDirectoryWithSubDirectory + URI_SPLITTER + fileName, remoteRemoteDeliveryDirectoryWithSubDirectory + URI_SPLITTER + fileName);
                 return true; // return true if moved to remote directory
             }
             catch (Exception)
@@ -602,11 +594,11 @@ namespace SqlServerMirroring
         {
             string fileName;
             try {
-                MoveRemoteFileToLocalRestore(configuredDatabase);
+                MoveRemoteFileToLocalRestoreAndDeleteOtherFiles(configuredDatabase);
 
-                string localDriveForRestore = configuredDatabase.LocalDriveForRestore;
+                DirectoryPath localRestoreDircetoryWithSubDirectory = configuredDatabase.LocalRestoreDircetoryWithSubDirectory;
 
-                fileName = GetNewesteFilename(configuredDatabase.DatabaseName, localDriveForRestore);
+                fileName = GetNewesteFilename(configuredDatabase.DatabaseName.ToString(), localRestoreDircetoryWithSubDirectory);
 
                 // Define a Restore object variable.
                 Restore rs = new Restore();
@@ -623,7 +615,7 @@ namespace SqlServerMirroring
                 rs.Devices.Add(bdi);
 
                 // Specify the database name. 
-                rs.Database = configuredDatabase.DatabaseName;
+                rs.Database = configuredDatabase.DatabaseName.ToString();
 
                 // Restore the full database backup with no recovery. 
                 rs.SqlRestore(DatabaseServerInstance);
@@ -640,33 +632,106 @@ namespace SqlServerMirroring
             }
         }
 
-        private string GetNewesteFilename(string databaseName, string fullPath)
+        private string GetNewesteFilename(string databaseName, string fullPathString)
         {
             FileInfo result = null;
-            var directory = new DirectoryInfo(fullPath);
+            var directory = new DirectoryInfo(fullPathString);
             var list = directory.GetFiles("*.bak");
             if (list.Count() > 0)
             {
-                result = list.Where(s=>s.Name.StartsWith(databaseName)).OrderByDescending(f => f.LastWriteTime).First();
+                result = list.Where(s => s.Name.StartsWith(databaseName)).OrderByDescending(f => f.Name).First();
             }
-            if(result != null)
+            if (result != null)
             {
                 return result.Name;
             }
             else
             {
-                return null;
+                return string.Empty;
             }
         }
 
-        private void MoveRemoteFileToLocalRestore(ConfiguredDatabaseForMirroring configuredDatabase)
+        private void DeleteAllFilesExcept(string fileName, string fullPathString)
         {
-            string remoteTransfer = configuredDatabase.
-            bal
-            //TODO implement with creation of folders
+            List<string> files = Directory.EnumerateFiles(fullPathString).Where(s => s != fileName).ToList();
+            files.ForEach(x => { try { System.IO.File.Delete(x); } catch { } });
         }
 
-        public bool ResumeMirroringForAllDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> configuredDatabases)
+        /* Create local directories if not existing as this might be first time running and 
+        *  returns false if no file is found and true if one is found */
+        private bool MoveRemoteFileToLocalRestoreAndDeleteOtherFiles(ConfiguredDatabaseForMirroring configuredDatabase)
+        {
+            string databaseNameString = configuredDatabase.DatabaseName.ToString();
+            Uri remoteLocalTransferDirectory = configuredDatabase.RemoteLocalTransferDirectoryWithSubDirectory;
+            string remoteLocalTransferDirectoryNewestFileName = string.Empty;
+            DirectoryPath localRemoteTransferDirectory = configuredDatabase.LocalRemoteTransferDirectoryWithSubDirectory;
+            DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localRemoteTransferDirectory);
+            string localRemoteTransferDirectoryNewestFileName = string.Empty;
+            DirectoryPath localRemoteDeliveryDirectory = configuredDatabase.LocalRemoteDeliveryDirectoryWithSubDirectory;
+            DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localRemoteDeliveryDirectory);
+            string localRemoteDeliveryDirectoryNewestFileName = string.Empty;
+            DirectoryPath localRestoreDirectory = configuredDatabase.LocalRestoreDircetoryWithSubDirectory;
+            DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localRestoreDirectory);
+            string localRestoreDirectoryNewestFileName = string.Empty;
+            try
+            {
+                remoteLocalTransferDirectoryNewestFileName = GetNewesteFilename(databaseNameString, remoteLocalTransferDirectory.ToString());
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException(string.Format("Could not access remote directory {0}.", remoteLocalTransferDirectory.ToString()), ex);
+            }
+            localRemoteTransferDirectoryNewestFileName = GetNewesteFilename(databaseNameString, localRemoteTransferDirectory.ToString());
+            localRemoteDeliveryDirectoryNewestFileName = GetNewesteFilename(databaseNameString, localRemoteDeliveryDirectory.ToString());
+            localRestoreDirectoryNewestFileName = GetNewesteFilename(databaseNameString, localRestoreDirectory.ToString());
+            long remoteLocalTransferDirectoryNewestValue = GetFileTimePart(remoteLocalTransferDirectoryNewestFileName);
+            long localRemoteTransferDirectoryNewestValue = GetFileTimePart(localRemoteTransferDirectoryNewestFileName);
+            long localRemoteDeliveryDirectoryNewestValue = GetFileTimePart(localRemoteDeliveryDirectoryNewestFileName);
+            long localRestoreDirectoryNewestValue = GetFileTimePart(localRestoreDirectoryNewestFileName);
+            if (remoteLocalTransferDirectoryNewestValue + 
+                localRemoteTransferDirectoryNewestValue + 
+                localRemoteDeliveryDirectoryNewestValue + 
+                localRestoreDirectoryNewestValue < 1)
+            {
+                return false;
+            }
+            else
+            {
+                if (remoteLocalTransferDirectoryNewestValue > localRemoteTransferDirectoryNewestValue)
+                {
+                    /* delete all remote */
+                    DeleteAllFilesExcept(string.Empty, remoteLocalTransferDirectory.ToString());
+                    DeleteAllFilesExcept(string.Empty, remoteLocalTransferDirectory.ToString());
+                }
+                else
+                {
+                    /* delete all in */
+                }
+                return true;
+            }
+        }
+
+        private long GetFileTimePart(string fileName)
+        {
+            if(string.IsNullOrWhiteSpace(fileName))
+            {
+                return 0;
+            }
+            Regex regex = new Regex(@"^(?:[\w_][\w_\d]*_)(\d*)(?:\.bak)$");
+            Match match = regex.Match(fileName);
+            if(match.Success)
+            {
+                string capture = match.Value;
+                long returnValue;
+                if(long.TryParse(capture, out returnValue))
+                {
+                    return returnValue;
+                }
+            }
+            throw new SqlServerMirroringException(string.Format("GetFileTimePart failed to extract time part from {0}.", fileName));
+        }
+
+        public bool ResumeMirroringForAllDatabases(Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredDatabases)
         {
             foreach (ConfiguredDatabaseForMirroring configuredDatabase in configuredDatabases.Values)
             {
@@ -685,7 +750,7 @@ namespace SqlServerMirroring
             return true;
         }
 
-        public bool SuspendMirroringForAllMirrorDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> configuredDatabases)
+        public bool SuspendMirroringForAllMirrorDatabases(Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredDatabases)
         {
             foreach(ConfiguredDatabaseForMirroring configuredDatabase in configuredDatabases.Values)
             {
@@ -704,7 +769,7 @@ namespace SqlServerMirroring
             return true;
         }
 
-        public bool ForceFailoverWithDataLossForAllMirrorDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> configuredDatabases)
+        public bool ForceFailoverWithDataLossForAllMirrorDatabases(Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredDatabases)
         {
             /* TODO Only fail over the fist as all others will join */
             foreach (ConfiguredDatabaseForMirroring configuredDatabase in configuredDatabases.Values)
@@ -724,7 +789,7 @@ namespace SqlServerMirroring
             return true;
         }
 
-        public bool FailoverForAllMirrorDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> configuredDatabases)
+        public bool FailoverForAllMirrorDatabases(Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredDatabases)
         {
             /* TODO Only fail over the fist as all others will join */
             foreach (ConfiguredDatabaseForMirroring configuredDatabase in configuredDatabases.Values)
@@ -743,7 +808,7 @@ namespace SqlServerMirroring
             return true;
         }
 
-        public bool BackupForAllMirrorDatabases(Dictionary<string, ConfiguredDatabaseForMirroring> configuredDatabases)
+        public bool BackupForAllMirrorDatabases(Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredDatabases)
         {
             foreach (ConfiguredDatabaseForMirroring configuredDatabase in configuredDatabases.Values)
             {

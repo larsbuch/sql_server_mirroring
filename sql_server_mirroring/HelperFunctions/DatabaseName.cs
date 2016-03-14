@@ -8,26 +8,39 @@ namespace HelperFunctions
 {
     public class DatabaseName
     {
-            private string _databaseName;
+        private string _databaseName;
 
-            public DatabaseName(string databaseName)
-            {
-                ValidateDatabaseName(databaseName);
-                _databaseName = databaseName;
-            }
+        public DatabaseName(string databaseName)
+        {
+            ValidateDatabaseName(databaseName);
+            _databaseName = databaseName;
+        }
 
-            private void ValidateDatabaseName(string databaseName)
+        public string Endpoint_Name
+        {
+            get
             {
-                Regex regex = new Regex(@"^[\w_]+$");
-                if (!regex.IsMatch(databaseName))
-                {
-                    throw new DirectoryException(string.Format("The database name {0} is not valid.", databaseName));
-                }
+                return "Mirroring_Endpoint_" + _databaseName;
             }
+        }
 
-            public override string ToString()
+        private void ValidateDatabaseName(string databaseName)
+        {
+            Regex regex = new Regex(@"^[\w_][\w_\d]*$");
+            if (!regex.IsMatch(databaseName))
             {
-                return _databaseName;
+                throw new DirectoryException(string.Format("The database name {0} is not valid.", databaseName));
             }
+        }
+
+        public string GenerateBackupFileName()
+        {
+            return _databaseName + "_" + DateTime.Now.ToFileTime() + ".bak";
+        }
+
+        public override string ToString()
+        {
+            return _databaseName;
+        }
     }
 }

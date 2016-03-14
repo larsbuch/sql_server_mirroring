@@ -29,5 +29,10 @@ namespace HelperFunctions
         {
             return _subDirectoryName;
         }
+
+        public SubDirectory Clone()
+        {
+            return new SubDirectory(_subDirectoryName);
+        }
     }
 }
