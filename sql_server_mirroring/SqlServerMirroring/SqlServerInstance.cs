@@ -442,7 +442,7 @@ namespace SqlServerMirroring
         private void CreateMirroring(ConfiguredDatabaseForMirroring configuredDatabase, bool serverPrincipal)
         {
             Database database = UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
-
+            TODO
             throw new NotImplementedException();
         }
 
@@ -455,7 +455,7 @@ namespace SqlServerMirroring
                 //setting up a database mirror. 
                 //Define an Endpoint object variable for database mirroring. 
                 Endpoint ep = default(Endpoint);
-                ep = new Endpoint(DatabaseServerInstance, configuredDatabase.Endpoint_Name);
+                ep = new Endpoint(DatabaseServerInstance, configuredDatabase.DatabaseName.Endpoint_Name);
                 ep.ProtocolType = ProtocolType.Tcp;
                 ep.EndpointType = EndpointType.DatabaseMirroring;
                 //Specify the protocol ports. 
@@ -594,41 +594,67 @@ namespace SqlServerMirroring
         {
             string fileName;
             try {
-                MoveRemoteFileToLocalRestoreAndDeleteOtherFiles(configuredDatabase);
+                if (MoveRemoteFileToLocalRestoreAndDeleteOtherFiles(configuredDatabase))
+                {
 
-                DirectoryPath localRestoreDircetoryWithSubDirectory = configuredDatabase.LocalRestoreDircetoryWithSubDirectory;
+                    DirectoryPath localRestoreDircetoryWithSubDirectory = configuredDatabase.LocalRestoreDircetoryWithSubDirectory;
 
-                fileName = GetNewesteFilename(configuredDatabase.DatabaseName.ToString(), localRestoreDircetoryWithSubDirectory);
+                    fileName = GetNewesteFilename(configuredDatabase.DatabaseName.ToString(), localRestoreDircetoryWithSubDirectory.ToString());
 
-                // Define a Restore object variable.
-                Restore rs = new Restore();
+                    // Define a Restore object variable.
+                    Restore rs = new Restore();
 
-                // Set the NoRecovery property to true, so the transactions are not recovered. 
-                rs.NoRecovery = true;
-                rs.ReplaceDatabase = true;
+                    // Set the NoRecovery property to true, so the transactions are not recovered. 
+                    rs.NoRecovery = true;
+                    rs.ReplaceDatabase = true;
 
-                // Declare a BackupDeviceItem by supplying the backup device file name in the constructor, and the type of device is a file. 
-                BackupDeviceItem bdi = default(BackupDeviceItem);
-                bdi = new BackupDeviceItem(fileName, DeviceType.File);
+                    // Declare a BackupDeviceItem by supplying the backup device file name in the constructor, and the type of device is a file. 
+                    BackupDeviceItem bdi = default(BackupDeviceItem);
+                    bdi = new BackupDeviceItem(fileName, DeviceType.File);
 
-                // Add the device that contains the full database backup to the Restore object. 
-                rs.Devices.Add(bdi);
+                    // Add the device that contains the full database backup to the Restore object. 
+                    rs.Devices.Add(bdi);
 
-                // Specify the database name. 
-                rs.Database = configuredDatabase.DatabaseName.ToString();
+                    // Specify the database name. 
+                    rs.Database = configuredDatabase.DatabaseName.ToString();
 
-                // Restore the full database backup with no recovery. 
-                rs.SqlRestore(DatabaseServerInstance);
+                    // Restore the full database backup with no recovery. 
+                    rs.SqlRestore(DatabaseServerInstance);
 
-                // Inform the user that the Full Database Restore is complete. 
-                Console.WriteLine("Full Database Restore complete.");
+                    // Inform the user that the Full Database Restore is complete. 
+                    Console.WriteLine("Full Database Restore complete.");
 
-
-                return true;
+                    return true;
+                }
+                else
+                {
+                    if (DatabaseExists(configuredDatabase.DatabaseName.ToString()))
+                    {
+                        Logger.LogInfo(string.Format("No backup to restore for {0}.", configuredDatabase.DatabaseName.ToString()));
+                        return false;
+                    }
+                    else
+                    {
+                        throw new SqlServerMirroringException(string.Format("Could not find database to restore for {0}.", configuredDatabase.DatabaseName.ToString()));
+                    }
+                }
             }
             catch (Exception ex)
             {
                 throw new SqlServerMirroringException(string.Format("Restore failed for {0}", configuredDatabase.DatabaseName), ex);
+            }
+        }
+
+        private bool DatabaseExists(string databaseName)
+        {
+            Database database = UserDatabases.Where(s => s.Name.Equals(databaseName)).First();
+            if(database == null)
+            {
+                return false;
+            }
+            else
+            {
+                return true;
             }
         }
 
@@ -706,6 +732,7 @@ namespace SqlServerMirroring
                 else
                 {
                     /* delete all in */
+                    TODO
                 }
                 return true;
             }
