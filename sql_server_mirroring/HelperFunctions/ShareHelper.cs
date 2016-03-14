@@ -20,7 +20,7 @@ namespace HelperFunctions
                 FileCheckHelper.WriteTestFileToDirectory(logger, uncPath);
                 FileCheckHelper.ReadTestFileFromDirectoryAndCompare(logger, uncPath);
                 FileCheckHelper.DeleteTestFileFromDirectory(logger, uncPath);
-                logger.LogInfo(string.Format("Test uri {0} succeeded.", uncPath));
+                logger.LogInfo(string.Format("Test unc {0} succeeded.", uncPath));
             }
             catch (Exception ex)
             {

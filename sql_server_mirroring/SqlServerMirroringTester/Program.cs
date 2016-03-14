@@ -74,53 +74,43 @@ namespace SqlServerMirroringTester
 
         private static void Test_StartUpMirrorCheck_Principal()
         {
-            //Build data
-            Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<DatabaseName, ConfiguredDatabaseForMirroring>();
 
-            SqlServer.StartUpMirrorCheck(configuredMirrorDatabases, true);
+            SqlServer.StartPrimary();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_StartUpMirrorCheck_Mirror()
         {
-            //Build data
-            Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<DatabaseName, ConfiguredDatabaseForMirroring>();
 
-            SqlServer.StartUpMirrorCheck(configuredMirrorDatabases, false);
+            SqlServer.StartSecondary();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
-        private static void Test_ResumeMirroringForAllDatabases()
-        {
-            //Build data
-            Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<DatabaseName, ConfiguredDatabaseForMirroring>();
+        //private static void Test_ResumeMirroringForAllDatabases()
+        //{
 
-            SqlServer.ResumeMirroringForAllDatabases(configuredMirrorDatabases);
+        //    SqlServer.ResumeMirroringForAllDatabases(configuredMirrorDatabases);
 
-            ConsoleTest.GetNextInput("Press Enter to exit test.");
-        }
+        //    ConsoleTest.GetNextInput("Press Enter to exit test.");
+        //}
 
-        private static void Test_ForceFailoverWithDataLossForAllMirrorDatabases()
-        {
-            //Build data
-            Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<DatabaseName, ConfiguredDatabaseForMirroring>();
+        //private static void Test_ForceFailoverWithDataLossForAllMirrorDatabases()
+        //{
 
-            SqlServer.ForceFailoverWithDataLossForAllMirrorDatabases(configuredMirrorDatabases);
+        //    SqlServer.ForceFailoverWithDataLossForAllMirrorDatabases(configuredMirrorDatabases);
 
-            ConsoleTest.GetNextInput("Press Enter to exit test.");
-        }
+        //    ConsoleTest.GetNextInput("Press Enter to exit test.");
+        //}
 
-        private static void Test_FailoverForAllMirrorDatabases()
-        {
-            //Build data
-            Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<DatabaseName, ConfiguredDatabaseForMirroring>();
+        //private static void Test_FailoverForAllMirrorDatabases()
+        //{
 
-            SqlServer.FailoverForAllMirrorDatabases(configuredMirrorDatabases);
+        //    SqlServer.FailoverForAllMirrorDatabases(configuredMirrorDatabases);
 
-            ConsoleTest.GetNextInput("Press Enter to exit test.");
-        }
+        //    ConsoleTest.GetNextInput("Press Enter to exit test.");
+        //}
 
         #endregion
 
@@ -152,6 +142,7 @@ namespace SqlServerMirroringTester
                     if(Configuration.TryGetValue(CONNECTION_STRING, out connectionString))
                     {
                         _sqlServerInstance = new SqlServerInstance(Logger, connectionString);
+                        _sqlServerInstance.ConfiguredMirrorDatabases = BuildConfigurationData();
                     }
                     else
                     {
@@ -160,6 +151,45 @@ namespace SqlServerMirroringTester
                 }
                 return _sqlServerInstance;
             }
+        }
+
+        private static Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> BuildConfigurationData()
+        {
+            //Build data
+            Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<DatabaseName, ConfiguredDatabaseForMirroring>();
+            ConfiguredDatabaseForMirroring configured1 = new ConfiguredDatabaseForMirroring(
+                new DatabaseName("TestMirror1"),
+                new DirectoryPath("E:\\Test\\LocalBackup"),
+                new DirectoryPath("E:\\Test\\Share"),
+                new DirectoryPath("E:\\Test\\LocalRestore"),
+                new ShareName("LocalShare"),
+                new RemoteServer("RemoteServer"),
+                new ShareName("RemoteShare"),
+                new SubDirectory("LocalTransfer"),
+                new SubDirectory("RemoteTransfer"),
+                new SubDirectory("RemoteDelivery"),
+                5022,
+                7022,
+                7
+                );
+            configuredMirrorDatabases.Add(configured1.DatabaseName, configured1);
+            ConfiguredDatabaseForMirroring configured2 = new ConfiguredDatabaseForMirroring(
+                new DatabaseName("TestMirror2"),
+                new DirectoryPath("E:\\Test\\LocalBackup"),
+                new DirectoryPath("E:\\Test\\Share"),
+                new DirectoryPath("E:\\Test\\LocalRestore"),
+                new ShareName("LocalShare"),
+                new RemoteServer("RemoteServer"),
+                new ShareName("RemoteShare"),
+                new SubDirectory("LocalTransfer"),
+                new SubDirectory("RemoteTransfer"),
+                new SubDirectory("RemoteDelivery"),
+                5023,
+                7023,
+                7
+                );
+            configuredMirrorDatabases.Add(configured2.DatabaseName, configured2);
+            return configuredMirrorDatabases;
         }
 
         private static bool CompareByteArray(byte[] byteArray1, byte[] byteArray2)

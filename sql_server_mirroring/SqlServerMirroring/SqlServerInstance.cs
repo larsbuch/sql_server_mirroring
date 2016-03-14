@@ -26,6 +26,7 @@ namespace SqlServerMirroring
         private Dictionary<ServerStateEnum, ServerState> _serverStates;
         private ServerState _activeServerState;
         private Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> _configuredMirrorDatabases;
+        private ServerRole _activeServerRole = ServerRole.NotSet;
 
         public SqlServerInstance(ILogger logger, string connectionString)
         {
@@ -143,6 +144,24 @@ namespace SqlServerMirroring
             return _activeServerState.ValidTransition(newState);
         }
 
+        public void StartPrimary()
+        {
+            ServerRole = ServerRole.Primary;
+            if (_activeServerState.ValidTransition(ServerStateEnum.STARTUP_STATE))
+            {
+                MakeServerStateChange(ServerStateEnum.STARTUP_STATE);
+            }
+        }
+
+        public void StartSecondary()
+        {
+            ServerRole = ServerRole.Secondary;
+            if (_activeServerState.ValidTransition(ServerStateEnum.STARTUP_STATE))
+            {
+                MakeServerStateChange(ServerStateEnum.STARTUP_STATE);
+            }
+        }
+
         public void MakeServerStateChange(ServerStateEnum newState)
         {
             if(IsValidServerStateChange(newState))
@@ -204,15 +223,18 @@ namespace SqlServerMirroring
             Logger.LogDebug("StartStartupState starting");
             try
             {
-                // TODO
                 if(!CheckInstanceForMirroring())
                 {
                     SetupInstanceForMirroring();
                 }
-                // TODO replace true
-                StartUpMirrorCheck(ConfiguredMirrorDatabases, true);
-
-                // TODO start mirroring ??
+                if (ServerRole == ServerRole.Primary)
+                {
+                    StartUpMirrorCheck(ConfiguredMirrorDatabases, true);
+                }
+                else if (ServerRole == ServerRole.Secondary)
+                {
+                    StartUpMirrorCheck(ConfiguredMirrorDatabases, false);
+                }
 
                 Logger.LogDebug("StartStartupState ended");
                 MakeServerStateChange(ServerStateEnum.RUNNING_STATE);
@@ -229,8 +251,11 @@ namespace SqlServerMirroring
             Logger.LogDebug("StartRunningState starting");
             try
             {
-                /* Does not do something special */
-                Logger.LogDebug("StartRunningState ended.");
+                if (ServerRole == ServerRole.Primary || ServerRole == ServerRole.Secondary)
+                {
+                    MakeServerStateChange(ServerStateEnum.MANUAL_FAILOVER_STATE);
+                }
+                    Logger.LogDebug("StartRunningState ended.");
             }
             catch (Exception ex)
             {
@@ -609,6 +634,75 @@ namespace SqlServerMirroring
             {
                 /* 5 sec */
                 return 5000;
+            }
+        }
+
+        public bool IsInDegradedState
+        {
+            get
+            {
+                return _activeServerState.IsDegradedState;
+            }
+        }
+
+        public void ResetServerRole()
+        {
+            _activeServerRole = ServerRole.NotSet;
+        }
+
+        public ServerRole ServerRole
+        {
+            get
+            {
+                if (_activeServerRole != ServerRole.Primary && _activeServerRole  != ServerRole.Secondary)
+                {
+                    int isPrincipal = 0;
+                    int isMirror = 0;
+                    foreach (MirrorState mirrorState in DatabaseMirrorStates.Where(s => s.IsConfiguredForMirroring))
+                    {
+                        if (mirrorState.IsPrincipal)
+                        {
+                            isPrincipal += 1;
+                        }
+                        if (mirrorState.IsMirror)
+                        {
+                            isMirror += 1;
+                        }
+                    }
+                    if (isMirror == 0 && isPrincipal > 0)
+                    {
+                        /* Sure primary */
+                        _activeServerRole = ServerRole.Primary;
+                    }
+                    else if (isPrincipal == 0 && isMirror > 0)
+                    {
+                        /* Sure secondary */
+                        _activeServerRole = ServerRole.Secondary;
+                    }
+                    else if (isPrincipal > isMirror)
+                    {
+                        /* Mainly primary */
+                        Logger.LogWarning("Server is mainly in primary role but has mirror databases. Make switchover to bring to correct state.");
+                        _activeServerRole = ServerRole.MainlyPrimary;
+                    }
+                    else if (isMirror < isPrincipal)
+                    {
+                        /* Mainly secondary */
+                        Logger.LogWarning("Server is mainly in secondary role but has principal databases. Make switchover to bring to correct state.");
+                        _activeServerRole = ServerRole.MainlySecondary;
+                    }
+                    else
+                    {
+                        /* Neither */
+                        Logger.LogWarning("Server has no principal or mirror database. Investigate what went wrong.");
+                        _activeServerRole = ServerRole.Neither;
+                    }
+                }
+                return _activeServerRole;
+            }
+            set
+            {
+                _activeServerRole = value;
             }
         }
 
