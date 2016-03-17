@@ -8,13 +8,13 @@ using HelperFunctions;
 
 namespace SqlServerMirroring
 {
-    public class MirrorState
+    public class MirrorDatabase
     {
         private DatabaseName _databaseName;
         private bool _isConfiguredForMirroring;
         private DatabaseStatus _databaseStatus;
 
-        public MirrorState(Database database)
+        public MirrorDatabase(Database database)
         {
             // TODO interrogate database for mirroring
             _databaseName = new DatabaseName(database.Name);

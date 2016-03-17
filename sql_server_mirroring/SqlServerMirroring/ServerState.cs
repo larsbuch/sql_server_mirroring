@@ -9,43 +9,22 @@ namespace SqlServerMirroring
     {
         private ServerStateEnum _state;
         private bool _isDegradedState;
+        private bool _ignoreMirrorStateCheck;
         private List<ServerStateEnum> _validNewStates;
 
-        public ServerState(ServerStateEnum state, bool isDegradedState, List<ServerStateEnum> validNewStates)
+        public ServerState(ServerStateEnum state, bool isDegradedState, bool ignoreMirrorStateCheck, List<ServerStateEnum> validNewStates)
         {
             _state = state;
             _isDegradedState = isDegradedState;
+            _ignoreMirrorStateCheck = ignoreMirrorStateCheck;
             _validNewStates = validNewStates;
         }
 
         #region Properties
 
-        public string StateName
+        public override string ToString()
         {
-            get
-            {
-                switch (_state)
-                {
-                    case ServerStateEnum.STARTUP_STATE:
-                        return "Startup State";
-                    case ServerStateEnum.RUNNING_STATE:
-                        return "Running State";
-                    case ServerStateEnum.FORCED_RUNNING_STATE:
-                        return "Forced Running State";
-                    case ServerStateEnum.SHUTTING_DOWN_STATE:
-                        return "Shutting Down State";
-                    case ServerStateEnum.SHUTDOWN_STATE:
-                        return "Shutdown State";
-                    case ServerStateEnum.MAINTENANCE_STATE:
-                        return "Maintenance State";
-                    case ServerStateEnum.MANUAL_FAILOVER_STATE:
-                        return "Manual Failover State";
-                    case ServerStateEnum.FORCED_MANUAL_FAILOVER_STATE:
-                        return "Forced Manual Failover State";
-                    default:
-                        return "Unknown State";
-                }
-            }
+            return _state.ToString();
         }
 
         public ServerStateEnum State
@@ -61,6 +40,14 @@ namespace SqlServerMirroring
             get
             {
                 return _isDegradedState;
+            }
+        }
+
+        public bool IgnoreMirrorStateCheck
+        {
+            get
+            {
+                return _ignoreMirrorStateCheck;
             }
         }
 
@@ -89,14 +76,22 @@ namespace SqlServerMirroring
 
     public enum ServerStateEnum
     {
-        STARTUP_STATE,
-        RUNNING_STATE,
-        FORCED_RUNNING_STATE,
-        SHUTTING_DOWN_STATE,
-        SHUTDOWN_STATE,
-        MAINTENANCE_STATE,
-        MANUAL_FAILOVER_STATE,
-        FORCED_MANUAL_FAILOVER_STATE
-
+        INITIAL_STATE,
+        PRIMARY_STARTUP_STATE,
+        PRIMARY_RUNNING_STATE,
+        PRIMARY_FORCED_RUNNING_STATE,
+        PRIMARY_SHUTTING_DOWN_STATE,
+        PRIMARY_SHUTDOWN_STATE,
+        PRIMARY_MAINTENANCE_STATE,
+        PRIMARY_MANUAL_FAILOVER_STATE,
+        PRIMARY_RUNNING_NO_SECONDARY_STATE,
+        SECONDARY_STARTUP_STATE,
+        SECONDARY_RUNNING_STATE,
+        SECONDARY_SHUTTING_DOWN_STATE,
+        SECONDARY_SHUTDOWN_STATE,
+        SECONDARY_MAINTENANCE_STATE,
+        SECONDARY_MANUAL_FAILOVER_STATE,
+        SECONDARY_FORCED_MANUAL_FAILOVER_STATE,
+        SECONDARY_RUNNING_NO_PRIMARY_STATE
     }
 }

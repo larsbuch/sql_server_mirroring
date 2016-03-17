@@ -54,7 +54,7 @@
     <Compile Include="ServerRole.cs" />
     <Compile Include="ServerState.cs" />
     <Compile Include="SqlServerInstance.cs" />
-    <Compile Include="MirrorState.cs" />
+    <Compile Include="MirrorDatabase.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RestoreDatabase.cs" />
     <Compile Include="SqlServerMirroringException.cs" />

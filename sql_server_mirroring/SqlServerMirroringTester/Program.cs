@@ -29,7 +29,7 @@ namespace SqlServerMirroringTester
 
         private static void Test_ConnectToSMO()
         {
-            Console.WriteLine(string.Format("Instance Status: {0}", SqlServer.Instance_Status()));
+            Console.WriteLine(string.Format("Instance Status: {0}", SqlServer.Information_Instance_Status()));
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
@@ -37,7 +37,7 @@ namespace SqlServerMirroringTester
         private static void Test_InstanceInformation()
         {
             Console.WriteLine("Instance Information:");
-            foreach (KeyValuePair<string, string> pair in SqlServer.Instance_Information())
+            foreach (KeyValuePair<string, string> pair in SqlServer.Information_Instance())
             {
                 Console.WriteLine(string.Format("{0}: {1}", pair.Key, pair.Value));
             }
@@ -47,7 +47,7 @@ namespace SqlServerMirroringTester
 
         private static void Test_CheckInstanceForMirroring()
         {
-            Console.WriteLine(string.Format("Instance Ready for mirroring: {0}", SqlServer.CheckInstanceForMirroring()?"Yes":"No"));
+            Console.WriteLine(string.Format("Instance Ready for mirroring: {0}", SqlServer.Action_CheckInstanceForMirroring()?"Yes":"No"));
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
@@ -56,7 +56,7 @@ namespace SqlServerMirroringTester
         {
             Console.WriteLine("Start setup instance for mirroring");
 
-            SqlServer.SetupInstanceForMirroring();
+            SqlServer.Action_SetupInstanceForMirroring();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
@@ -64,7 +64,7 @@ namespace SqlServerMirroringTester
         private static void Test_SqlServerAgentInformation()
         {
             Console.WriteLine("Sql Server Agent Information:");
-            foreach (KeyValuePair<string, string> pair in SqlServer.SqlAgent_Information())
+            foreach (KeyValuePair<string, string> pair in SqlServer.Information_SqlAgent())
             {
                 Console.WriteLine(string.Format("{0}: {1}", pair.Key, pair.Value));
             }
@@ -75,7 +75,7 @@ namespace SqlServerMirroringTester
         private static void Test_StartUpMirrorCheck_Principal()
         {
 
-            SqlServer.StartPrimary();
+            SqlServer.Action_StartPrimary();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
@@ -83,34 +83,34 @@ namespace SqlServerMirroringTester
         private static void Test_StartUpMirrorCheck_Mirror()
         {
 
-            SqlServer.StartSecondary();
+            SqlServer.Action_StartSecondary();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
-        //private static void Test_ResumeMirroringForAllDatabases()
-        //{
+        private static void Test_ResumeMirroringForAllDatabases()
+        {
 
-        //    SqlServer.ResumeMirroringForAllDatabases(configuredMirrorDatabases);
+            SqlServer.Action_ResumeMirroringForAllDatabases();
 
-        //    ConsoleTest.GetNextInput("Press Enter to exit test.");
-        //}
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
 
-        //private static void Test_ForceFailoverWithDataLossForAllMirrorDatabases()
-        //{
+        private static void Test_ForceFailoverWithDataLossForAllMirrorDatabases()
+        {
 
-        //    SqlServer.ForceFailoverWithDataLossForAllMirrorDatabases(configuredMirrorDatabases);
+            SqlServer.Action_ForceFailoverWithDataLossForAllMirrorDatabases();
 
-        //    ConsoleTest.GetNextInput("Press Enter to exit test.");
-        //}
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
 
-        //private static void Test_FailoverForAllMirrorDatabases()
-        //{
+        private static void Test_FailoverForAllMirrorDatabases()
+        {
 
-        //    SqlServer.FailoverForAllMirrorDatabases(configuredMirrorDatabases);
+            SqlServer.Action_FailoverForAllMirrorDatabases();
 
-        //    ConsoleTest.GetNextInput("Press Enter to exit test.");
-        //}
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
 
         #endregion
 
@@ -170,7 +170,8 @@ namespace SqlServerMirroringTester
                 new SubDirectory("RemoteDelivery"),
                 5022,
                 7022,
-                7
+                7,
+                60
                 );
             configuredMirrorDatabases.Add(configured1.DatabaseName, configured1);
             ConfiguredDatabaseForMirroring configured2 = new ConfiguredDatabaseForMirroring(
@@ -186,7 +187,8 @@ namespace SqlServerMirroringTester
                 new SubDirectory("RemoteDelivery"),
                 5023,
                 7023,
-                7
+                7,
+                60
                 );
             configuredMirrorDatabases.Add(configured2.DatabaseName, configured2);
             return configuredMirrorDatabases;

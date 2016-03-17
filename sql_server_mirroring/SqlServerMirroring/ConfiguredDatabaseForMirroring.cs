@@ -22,6 +22,7 @@ namespace SqlServerMirroring
         private int _endpoint_SslPort;
         private int _endpoint_ListenerPort;
         private double _backupExpirationTime;
+        private int _shutDownAfterNumberOfChecksForDatabaseState;
 
         public ConfiguredDatabaseForMirroring(
             DatabaseName databaseName,
@@ -36,7 +37,8 @@ namespace SqlServerMirroring
             SubDirectory remoteDeliverySubDirectory,
             int endpoint_SslPort,
             int endpoint_ListenerPort,
-            double backupExpirationTime
+            double backupExpirationTime,
+            int shutDownAfterNumberOfChecksForDatabaseState
             )
         {
             _databaseName = databaseName;
@@ -52,6 +54,7 @@ namespace SqlServerMirroring
             _endpoint_SslPort = endpoint_SslPort;
             _endpoint_ListenerPort = endpoint_ListenerPort;
             _backupExpirationTime = backupExpirationTime;
+            _shutDownAfterNumberOfChecksForDatabaseState = shutDownAfterNumberOfChecksForDatabaseState;
         }
 
         public DatabaseName DatabaseName
@@ -267,6 +270,14 @@ namespace SqlServerMirroring
             get
             {
                 return _backupExpirationTime;
+            }
+        }
+
+        public int ShutDownAfterNumberOfChecksForDatabaseState
+        {
+            get
+            {
+                return _shutDownAfterNumberOfChecksForDatabaseState;
             }
         }
     }
