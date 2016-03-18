@@ -12,6 +12,7 @@ using Microsoft.SqlServer.Management.Smo.Wmi;
 using System.ServiceProcess;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Data;
 
 namespace SqlServerMirroring
 {
@@ -266,11 +267,28 @@ namespace SqlServerMirroring
             }
 
             /* Create Master Database ServerState */
-            if(Information_CheckLocalMasterServerStateTable())
+            if(!Information_CheckLocalMasterServerStateTable())
             {
                 Action_CreateMasterServerStateTable();
             }
+
+            if(!Information_CheckLocalMasterDatabaseStateErrorTable())
+            {
+                Action_CreateMasterDatabaseStateErrorTable();
+            }
             Logger.LogDebug("Action_StartInitialServerState ended.");
+        }
+
+        private bool Information_CheckLocalMasterDatabaseStateErrorTable()
+        {
+            foreach (Table serverStateTable in LocalMasterDatabase.Tables)
+            {
+                if (serverStateTable.Name == "DatabaseStateError")
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public void Action_StartSecondary()
@@ -1215,29 +1233,18 @@ namespace SqlServerMirroring
                 if(errorState)
                 {
                     /* Check last state and state count */
-                    if(Information_CheckLastStateAndCount_ShiftState())
+                    if(Action_CheckLastDatabaseStateErrorAndCount_ShiftState())
                     {
-                        if(Information_ServerRole == ServerRole.Primary && Information_IsValidServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE))
-                        {
-                            Action_MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
-                        }
-                        else if (Information_ServerRole == ServerRole.Secondary && Information_IsValidServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE))
-                        {
-                            Action_MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
-                        }
-                        else
-                        {
-                            throw new SqlServerMirroringException(string.Format("Cannot shift server role {0} with state {1} to Shutting Down State.", Information_ServerRole, Information_ServerState));
-                        }
+                        Action_ForceShutDownMirroringService();
                     }
                     else
                     {
-                        Logger.LogWarning(string.Format("Found", Information_ServerRole, Information_ServerState, ConfiguredMirrorDatabases.First().Value.ShutDownAfterNumberOfChecksForDatabaseState));
+                        Logger.LogDebug(string.Format("Found Server Role {0}, Server State {1} and will shut down after {2} checks.", Information_ServerRole, Information_ServerState, ConfiguredMirrorDatabases.First().Value.ShutDownAfterNumberOfChecksForDatabaseState));
                     }
                 }
                 else
                 {
-                    Action_WriteLastStateWithCountZero();
+                    Action_ResetLastDatabaseStateErrorAndCount();
                 }
 
                 /* Check remote server access */
@@ -1273,24 +1280,153 @@ namespace SqlServerMirroring
             }
         }
 
+        private void Action_CreateMasterDatabaseStateErrorTable()
+        {
+            Logger.LogDebug("Action_CreateMasterDatabaseStateErrorTable started.");
+
+            try
+            {
+                Table localServerStateTable = new Table(LocalMasterDatabase, "DatabaseStateError");
+                Column column1 = new Column(localServerStateTable, "LastRole", DataType.NVarChar(50));
+                column1.Nullable = false;
+                localServerStateTable.Columns.Add(column1);
+                Column column2 = new Column(localServerStateTable, "LastWriteDate", DataType.DateTime2(7));
+                column2.Nullable = false;
+                localServerStateTable.Columns.Add(column2);
+                Column column3 = new Column(localServerStateTable, "Count", DataType.Int);
+                column3.Nullable = false;
+                localServerStateTable.Columns.Add(column3);
+
+                localServerStateTable.Create();
+                LocalServerStateTable = localServerStateTable;
+                Logger.LogDebug("Action_CreateMasterDatabaseStateErrorTable ended.");
+                Action_InsertDatabaseStateErrorBaseState();
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException("Action_CreateMasterDatabaseStateErrorTable failed", ex);
+            }
+        }
+
+        private void Action_InsertDatabaseStateErrorBaseState()
+        {
+            try
+            {
+                Logger.LogDebug("Action_InsertDatabaseStateErrorBaseState started.");
+
+                string sqlQuery = "INSERT INTO DatabaseStateError (LastRole, LastWriteDate, Count) ";
+                sqlQuery += "VALUES ";
+                sqlQuery += "(NotSet,SYSDATETIME(),0)";
+
+                LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
+                Logger.LogDebug("Action_InsertDatabaseStateErrorBaseState ended.");
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException("Action_InsertDatabaseStateErrorBaseState failed", ex);
+            }
+        }
+
+        private void Action_UpdateDatabaseStateError(ServerRole activeServerRole, int increaseCount)
+        {
+            try
+            {
+                Logger.LogDebug("Action_UpdateDatabaseStateError started.");
+
+                string sqlQuery = "UPDATE DatabaseStateError (LastRole, LastWriteDate, Count) ";
+                sqlQuery += "SET LastRole = " + activeServerRole.ToString() + " ";
+                sqlQuery += ", LastWriteDate = SYSDATETIME() ";
+                sqlQuery += ", Count = " + (increaseCount == 0 ? "0 " : "Count + " + increaseCount.ToString() + " ");
+
+                LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
+                Logger.LogDebug("Action_UpdateDatabaseStateError ended.");
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException("Action_UpdateDatabaseStateError failed", ex);
+            }
+        }
+
+
+        private bool Action_CheckLastDatabaseStateErrorAndCount_ShiftState()
+        {
+            Logger.LogDebug("Action_CheckLastDatabaseStateErrorAndCount_ShiftState started.");
+            int checksToShutDown = ConfiguredMirrorDatabases.First().Value.ShutDownAfterNumberOfChecksForDatabaseState;
+            Action_UpdateDatabaseStateError(Information_ServerRole, 1);
+
+            int countOfChecks = Information_GetDatabaseStateErrorCount();
+            if (countOfChecks > checksToShutDown)
+            {
+                Logger.LogWarning(string.Format("Will shut down from state {0} because of Database State Error as count {1} is above {2}.", Information_ServerState, countOfChecks, ConfiguredMirrorDatabases.First().Value.ShutDownAfterNumberOfChecksForDatabaseState));
+                return true;
+            }
+            else
+            {
+                Logger.LogDebug(string.Format("Should not shut down because of Database State Error as count {0} is not above {1}.", countOfChecks, ConfiguredMirrorDatabases.First().Value.ShutDownAfterNumberOfChecksForDatabaseState));
+                return false;
+            }
+        }
+
+        private int Information_GetDatabaseStateErrorCount()
+        {
+            try
+            {
+                Logger.LogDebug("Information_GetDatabaseStateErrorCount started");
+                string sqlQuery = "";
+
+                DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
+                foreach(DataTable table in dataSet.Tables)
+                {
+                    foreach(DataRow row in table.Rows)
+                    {
+                        foreach (DataColumn column in row.Table.Columns)
+                        {
+                            if (column.DataType == typeof(Int32))
+                            {
+                                int? returnValue = (int?)row[column];
+                                Logger.LogDebug(string.Format("Information_GetDatabaseStateErrorCount ended with value {0}", returnValue));
+                                if (returnValue.HasValue)
+                                {
+                                    return returnValue.Value;
+                                }
+                            }
+                        }
+                    }
+                }
+                throw new SqlServerMirroringException("Information_GetDatabaseStateErrorCount could not find a value in table DatabaseStateError");
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException("Information_GetDatabaseStateErrorCount failed", ex);
+            }
+        }
+
+        private void Action_ResetLastDatabaseStateErrorAndCount()
+        {
+            Logger.LogDebug("Action_ResetLastDatabaseStateErrorAndCount started.");
+            Action_UpdateDatabaseStateError(Information_ServerRole, 0);
+            Logger.LogDebug("Action_ResetLastDatabaseStateErrorAndCount ended.");
+        }
+
         private void Action_UpdateLocalServerState_MissingRemoteServer()
         {
-            throw new NotImplementedException();
-            int error;
+            Logger.LogDebug("Action_UpdateRemoteServerState_ConnectedRemoteServer started.");
+            Action_UpdateServerState(LocalMasterDatabase, true, false, false, Information_ServerRole, Information_ServerState, 1);
+            Logger.LogDebug("Action_UpdateRemoteServerState_ConnectedRemoteServer ended.");
         }
 
         private void Action_UpdateRemoteServerState_ConnectedRemoteServer()
         {
             Logger.LogDebug("Action_UpdateRemoteServerState_ConnectedRemoteServer started.");
-            throw new NotImplementedException();
-            int error;
+            Action_UpdateServerState(RemoteMasterDatabase, false, true, true, Information_ServerRole, Information_ServerState, 0);
+            Logger.LogDebug("Action_UpdateRemoteServerState_ConnectedRemoteServer ended.");
         }
 
         private void Action_UpdateLocalServerState_ConnectedRemoteServer()
         {
             Logger.LogDebug("Action_UpdateLocalServerState_ConnectedRemoteServer started.");
-            throw new NotImplementedException();
-            int error;
+            Action_UpdateServerState(LocalMasterDatabase, true, false, true, Information_ServerRole, Information_ServerState, 0);
+            Logger.LogDebug("Action_UpdateLocalServerState_ConnectedRemoteServer ended.");
         }
 
         private bool Information_HasAccessToRemoteServer()
@@ -1309,20 +1445,6 @@ namespace SqlServerMirroring
             }
         }
 
-        private void Action_WriteLastStateWithCountZero()
-        {
-            Logger.LogDebug("Action_WriteLastStateWithCountZero started.");
-            throw new NotImplementedException();
-            int error;
-        }
-
-        private bool Information_CheckLastStateAndCount_ShiftState()
-        {
-            Logger.LogDebug("Information_CheckLastStateAndCount_ShiftState started.");
-            throw new NotImplementedException();
-            int error;
-        }
-
         private void Action_CreateMasterServerStateTable()
         {
             Logger.LogDebug("Action_CreateMasterServerStateTable started.");
@@ -1333,21 +1455,24 @@ namespace SqlServerMirroring
                 Column column1 = new Column(localServerStateTable, "UpdaterLocal", DataType.Bit);
                 column1.Nullable = false;
                 localServerStateTable.Columns.Add(column1);
-                Column column2 = new Column(localServerStateTable, "Local", DataType.Bit);
+                Column column2 = new Column(localServerStateTable, "AboutLocal", DataType.Bit);
                 column2.Nullable = false;
                 localServerStateTable.Columns.Add(column2);
                 Column column3 = new Column(localServerStateTable, "Connected", DataType.Bit);
                 column3.Nullable = false;
                 localServerStateTable.Columns.Add(column3);
-                Column column4 = new Column(localServerStateTable, "LastState", DataType.NVarChar(50));
+                Column column4 = new Column(localServerStateTable, "LastRole", DataType.NVarChar(50));
                 column4.Nullable = false;
                 localServerStateTable.Columns.Add(column4);
-                Column column5 = new Column(localServerStateTable, "LastWriteDate", DataType.DateTime2(7));
+                Column column5 = new Column(localServerStateTable, "LastState", DataType.NVarChar(50));
                 column5.Nullable = false;
                 localServerStateTable.Columns.Add(column5);
-                Column column6 = new Column(localServerStateTable, "Count", DataType.Int);
+                Column column6 = new Column(localServerStateTable, "LastWriteDate", DataType.DateTime2(7));
                 column6.Nullable = false;
                 localServerStateTable.Columns.Add(column6);
+                Column column7 = new Column(localServerStateTable, "Count", DataType.Int);
+                column7.Nullable = false;
+                localServerStateTable.Columns.Add(column7);
 
                 localServerStateTable.Create();
                 LocalServerStateTable = localServerStateTable;
@@ -1366,11 +1491,11 @@ namespace SqlServerMirroring
             {
                 Logger.LogDebug("Action_InsertServerStateBaseState started.");
 
-                string sqlQuery = "INSERT INTO ServerState (UpdaterLocal, Local, Connected, LastState, LastWriteDate, Count) ";
+                string sqlQuery = "INSERT INTO ServerState (UpdaterLocal, AboutLocal, Connected, LastRole, LastState, LastWriteDate, Count) ";
                 sqlQuery += "VALUES ";
-                sqlQuery += "(1,1,0,INITIAL_STATE,SYSDATETIME(),0)";
-                sqlQuery += "(1,0,0,INITIAL_STATE,SYSDATETIME(),0)";
-                sqlQuery += "(0,1,0,INITIAL_STATE,SYSDATETIME(),0)";
+                sqlQuery += "(1,1,0,NotSet,INITIAL_STATE,SYSDATETIME(),0),";
+                sqlQuery += "(1,0,0,NotSet,INITIAL_STATE,SYSDATETIME(),0),";
+                sqlQuery += "(0,1,0,NotSet,INITIAL_STATE,SYSDATETIME(),0)";
 
                 LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
                 Logger.LogDebug("Action_InsertServerStateBaseState ended.");
@@ -1381,21 +1506,22 @@ namespace SqlServerMirroring
             }
         }
 
-        private void Action_UpdateServerState(Database databaseToUpdate, bool updaterLocal, bool local, bool connected, ServerState activeServerState, int count)
+        private void Action_UpdateServerState(Database databaseToUpdate, bool updaterLocal, bool aboutLocal, bool connected, ServerRole activeServerRole, ServerState activeServerState, int increaseCount)
         {
             try
             {
                 Logger.LogDebug("Action_UpdateServerState started.");
 
-                string sqlQuery = "UPDATE ServerState (UpdaterLocal, Local, Connected, LastState, LastWriteDate, Count) ";
+                string sqlQuery = "UPDATE ServerState (UpdaterLocal, AboutLocal, Connected, LastState, LastWriteDate, Count) ";
                 sqlQuery += "SET Connected = " + (connected?"1 ":"0 ");
+                sqlQuery += ", LastRole = " + activeServerRole.ToString() + " ";
                 sqlQuery += ", LastState = " + activeServerState.ToString() + " ";
                 sqlQuery += ", LastWriteDate = SYSDATETIME() ";
-                sqlQuery += ", Count = " + count.ToString();
+                sqlQuery += ", Count = " + (increaseCount == 0?"0 ":"Count + " + increaseCount.ToString() + " ");
                 sqlQuery += "WHERE UpdaterLocal = " + (updaterLocal ? "1 " : "0 ");
-                sqlQuery += "AND Local = " + (local ? "1 " : "0 ");
+                sqlQuery += "AND AboutLocal = " + (aboutLocal ? "1 " : "0 ");
 
-                LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
+                databaseToUpdate.ExecuteNonQuery(sqlQuery);
                 Logger.LogDebug("Action_UpdateServerState ended.");
             }
             catch (Exception ex)
