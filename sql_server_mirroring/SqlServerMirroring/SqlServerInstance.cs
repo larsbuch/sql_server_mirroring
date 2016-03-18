@@ -111,7 +111,8 @@ namespace SqlServerMirroring
             {
                 foreach (Database database in Information_UserDatabases)
                 {
-                    yield return new MirrorDatabase(database);
+                    string mirrorRoleDesc = Information_GetDatabaseMirringRole(new DatabaseName(database.Name));
+                    yield return new MirrorDatabase(database, mirrorRoleDesc);
                 }
             }
         }
@@ -259,6 +260,71 @@ namespace SqlServerMirroring
 
         #region Public Information Instance methods
 
+        public void Action_SetupMonitoring()
+        {
+            foreach (Database database in Information_UserDatabases)
+            {
+                ConfiguredDatabaseForMirroring configuredDatabase;
+                if (ConfiguredMirrorDatabases.TryGetValue(new DatabaseName(database.Name), out configuredDatabase))
+                {
+                    try
+                    {
+                        throw new NotImplementedException();
+                        database.ExecuteNonQuery("EXEC sys.sp_dbmmonitoraddmonitoring " + configuredDatabase.MirrorMonitoringUpdateMinutes);
+                        Logger.LogDebug(string.Format("Mirroring monitoring every {0} minutes started {1} with partner endpoint on {2} port {3}"
+                            , configuredDatabase.MirrorMonitoringUpdateMinutes, configuredDatabase.DatabaseName, configuredDatabase.RemoteServer, configuredDatabase.Endpoint_ListenerPort));
+
+
+                        //1 Oldest unsent transaction
+                        //Specifies the number of minutes worth of transactions that can accumulate in the send queue
+                        //before a warning is generated on the principal server instance.This warning helps measure the
+                        //potential for data loss in terms of time, and it is particularly relevant for high - performance mode.
+                        //However, the warning is also relevant for high - safety mode when mirroring is paused or suspended because the
+                        //partners become disconnected.
+
+                        //--Event ID 32042
+                        //EXEC sp_dbmmonitorchangealert DatabaseName, 1, 2, 1 ; --OLDEST UNSENT TRANSACTION (set to 2 minutes)
+
+
+                        //2 Unsent log
+                        //Specifies how many kilobytes(KB) of unsent log generate a warning on the principal server instance.This warning
+                        //helps measure the potential for data loss in terms of KB, and it is particularly relevant for high - performance mode.
+                        //However, the warning is also relevant for high - safety mode when mirroring is paused or suspended because the partners
+                        //become disconnected.
+
+                        //--Event ID 32043
+                        //EXEC sp_dbmmonitorchangealert DatabaseName, 2, 10000, 1; --UNSENT LOG SIZE ON P(set to 10000K)
+
+                        //3 Unrestored log
+                        //Specifies how many KB of unrestored log generate a warning on the mirror server instance.This warning helps measure
+                        //failover time.Failover time consists mainly of the time that the former mirror server requires to roll forward any log
+                        //remaining in its redo queue, plus a short additional time.
+
+                        //--Event ID 32044
+                        //EXEC sp_dbmmonitorchangealert DatabaseName, 3, 10000, 1; --UNRESTORED LOG ON M(set to 10000K)
+
+                        //4 Mirror commit overhead
+                        //Specifies the number of milliseconds of average delay per transaction that are tolerated before a warning is generated
+                        //on the principal server.This delay is the amount of overhead incurred while the principal server instance waits for the
+                        //mirror server instance to write the transaction's log record into the redo queue. This value is relevant only in high-safety mode.
+
+                        //-- Event ID 32045
+                        //EXEC sp_dbmmonitorchangealert DatabaseName, 4, 1000, 1; --MIRRORING COMMIT OVERHEAD (milisecond delay for txn on P_
+
+                        //5 Retention period
+                        //Metadata that controls how long rows in the database mirroring status table are preserved.
+
+                        //EXEC sp_dbmmonitorchangealert DatabaseName, 5, 48, 1 ;
+
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new SqlServerMirroringException(string.Format("Action_SetupMonitoring failed for {0}", configuredDatabase.DatabaseName.ToString()), ex);
+                    }
+                }
+            }
+        }
+
         public bool Information_IsValidServerStateChange(ServerStateEnum newState)
         {
             return Information_ServerState.ValidTransition(newState);
@@ -382,7 +448,7 @@ namespace SqlServerMirroring
         {
             foreach (MirrorDatabase mirrorState in Information_MirrorDatabases)
             {
-                if (mirrorState.IsConfiguredForMirroring)
+                if (mirrorState.IsMirroringEnabled)
                 {
                     if (!configuredMirrorDatabases.ContainsKey(mirrorState.DatabaseName))
                     {
@@ -463,7 +529,7 @@ namespace SqlServerMirroring
         {
             int isPrincipal = 0;
             int isMirror = 0;
-            foreach (MirrorDatabase mirrorState in Information_MirrorDatabases.Where(s => s.IsConfiguredForMirroring))
+            foreach (MirrorDatabase mirrorState in Information_MirrorDatabases.Where(s => s.IsMirroringEnabled))
             {
                 if (mirrorState.IsPrincipal)
                 {
@@ -514,7 +580,7 @@ namespace SqlServerMirroring
                 }
 
                 bool errorState = false;
-                foreach (MirrorDatabase mirrorDatabase in Information_MirrorDatabases.Where(s => s.IsConfiguredForMirroring))
+                foreach (MirrorDatabase mirrorDatabase in Information_MirrorDatabases.Where(s => s.IsMirroringEnabled))
                 {
                     if (Information_ServerRole == ServerRole.Primary)
                     {
@@ -1412,9 +1478,12 @@ namespace SqlServerMirroring
             Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).First();
             try
             {
-                throw new NotImplementedException();
-                database.ChangeMirroringState(MirroringOption.Resume);
+                Logger.LogDebug(string.Format("Getting ready to start mirroring {0} with partner endpoint on {1} port {2}"
+                    , configuredDatabase.DatabaseName, configuredDatabase.RemoteServer, configuredDatabase.Endpoint_ListenerPort));
+
+                database.MirroringPartner = "TCP://" + configuredDatabase.RemoteServer + ":" + configuredDatabase.Endpoint_ListenerPort;
                 database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                Logger.LogDebug(string.Format("Mirroring started {0} with partner endpoint on {1} port {2}", configuredDatabase.DatabaseName, configuredDatabase.RemoteServer, configuredDatabase.Endpoint_ListenerPort));
             }
             catch (Exception ex)
             {
@@ -1508,7 +1577,7 @@ namespace SqlServerMirroring
                 Column column2 = new Column(localServerStateTable, "LastWriteDate", DataType.DateTime2(7));
                 column2.Nullable = false;
                 localServerStateTable.Columns.Add(column2);
-                Column column3 = new Column(localServerStateTable, "Count", DataType.Int);
+                Column column3 = new Column(localServerStateTable, "ErrorCount", DataType.Int);
                 column3.Nullable = false;
                 localServerStateTable.Columns.Add(column3);
 
@@ -1529,7 +1598,7 @@ namespace SqlServerMirroring
             {
                 Logger.LogDebug("Action_InsertDatabaseStateErrorBaseState started.");
 
-                string sqlQuery = "INSERT INTO DatabaseStateError (LastRole, LastWriteDate, Count) ";
+                string sqlQuery = "INSERT INTO DatabaseStateError (LastRole, LastWriteDate, ErrorCount) ";
                 sqlQuery += "VALUES ";
                 sqlQuery += "(NotSet,SYSDATETIME(),0)";
 
@@ -1548,10 +1617,10 @@ namespace SqlServerMirroring
             {
                 Logger.LogDebug("Action_UpdateDatabaseStateError started.");
 
-                string sqlQuery = "UPDATE DatabaseStateError (LastRole, LastWriteDate, Count) ";
+                string sqlQuery = "UPDATE DatabaseStateError (LastRole, LastWriteDate, ErrorCount) ";
                 sqlQuery += "SET LastRole = " + activeServerRole.ToString() + " ";
                 sqlQuery += ", LastWriteDate = SYSDATETIME() ";
-                sqlQuery += ", Count = " + (increaseCount == 0 ? "0 " : "Count + " + increaseCount.ToString() + " ");
+                sqlQuery += ", ErrorCount = " + (increaseCount == 0 ? "0 " : "ErrorCount + " + increaseCount.ToString() + " ");
 
                 LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
                 Logger.LogDebug("Action_UpdateDatabaseStateError ended.");
@@ -1586,7 +1655,7 @@ namespace SqlServerMirroring
             try
             {
                 Logger.LogDebug("Information_GetDatabaseStateErrorCount started");
-                string sqlQuery = "";
+                string sqlQuery = "SELECT TOP (1) ErrorCount FROM DatabaseStateError";
 
                 DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
                 foreach(DataTable table in dataSet.Tables)
@@ -1612,6 +1681,44 @@ namespace SqlServerMirroring
             catch (Exception ex)
             {
                 throw new SqlServerMirroringException("Information_GetDatabaseStateErrorCount failed", ex);
+            }
+        }
+
+        private string Information_GetDatabaseMirringRole(DatabaseName databaseName)
+        {
+            try
+            {
+                Logger.LogDebug("Information_GetDatabaseMirringRole started");
+                string sqlQuery = "SELECT TOP (1) mirroring_role_desc FROM sys.database_mirroring WHERE database_id = DB_ID(" + databaseName + ")";
+
+                DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
+                foreach (DataTable table in dataSet.Tables)
+                {
+                    foreach (DataRow row in table.Rows)
+                    {
+                        foreach (DataColumn column in row.Table.Columns)
+                        {
+                            if (column.DataType == typeof(string))
+                            {
+                                string returnValue = (string)row[column];
+                                Logger.LogDebug(string.Format("Information_GetDatabaseMirringRole ended with value {0}", returnValue));
+                                if (returnValue == null)
+                                {
+                                    return string.Empty;
+                                }
+                                else
+                                {
+                                    return returnValue;
+                                }
+                            }
+                        }
+                    }
+                }
+                throw new SqlServerMirroringException("Information_GetDatabaseMirringRole could not find a value in table sys.database_mirroring for " + databaseName);
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException("Information_GetDatabaseMirringRole failed", ex);
             }
         }
 

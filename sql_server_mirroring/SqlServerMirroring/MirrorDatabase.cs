@@ -11,15 +11,27 @@ namespace SqlServerMirroring
     public class MirrorDatabase
     {
         private DatabaseName _databaseName;
-        private bool _isConfiguredForMirroring;
+        private bool _isMirroringEnabled;
         private DatabaseStatus _databaseStatus;
+        private int _databaseID;
+        private Guid _mirroringGuid;
+        private MirroringStatus _mirroringStatus;
+        private RecoveryModel _recoveryModel;
+        private bool _isUpdateable;
+        private string _mirrorRole;
 
-        public MirrorDatabase(Database database)
+        public MirrorDatabase(Database database, string mirrorRoleDesc)
         {
             // TODO interrogate database for mirroring
             _databaseName = new DatabaseName(database.Name);
-            _isConfiguredForMirroring = (database.MirroringStatus != MirroringStatus.None);
+            _mirrorRole = mirrorRoleDesc;
+            _isMirroringEnabled = database.IsMirroringEnabled;
             _databaseStatus = database.Status;
+            _databaseID = database.ID;
+            _mirroringGuid = database.MirroringID;
+            _mirroringStatus = database.MirroringStatus;
+            _recoveryModel = database.RecoveryModel;
+            _isUpdateable = database.IsUpdateable;
         }
 
         public DatabaseName DatabaseName
@@ -30,11 +42,67 @@ namespace SqlServerMirroring
             }
         }
 
-        public bool IsConfiguredForMirroring
+        public int DatabaseID
         {
             get
             {
-                return _isConfiguredForMirroring;
+                return _databaseID;
+            }
+        }
+
+        public string DatabaseMirrorRole
+        {
+            get
+            {
+                return _mirrorRole;
+            }
+        }
+
+        public bool IsPrincipal
+        {
+            get
+            {
+                return _mirrorRole == "Principal" ? true : false;
+            }
+        }
+
+        public bool IsUpdateable
+        {
+            get
+            {
+                return _isUpdateable;
+            }
+        }
+
+        public RecoveryModel RecoveryModel
+        {
+            get
+            {
+                return _recoveryModel;
+            }
+        }
+
+        public MirroringStatus DatabaseMirroringStatus
+        {
+            get
+            {
+                return _mirroringStatus;
+            }
+        }
+
+        public Guid DatabaseMirroringGuid
+        {
+            get
+            {
+                return _mirroringGuid;
+            }
+        }
+
+        public bool IsMirroringEnabled
+        {
+            get
+            {
+                return _isMirroringEnabled;
             }
         }
 
@@ -46,26 +114,11 @@ namespace SqlServerMirroring
             }
         }
 
-        public bool IsPrincipal
-        {
-            get
-            {
-                if(IsConfiguredForMirroring)
-                {
-                    return Status == DatabaseStatus.Normal? true :false;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-        }
-
         public bool IsMirror
         {
             get
             {
-                if(IsConfiguredForMirroring)
+                if(IsMirroringEnabled)
                 {
                     return Status == DatabaseStatus.Restoring ? true : false;
                 }

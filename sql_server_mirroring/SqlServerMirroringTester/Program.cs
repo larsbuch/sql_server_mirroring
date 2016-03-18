@@ -171,7 +171,8 @@ namespace SqlServerMirroringTester
                 5022,
                 7022,
                 7,
-                60
+                60,
+                1
                 );
             configuredMirrorDatabases.Add(configured1.DatabaseName, configured1);
             ConfiguredDatabaseForMirroring configured2 = new ConfiguredDatabaseForMirroring(
@@ -188,7 +189,8 @@ namespace SqlServerMirroringTester
                 5023,
                 7023,
                 7,
-                60
+                60,
+                1
                 );
             configuredMirrorDatabases.Add(configured2.DatabaseName, configured2);
             return configuredMirrorDatabases;

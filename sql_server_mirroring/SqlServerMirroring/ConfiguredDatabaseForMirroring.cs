@@ -23,6 +23,7 @@ namespace SqlServerMirroring
         private int _endpoint_ListenerPort;
         private double _backupExpirationTime;
         private int _shutDownAfterNumberOfChecksForDatabaseState;
+        private int _mirrorMonitoringUpdateMinutes;
 
         public ConfiguredDatabaseForMirroring(
             DatabaseName databaseName,
@@ -38,7 +39,8 @@ namespace SqlServerMirroring
             int endpoint_SslPort,
             int endpoint_ListenerPort,
             double backupExpirationTime,
-            int shutDownAfterNumberOfChecksForDatabaseState
+            int shutDownAfterNumberOfChecksForDatabaseState,
+            int mirrorMonitoringUpdateMinutes
             )
         {
             _databaseName = databaseName;
@@ -55,6 +57,7 @@ namespace SqlServerMirroring
             _endpoint_ListenerPort = endpoint_ListenerPort;
             _backupExpirationTime = backupExpirationTime;
             _shutDownAfterNumberOfChecksForDatabaseState = shutDownAfterNumberOfChecksForDatabaseState;
+            MirrorMonitoringUpdateMinutes = mirrorMonitoringUpdateMinutes;
         }
 
         public DatabaseName DatabaseName
@@ -117,7 +120,7 @@ namespace SqlServerMirroring
         {
             get
             {
-                return new UncPath(RemoteServer,RemoteShareName, LocalTransferSubDircetory);
+                return new UncPath(RemoteServer, RemoteShareName, LocalTransferSubDircetory);
             }
         }
 
@@ -125,7 +128,7 @@ namespace SqlServerMirroring
         {
             get
             {
-                return new UncPath(RemoteServer, RemoteShareName, LocalTransferSubDircetory, new SubDirectory( DatabaseName.ToString()));
+                return new UncPath(RemoteServer, RemoteShareName, LocalTransferSubDircetory, new SubDirectory(DatabaseName.ToString()));
             }
         }
 
@@ -165,7 +168,7 @@ namespace SqlServerMirroring
         {
             get
             {
-                return new UncPath(RemoteServer, RemoteShareName, LocalTransferSubDircetory,new SubDirectory(DatabaseName.ToString()));
+                return new UncPath(RemoteServer, RemoteShareName, LocalTransferSubDircetory, new SubDirectory(DatabaseName.ToString()));
             }
         }
 
@@ -197,7 +200,7 @@ namespace SqlServerMirroring
         {
             get
             {
-                return new UncPath(RemoteServer,RemoteShareName,RemoteDeliverySubDircetory);
+                return new UncPath(RemoteServer, RemoteShareName, RemoteDeliverySubDircetory);
             }
         }
 
@@ -278,6 +281,25 @@ namespace SqlServerMirroring
             get
             {
                 return _shutDownAfterNumberOfChecksForDatabaseState;
+            }
+        }
+
+        public int MirrorMonitoringUpdateMinutes
+        {
+            get
+            {
+                return _mirrorMonitoringUpdateMinutes;
+            }
+            private set
+            {
+                if (value > 0 && value < 121)
+                {
+                    _mirrorMonitoringUpdateMinutes = value;
+                }
+                else
+                {
+                    throw new SqlServerMirroringException(string.Format("Could not set mirror monitoring update to {0} minutes as it is surposed to be between 1 and 120.", value));
+                }
             }
         }
     }

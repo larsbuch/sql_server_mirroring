@@ -49,14 +49,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BackupDatabase.cs" />
     <Compile Include="ConfiguredDatabaseForMirroring.cs" />
     <Compile Include="ServerRole.cs" />
     <Compile Include="ServerState.cs" />
     <Compile Include="SqlServerInstance.cs" />
     <Compile Include="MirrorDatabase.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RestoreDatabase.cs" />
     <Compile Include="SqlServerMirroringException.cs" />
   </ItemGroup>
   <ItemGroup>
