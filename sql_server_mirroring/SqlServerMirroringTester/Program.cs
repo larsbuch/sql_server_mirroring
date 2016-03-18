@@ -47,7 +47,7 @@ namespace SqlServerMirroringTester
 
         private static void Test_CheckInstanceForMirroring()
         {
-            Console.WriteLine(string.Format("Instance Ready for mirroring: {0}", SqlServer.Action_CheckInstanceForMirroring()?"Yes":"No"));
+            Console.WriteLine(string.Format("Instance Ready for mirroring: {0}", SqlServer.Information_CheckInstanceForMirroring()?"Yes":"No"));
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
