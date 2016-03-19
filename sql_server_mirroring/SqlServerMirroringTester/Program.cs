@@ -20,8 +20,8 @@ namespace SqlServerMirroringTester
             ConsoleTest.AddTest("Information", "Check Windows Authentification", () => Test_Information_WindowsAuthentificationActive());
             ConsoleTest.AddTest("Information", "Check Sql Server Authentification", () => Test_Information_SqlServerAuthentificationActive());
             ConsoleTest.AddTest("Information", "Check for instance readyness for mirroring", () => Test_Information_CheckInstanceForMirroring());
-            ConsoleTest.AddTest("Action", "Run startup mirror check on principal", () => Test_Action_StartPrimary());
-            ConsoleTest.AddTest("Action", "Run startup mirror check on mirror", () => Test_Action_StartSecondary());
+            ConsoleTest.AddTest("Action", "Run Start Primary", () => Test_Action_StartPrimary());
+            ConsoleTest.AddTest("Action", "Run Start Secondary", () => Test_Action_StartSecondary());
             ConsoleTest.AddTest("Action", "Setup Monitoring", () => Test_Action_SetupMonitoring());
             ConsoleTest.AddTest("Action", "Run CheckServerState", () => Test_Action_CheckServerState());
             ConsoleTest.AddTest("Action", "Resume Mirroring For All Mirror Databases", () => Test_Action_ResumeMirroringForAllDatabases());

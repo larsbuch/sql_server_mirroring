@@ -26,7 +26,7 @@ namespace HelperFunctions
 
         private void ValidateDatabaseName(string databaseName)
         {
-            Regex regex = new Regex(@"^[\w_][\w_\d]{0:127}$");
+            Regex regex = new Regex(@"^[\w_][\w_\d]{0,127}$");
             if (!regex.IsMatch(databaseName))
             {
                 throw new DirectoryException(string.Format("The database name {0} is not valid.", databaseName));
