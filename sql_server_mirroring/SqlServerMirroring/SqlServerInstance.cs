@@ -21,6 +21,8 @@ namespace SqlServerMirroring
         private const string DIRECTORY_SPLITTER = "\\";
         private const string URI_SPLITTER = "\\";
         private const string MASTER_DATABASE = "master";
+        private const string DATABASE_ROLE_PRINCIPAL = "Principal";
+        private const string DATABASE_ROLE_MIRROR = "Mirror";
 
         private Server _server;
         private Server _remoteServer;
@@ -477,6 +479,7 @@ namespace SqlServerMirroring
         {
             Action_StartInitialServerState();
             Information_ServerRole = ServerRole.Primary;
+            Action_SwitchOverAllMirrorDatabasesIfPossible(false);
             if (Information_IsValidServerStateChange(ServerStateEnum.PRIMARY_STARTUP_STATE))
             {
                 Action_MakeServerStateChange(ServerStateEnum.PRIMARY_STARTUP_STATE);
@@ -487,6 +490,8 @@ namespace SqlServerMirroring
         {
             Action_StartInitialServerState();
             Information_ServerRole = ServerRole.Secondary;
+            Action_SwitchOverAllPrincipalDatabasesIfPossible(false);
+
             if (Information_IsValidServerStateChange(ServerStateEnum.SECONDARY_STARTUP_STATE))
             {
                 Action_MakeServerStateChange(ServerStateEnum.SECONDARY_STARTUP_STATE);
@@ -579,14 +584,14 @@ namespace SqlServerMirroring
                     Action_CreateMasterServerStateTable();
                 }
 
-                bool errorState = false;
+                bool databaseErrorState = false;
                 foreach (MirrorDatabase mirrorDatabase in Information_MirrorDatabases.Where(s => s.IsMirroringEnabled))
                 {
                     if (Information_ServerRole == ServerRole.Primary)
                     {
                         if (mirrorDatabase.Status != DatabaseStatus.Normal)
                         {
-                            errorState = true;
+                            databaseErrorState = true;
                             Logger.LogError(string.Format("Database {0} has error status {1}.", mirrorDatabase.DatabaseName, mirrorDatabase.Status));
                         }
                         else
@@ -598,7 +603,7 @@ namespace SqlServerMirroring
                     {
                         if (mirrorDatabase.Status != DatabaseStatus.Restoring)
                         {
-                            errorState = true;
+                            databaseErrorState = true;
                             Logger.LogError(string.Format("Database {0} has error status {1}.", mirrorDatabase.DatabaseName, mirrorDatabase.Status));
                         }
                         else
@@ -607,10 +612,10 @@ namespace SqlServerMirroring
                         }
                     }
                 }
-                if (errorState)
+                if (databaseErrorState)
                 {
                     /* Check last state and state count */
-                    if (Action_CheckLastDatabaseStateErrorAndCount_ShiftState())
+                    if (Action_UpdateLastDatabaseStateErrorAndCount_ShiftState())
                     {
                         Action_ForceShutDownMirroringService();
                     }
@@ -649,6 +654,21 @@ namespace SqlServerMirroring
                     {
                         Action_MakeServerStateChange(ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE);
                     }
+                    else if(Information_ServerState.State == ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE)
+                    {
+                        if(Action_UpdatePrimaryRunningNoSecondaryCount_ShiftState())
+                        {
+                            Action_MakeServerStateChange(ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE);
+                        }
+                    }
+                    else if (Information_ServerState.State == ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE)
+                    {
+                        if(Action_UpdateSecondaryRunningNoPrimaryCount_ShiftState())
+                        {
+                            Action_MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
+                        }
+                    }
+
                 }
             }
             else
@@ -842,6 +862,67 @@ namespace SqlServerMirroring
         #endregion
 
         #region Private Instance Methods
+
+        private void Action_SwitchOverAllDatabasesIfPossible(bool failoverPrincipal, bool failIfNotSwitchingOver)
+        {
+            string failoverRole;
+            string ignoreRole;
+            if(failoverPrincipal)
+            {
+                failoverRole = DATABASE_ROLE_PRINCIPAL;
+                ignoreRole = DATABASE_ROLE_MIRROR;
+            }
+            else
+            {
+                failoverRole = DATABASE_ROLE_MIRROR;
+                ignoreRole = DATABASE_ROLE_PRINCIPAL;
+            }
+            foreach (ConfiguredDatabaseForMirroring configuredDatabase in ConfiguredMirrorDatabases.Values)
+            {
+                try
+                {
+                    Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+                    string databaseRole = Information_GetDatabaseMirringRole(new DatabaseName(database.Name));
+                    if (databaseRole.Equals(failoverRole))
+                    {
+                        Logger.LogDebug(string.Format("Trying to switch {0} as it in {1}.", database.Name, databaseRole));
+                        database.ChangeMirroringState(MirroringOption.Failover);
+                        database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                        Logger.LogDebug(string.Format("Database {0} switched from {1} to {2}.", database.Name, databaseRole, failoverRole));
+                    }
+                    else if (databaseRole.Equals(ignoreRole))
+                    {
+                        Logger.LogDebug(string.Format("Did not switch {0} as it is already in {1}.", database.Name, databaseRole));
+                    }
+                    else
+                    {
+                        if (failIfNotSwitchingOver)
+                        {
+                            throw new SqlServerMirroringException(string.Format("Did not switch {0} as role {1} is unknown.", database.Name, databaseRole));
+                        }
+                        else
+                        {
+                            Logger.LogWarning(string.Format("Did not switch {0} as role {1} is unknown.", database.Name, databaseRole));
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new SqlServerMirroringException(string.Format("Failover failed for {0}", configuredDatabase.DatabaseName), ex);
+                }
+            }
+            Action_RecheckServerRole();
+        }
+
+        private void Action_SwitchOverAllPrincipalDatabasesIfPossible(bool failIfNotSwitchingOver)
+        {
+            Action_SwitchOverAllDatabasesIfPossible(true, failIfNotSwitchingOver);
+        }
+
+        private void Action_SwitchOverAllMirrorDatabasesIfPossible(bool failIfNotSwitchingOver)
+        {
+            Action_SwitchOverAllDatabasesIfPossible(false, failIfNotSwitchingOver);
+        }
 
         private void Action_MakeServerStateChange(ServerStateEnum newState)
         {
@@ -1113,7 +1194,7 @@ namespace SqlServerMirroring
                     Action_SetupInstanceForMirroring();
                 }
                 Information_StartUpMirrorCheck(ConfiguredMirrorDatabases, false);
-
+                Action_SwitchOverAllPrincipalDatabasesIfPossible(true);
                 Logger.LogDebug("StartStartupState ended");
                 if (Information_HasAccessToRemoteServer())
                 {
@@ -1155,7 +1236,7 @@ namespace SqlServerMirroring
                     Action_SetupInstanceForMirroring();
                 }
                 Information_StartUpMirrorCheck(ConfiguredMirrorDatabases, true);
-
+                Action_SwitchOverAllMirrorDatabasesIfPossible(true);
                 Logger.LogDebug("StartStartupState ended");
                 if (Information_HasAccessToRemoteServer())
                 {
@@ -1420,150 +1501,6 @@ namespace SqlServerMirroring
             return false;
         }
 
-        #endregion
-
-        #region Individual Databases
-
-        private void Action_AddDatabaseToMirroring(ConfiguredDatabaseForMirroring configuredDatabase, bool serverPrimary)
-        {
-            Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
-            if (database.RecoveryModel != RecoveryModel.Full)
-            {
-                try
-                {
-                    database.RecoveryModel = RecoveryModel.Full;
-                    database.Alter(TerminationClause.RollbackTransactionsImmediately);
-                }
-                catch (Exception ex)
-                {
-                    throw new SqlServerMirroringException(string.Format("Could not set database {0} to Full Recovery", database.Name), ex);
-                }
-            }
-            if (!database.BrokerEnabled)
-            {
-                database.BrokerEnabled = true;
-                database.Alter(TerminationClause.RollbackTransactionsImmediately);
-            }
-            if (serverPrimary)
-            {
-                if (Action_BackupDatabaseForMirrorServer(configuredDatabase))
-                {
-                    Logger.LogInfo("Backup created and moved to remote share");
-                }
-                else
-                {
-                    Logger.LogInfo("Backup created and moved to local share due to missing access to remote share");
-                }
-            }
-            else
-            {
-                if (Action_RestoreDatabase(configuredDatabase))
-                {
-                    Logger.LogInfo("Restored backup");
-                }
-                else
-                {
-                    Logger.LogInfo("Moved database from remote share and restored Backup");
-                }
-            }
-
-            Action_CreateEndpoint(configuredDatabase, serverPrimary);
-
-            // Create mirroring
-            Action_CreateMirroring(configuredDatabase, serverPrimary);
-        }
-
-        private void Action_CreateMirroring(ConfiguredDatabaseForMirroring configuredDatabase, bool serverPrimary)
-        {
-            Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).First();
-            try
-            {
-                Logger.LogDebug(string.Format("Getting ready to start mirroring {0} with partner endpoint on {1} port {2}"
-                    , configuredDatabase.DatabaseName, configuredDatabase.RemoteServer, configuredDatabase.Endpoint_ListenerPort));
-
-                database.MirroringPartner = "TCP://" + configuredDatabase.RemoteServer + ":" + configuredDatabase.Endpoint_ListenerPort;
-                database.Alter(TerminationClause.RollbackTransactionsImmediately);
-                Logger.LogDebug(string.Format("Mirroring started {0} with partner endpoint on {1} port {2}", configuredDatabase.DatabaseName, configuredDatabase.RemoteServer, configuredDatabase.Endpoint_ListenerPort));
-            }
-            catch (Exception ex)
-            {
-                throw new SqlServerMirroringException(string.Format("Creation of mirroring failed for {0}", configuredDatabase.DatabaseName.ToString()), ex);
-            }
-        }
-
-        private void Action_CreateEndpoint(ConfiguredDatabaseForMirroring configuredDatabase, bool serverPrimary)
-        {
-            // EndPoints Needed for each mirror database
-            try
-            {
-                //Set up a database mirroring endpoint on the server before 
-                //setting up a database mirror. 
-                //Define an Endpoint object variable for database mirroring. 
-                Endpoint ep = default(Endpoint);
-                ep = new Endpoint(DatabaseServerInstance, configuredDatabase.DatabaseName.Endpoint_Name);
-                ep.ProtocolType = ProtocolType.Tcp;
-                ep.EndpointType = EndpointType.DatabaseMirroring;
-                //Specify the protocol ports. 
-                ep.Protocol.Http.SslPort = configuredDatabase.Endpoint_SslPort;
-                ep.Protocol.Tcp.ListenerPort = configuredDatabase.Endpoint_ListenerPort;
-                //Specify the role of the payload. 
-                ep.Payload.DatabaseMirroring.ServerMirroringRole = ServerMirroringRole.All;
-                //Create the endpoint on the instance of SQL Server. 
-                ep.Create();
-                //Start the endpoint. 
-                ep.Start();
-                Logger.LogDebug(string.Format("Created endpoint for {0}. Endpoint in state {1}.", configuredDatabase.DatabaseName, ep.EndpointState));
-            }
-            catch (Exception ex)
-            {
-                throw new SqlServerMirroringException(string.Format("Creation of endpoint for {0} failed", configuredDatabase.DatabaseName), ex);
-            }
-        }
-
-        private void Action_RemoveDatabaseFromMirroring(MirrorDatabase mirrorState, bool serverPrimary)
-        {
-            Database database = Information_UserDatabases.Where(s => s.Name.Equals(mirrorState.DatabaseName.ToString())).First();
-            try
-            {
-                database.ChangeMirroringState(MirroringOption.Off);
-                database.Alter(TerminationClause.RollbackTransactionsImmediately);
-            }
-            catch (Exception ex)
-            {
-                throw new SqlServerMirroringException(string.Format("Removing mirroring failed for {0}", mirrorState.DatabaseName), ex);
-            }
-            try
-            {
-                string endpointName = mirrorState.DatabaseName.Endpoint_Name;
-                foreach (Endpoint endpoint in DatabaseServerInstance.Endpoints)
-                {
-                    if (endpoint.Name.Equals(endpointName))
-                    {
-                        Logger.LogDebug(string.Format("Trying to stop and drop endpoint {0}", endpointName));
-                        endpoint.Stop();
-                        endpoint.Drop();
-                        Logger.LogInfo(string.Format("Endpoint {0} has been removed.", endpointName));
-                        break;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new SqlServerMirroringException(string.Format("Removal of endpoint {0} failed.", mirrorState.DatabaseName.Endpoint_Name), ex);
-            }
-
-            // TODO remove step for non-witness systems
-            try
-            {
-                database.BrokerEnabled = false;
-                database.Alter(TerminationClause.RollbackTransactionsImmediately);
-            }
-            catch (Exception ex)
-            {
-                throw new SqlServerMirroringException(string.Format("Disabling service broker on {0} failed.", mirrorState.DatabaseName.ToString()), ex);
-            }
-        }
-
         private void Action_CreateMasterDatabaseStateErrorTable()
         {
             Logger.LogDebug("Action_CreateMasterDatabaseStateErrorTable started.");
@@ -1631,7 +1568,7 @@ namespace SqlServerMirroring
             }
         }
 
-        private bool Action_CheckLastDatabaseStateErrorAndCount_ShiftState()
+        private bool Action_UpdateLastDatabaseStateErrorAndCount_ShiftState()
         {
             Logger.LogDebug("Action_CheckLastDatabaseStateErrorAndCount_ShiftState started.");
             int checksToShutDown = ConfiguredMirrorDatabases.First().Value.ShutDownAfterNumberOfChecksForDatabaseState;
@@ -1640,12 +1577,49 @@ namespace SqlServerMirroring
             int countOfChecks = Information_GetDatabaseStateErrorCount();
             if (countOfChecks > checksToShutDown)
             {
-                Logger.LogWarning(string.Format("Will shut down from state {0} because of Database State Error as count {1} is above {2}.", Information_ServerState, countOfChecks, ConfiguredMirrorDatabases.First().Value.ShutDownAfterNumberOfChecksForDatabaseState));
+                Logger.LogWarning(string.Format("Will shut down from state {0} because of Database State Error as count {1} is above {2}.", Information_ServerState, countOfChecks, checksToShutDown));
                 return true;
             }
             else
             {
-                Logger.LogDebug(string.Format("Should not shut down because of Database State Error as count {0} is not above {1}.", countOfChecks, ConfiguredMirrorDatabases.First().Value.ShutDownAfterNumberOfChecksForDatabaseState));
+                Logger.LogDebug(string.Format("Should not shut down because of Database State Error as count {0} is not above {1}.", countOfChecks, checksToShutDown));
+                return false;
+            }
+        }
+        private bool Action_UpdateSecondaryRunningNoPrimaryCount_ShiftState()
+        {
+            Logger.LogDebug("Action_CheckLastDatabaseStateErrorAndCount_ShiftState started.");
+            int checksToShutDown = ConfiguredMirrorDatabases.First().Value.ShutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
+            Action_UpdateServerState(Information_ServerState, 1);
+
+            int countOfChecks = Information_GetServerStateSecondaryRunningNoPrimaryStateCount();
+            if (countOfChecks > checksToShutDown)
+            {
+                Logger.LogWarning(string.Format("Will shut down from state {0} because of Server State is not allowed for longer as count {1} is above {2}.", Information_ServerState, countOfChecks, checksToShutDown));
+                return true;
+            }
+            else
+            {
+                Logger.LogDebug(string.Format("Should not shut down because of Server State Error is allowed as count {0} is not above {1}.", countOfChecks, checksToShutDown));
+                return false;
+            }
+        }
+
+        private bool Action_UpdatePrimaryRunningNoSecondaryCount_ShiftState()
+        {
+            Logger.LogDebug("Action_CheckLastDatabaseStateErrorAndCount_ShiftState started.");
+            int checksToSwitch = ConfiguredMirrorDatabases.First().Value.SwitchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState;
+            Action_UpdateServerState(Information_ServerState, 1);
+
+            int countOfChecks = Information_GetServerStatePrimaryRunningNoSecondaryStateCount();
+            if (countOfChecks > checksToSwitch)
+            {
+                Logger.LogWarning(string.Format("Will shift from state {0} because of Server State in not allowed for longer as count {1} is above {2}.", Information_ServerState, countOfChecks, checksToSwitch));
+                return true;
+            }
+            else
+            {
+                Logger.LogDebug(string.Format("Should not shift state because of Server State is allowed as count {0} is not above {1}.", countOfChecks, checksToSwitch));
                 return false;
             }
         }
@@ -1658,9 +1632,9 @@ namespace SqlServerMirroring
                 string sqlQuery = "SELECT TOP (1) ErrorCount FROM DatabaseStateError";
 
                 DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
-                foreach(DataTable table in dataSet.Tables)
+                foreach (DataTable table in dataSet.Tables)
                 {
-                    foreach(DataRow row in table.Rows)
+                    foreach (DataRow row in table.Rows)
                     {
                         foreach (DataColumn column in row.Table.Columns)
                         {
@@ -1834,11 +1808,11 @@ namespace SqlServerMirroring
                 Logger.LogDebug("Action_UpdateServerState started.");
 
                 string sqlQuery = "UPDATE ServerState (UpdaterLocal, AboutLocal, Connected, LastState, LastWriteDate, Count) ";
-                sqlQuery += "SET Connected = " + (connected?"1 ":"0 ");
+                sqlQuery += "SET Connected = " + (connected ? "1 " : "0 ");
                 sqlQuery += ", LastRole = " + activeServerRole.ToString() + " ";
                 sqlQuery += ", LastState = " + activeServerState.ToString() + " ";
                 sqlQuery += ", LastWriteDate = SYSDATETIME() ";
-                sqlQuery += ", Count = " + (increaseCount == 0?"0 ":"Count + " + increaseCount.ToString() + " ");
+                sqlQuery += ", Count = " + (increaseCount == 0 ? "0 " : "Count + " + increaseCount.ToString() + " ");
                 sqlQuery += "WHERE UpdaterLocal = " + (updaterLocal ? "1 " : "0 ");
                 sqlQuery += "AND AboutLocal = " + (aboutLocal ? "1 " : "0 ");
 
@@ -1860,6 +1834,151 @@ namespace SqlServerMirroring
         {
             return Information_CheckMasterServerStateTable(RemoteMasterDatabase);
         }
+
+        #endregion
+
+        #region Individual Databases
+
+        private void Action_AddDatabaseToMirroring(ConfiguredDatabaseForMirroring configuredDatabase, bool serverPrimary)
+        {
+            Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+            if (database.RecoveryModel != RecoveryModel.Full)
+            {
+                try
+                {
+                    database.RecoveryModel = RecoveryModel.Full;
+                    database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                }
+                catch (Exception ex)
+                {
+                    throw new SqlServerMirroringException(string.Format("Could not set database {0} to Full Recovery", database.Name), ex);
+                }
+            }
+            if (!database.BrokerEnabled)
+            {
+                database.BrokerEnabled = true;
+                database.Alter(TerminationClause.RollbackTransactionsImmediately);
+            }
+            if (serverPrimary)
+            {
+                if (Action_BackupDatabaseForMirrorServer(configuredDatabase))
+                {
+                    Logger.LogInfo("Backup created and moved to remote share");
+                }
+                else
+                {
+                    Logger.LogInfo("Backup created and moved to local share due to missing access to remote share");
+                }
+            }
+            else
+            {
+                if (Action_RestoreDatabase(configuredDatabase))
+                {
+                    Logger.LogInfo("Restored backup");
+                }
+                else
+                {
+                    Logger.LogInfo("Moved database from remote share and restored Backup");
+                }
+            }
+
+            Action_CreateEndpoint(configuredDatabase, serverPrimary);
+
+            // Create mirroring
+            Action_CreateMirroring(configuredDatabase, serverPrimary);
+        }
+
+        private void Action_CreateMirroring(ConfiguredDatabaseForMirroring configuredDatabase, bool serverPrimary)
+        {
+            Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).First();
+            try
+            {
+                Logger.LogDebug(string.Format("Getting ready to start mirroring {0} with partner endpoint on {1} port {2}"
+                    , configuredDatabase.DatabaseName, configuredDatabase.RemoteServer, configuredDatabase.Endpoint_ListenerPort));
+
+                database.MirroringPartner = "TCP://" + configuredDatabase.RemoteServer + ":" + configuredDatabase.Endpoint_ListenerPort;
+                database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                Logger.LogDebug(string.Format("Mirroring started {0} with partner endpoint on {1} port {2}", configuredDatabase.DatabaseName, configuredDatabase.RemoteServer, configuredDatabase.Endpoint_ListenerPort));
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException(string.Format("Creation of mirroring failed for {0}", configuredDatabase.DatabaseName.ToString()), ex);
+            }
+        }
+
+        private void Action_CreateEndpoint(ConfiguredDatabaseForMirroring configuredDatabase, bool serverPrimary)
+        {
+            // EndPoints Needed for each mirror database
+            try
+            {
+                //Set up a database mirroring endpoint on the server before 
+                //setting up a database mirror. 
+                //Define an Endpoint object variable for database mirroring. 
+                Endpoint ep = default(Endpoint);
+                ep = new Endpoint(DatabaseServerInstance, configuredDatabase.DatabaseName.Endpoint_Name);
+                ep.ProtocolType = ProtocolType.Tcp;
+                ep.EndpointType = EndpointType.DatabaseMirroring;
+                //Specify the protocol ports. 
+                ep.Protocol.Http.SslPort = configuredDatabase.Endpoint_SslPort;
+                ep.Protocol.Tcp.ListenerPort = configuredDatabase.Endpoint_ListenerPort;
+                //Specify the role of the payload. 
+                ep.Payload.DatabaseMirroring.ServerMirroringRole = ServerMirroringRole.All;
+                //Create the endpoint on the instance of SQL Server. 
+                ep.Create();
+                //Start the endpoint. 
+                ep.Start();
+                Logger.LogDebug(string.Format("Created endpoint for {0}. Endpoint in state {1}.", configuredDatabase.DatabaseName, ep.EndpointState));
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException(string.Format("Creation of endpoint for {0} failed", configuredDatabase.DatabaseName), ex);
+            }
+        }
+
+        private void Action_RemoveDatabaseFromMirroring(MirrorDatabase mirrorState, bool serverPrimary)
+        {
+            Database database = Information_UserDatabases.Where(s => s.Name.Equals(mirrorState.DatabaseName.ToString())).First();
+            try
+            {
+                database.ChangeMirroringState(MirroringOption.Off);
+                database.Alter(TerminationClause.RollbackTransactionsImmediately);
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException(string.Format("Removing mirroring failed for {0}", mirrorState.DatabaseName), ex);
+            }
+            try
+            {
+                string endpointName = mirrorState.DatabaseName.Endpoint_Name;
+                foreach (Endpoint endpoint in DatabaseServerInstance.Endpoints)
+                {
+                    if (endpoint.Name.Equals(endpointName))
+                    {
+                        Logger.LogDebug(string.Format("Trying to stop and drop endpoint {0}", endpointName));
+                        endpoint.Stop();
+                        endpoint.Drop();
+                        Logger.LogInfo(string.Format("Endpoint {0} has been removed.", endpointName));
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException(string.Format("Removal of endpoint {0} failed.", mirrorState.DatabaseName.Endpoint_Name), ex);
+            }
+
+            // TODO remove step for non-witness systems
+            try
+            {
+                database.BrokerEnabled = false;
+                database.Alter(TerminationClause.RollbackTransactionsImmediately);
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException(string.Format("Disabling service broker on {0} failed.", mirrorState.DatabaseName.ToString()), ex);
+            }
+        }
+
 
         private bool Information_CheckMasterServerStateTable(Database databaseToCheck)
         {

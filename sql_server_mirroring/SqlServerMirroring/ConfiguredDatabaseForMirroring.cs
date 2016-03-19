@@ -23,6 +23,8 @@ namespace SqlServerMirroring
         private int _endpoint_ListenerPort;
         private double _backupExpirationTime;
         private int _shutDownAfterNumberOfChecksForDatabaseState;
+        private int _switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState;
+        private int _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
         private int _mirrorMonitoringUpdateMinutes;
 
         public ConfiguredDatabaseForMirroring(
@@ -40,6 +42,8 @@ namespace SqlServerMirroring
             int endpoint_ListenerPort,
             double backupExpirationTime,
             int shutDownAfterNumberOfChecksForDatabaseState,
+            int switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState,
+            int shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState,
             int mirrorMonitoringUpdateMinutes
             )
         {
@@ -57,6 +61,8 @@ namespace SqlServerMirroring
             _endpoint_ListenerPort = endpoint_ListenerPort;
             _backupExpirationTime = backupExpirationTime;
             _shutDownAfterNumberOfChecksForDatabaseState = shutDownAfterNumberOfChecksForDatabaseState;
+            _switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState = switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState;
+            _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState = shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
             MirrorMonitoringUpdateMinutes = mirrorMonitoringUpdateMinutes;
         }
 
@@ -300,6 +306,22 @@ namespace SqlServerMirroring
                 {
                     throw new SqlServerMirroringException(string.Format("Could not set mirror monitoring update to {0} minutes as it is surposed to be between 1 and 120.", value));
                 }
+            }
+        }
+
+        public int ShutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState
+        {
+            get
+            {
+                return _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
+            }
+        }
+
+        public int SwitchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState
+        {
+            get
+            {
+                return _switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState;
             }
         }
     }
