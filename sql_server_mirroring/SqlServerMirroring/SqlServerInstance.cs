@@ -262,89 +262,9 @@ namespace SqlServerMirroring
 
         #region Public Information Instance methods
 
-        public void Action_SetupMonitoring()
-        {
-            foreach (Database database in Information_UserDatabases)
-            {
-                ConfiguredDatabaseForMirroring configuredDatabase;
-                if (ConfiguredMirrorDatabases.TryGetValue(new DatabaseName(database.Name), out configuredDatabase))
-                {
-                    try
-                    {
-                        throw new NotImplementedException();
-                        database.ExecuteNonQuery("EXEC sys.sp_dbmmonitoraddmonitoring " + configuredDatabase.MirrorMonitoringUpdateMinutes);
-                        Logger.LogDebug(string.Format("Mirroring monitoring every {0} minutes started {1} with partner endpoint on {2} port {3}"
-                            , configuredDatabase.MirrorMonitoringUpdateMinutes, configuredDatabase.DatabaseName, configuredDatabase.RemoteServer, configuredDatabase.Endpoint_ListenerPort));
-
-
-                        //1 Oldest unsent transaction
-                        //Specifies the number of minutes worth of transactions that can accumulate in the send queue
-                        //before a warning is generated on the principal server instance.This warning helps measure the
-                        //potential for data loss in terms of time, and it is particularly relevant for high - performance mode.
-                        //However, the warning is also relevant for high - safety mode when mirroring is paused or suspended because the
-                        //partners become disconnected.
-
-                        //--Event ID 32042
-                        //EXEC sp_dbmmonitorchangealert DatabaseName, 1, 2, 1 ; --OLDEST UNSENT TRANSACTION (set to 2 minutes)
-
-
-                        //2 Unsent log
-                        //Specifies how many kilobytes(KB) of unsent log generate a warning on the principal server instance.This warning
-                        //helps measure the potential for data loss in terms of KB, and it is particularly relevant for high - performance mode.
-                        //However, the warning is also relevant for high - safety mode when mirroring is paused or suspended because the partners
-                        //become disconnected.
-
-                        //--Event ID 32043
-                        //EXEC sp_dbmmonitorchangealert DatabaseName, 2, 10000, 1; --UNSENT LOG SIZE ON P(set to 10000K)
-
-                        //3 Unrestored log
-                        //Specifies how many KB of unrestored log generate a warning on the mirror server instance.This warning helps measure
-                        //failover time.Failover time consists mainly of the time that the former mirror server requires to roll forward any log
-                        //remaining in its redo queue, plus a short additional time.
-
-                        //--Event ID 32044
-                        //EXEC sp_dbmmonitorchangealert DatabaseName, 3, 10000, 1; --UNRESTORED LOG ON M(set to 10000K)
-
-                        //4 Mirror commit overhead
-                        //Specifies the number of milliseconds of average delay per transaction that are tolerated before a warning is generated
-                        //on the principal server.This delay is the amount of overhead incurred while the principal server instance waits for the
-                        //mirror server instance to write the transaction's log record into the redo queue. This value is relevant only in high-safety mode.
-
-                        //-- Event ID 32045
-                        //EXEC sp_dbmmonitorchangealert DatabaseName, 4, 1000, 1; --MIRRORING COMMIT OVERHEAD (milisecond delay for txn on P_
-
-                        //5 Retention period
-                        //Metadata that controls how long rows in the database mirroring status table are preserved.
-
-                        //EXEC sp_dbmmonitorchangealert DatabaseName, 5, 48, 1 ;
-
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new SqlServerMirroringException(string.Format("Action_SetupMonitoring failed for {0}", configuredDatabase.DatabaseName.ToString()), ex);
-                    }
-                }
-            }
-        }
-
-        public bool Information_IsValidServerStateChange(ServerStateEnum newState)
-        {
-            return Information_ServerState.ValidTransition(newState);
-        }
-
-        public string Information_Instance_Status()
+        public string Information_InstanceStatus()
         {
             return DatabaseServerInstance.Status.ToString();
-        }
-
-        public List<string> Information_Instance_Endpoints()
-        {
-            List<string> returnList = new List<string>();
-            foreach (Endpoint endpoint in DatabaseServerInstance.Endpoints)
-            {
-                returnList.Add(endpoint.ToString());
-            }
-            return returnList;
         }
 
         public Dictionary<string, string> Information_Instance()
@@ -446,31 +366,6 @@ namespace SqlServerMirroring
             return true;
         }
 
-        public void Information_StartUpMirrorCheck(Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases, bool serverPrimary)
-        {
-            foreach (MirrorDatabase mirrorState in Information_MirrorDatabases)
-            {
-                if (mirrorState.IsMirroringEnabled)
-                {
-                    if (!configuredMirrorDatabases.ContainsKey(mirrorState.DatabaseName))
-                    {
-                        Logger.LogWarning(string.Format("Database {0} was set up for mirroring but is not in configuration", mirrorState.DatabaseName));
-                        Action_RemoveDatabaseFromMirroring(mirrorState, serverPrimary);
-                    }
-                }
-                else
-                {
-                    if (configuredMirrorDatabases.ContainsKey(mirrorState.DatabaseName))
-                    {
-                        Logger.LogWarning(string.Format("Database {0} is not set up for mirroring but is in configuration", mirrorState.DatabaseName));
-                        ConfiguredDatabaseForMirroring configuredDatabase;
-                        configuredMirrorDatabases.TryGetValue(mirrorState.DatabaseName, out configuredDatabase);
-                        Action_AddDatabaseToMirroring(configuredDatabase, serverPrimary);
-                    }
-                }
-            }
-        }
-
         #endregion
 
         #region Public Action Instance methods
@@ -498,80 +393,68 @@ namespace SqlServerMirroring
             }
         }
 
-        public void Action_SetupInstanceForMirroring()
+        public void Action_SetupMonitoring()
         {
-            Action_EnableAgentXps();
-            if (DatabaseServerInstance.ServiceStartMode == Microsoft.SqlServer.Management.Smo.ServiceStartMode.Manual ||
-                DatabaseServerInstance.ServiceStartMode == Microsoft.SqlServer.Management.Smo.ServiceStartMode.Disabled)
+            foreach (Database database in Information_UserDatabases)
             {
-                // TODO fix security issue (guess)
-                Logger.LogDebug("Bug: Cannot change to automatic start");
-                Action_ChangeDatabaseServiceToAutomaticStart();
-                Logger.LogInfo("Sql Server was set to Automatic start");
-            }
-            if (!DatabaseServerInstance.JobServer.SqlAgentAutoStart)
-            {
-                // TODO fix security issue (guess)
-                Logger.LogDebug("Bug: Cannot change to automatic start");
-                Action_ChangeSqlAgentServiceToAutomaticStart();
-                Logger.LogInfo("Sql Agent was set to Automatic start");
-            }
-            if (!Action_CheckSqlAgentRunning())
-            {
-                // TODO fix security issue (guess)
-                Logger.LogDebug("Bug: Cannot start service");
-                Action_StartSqlAgent();
-                Logger.LogInfo("Sql Agent service was started");
-            }
-        }
-
-        public void Action_ResetServerRole()
-        {
-            _activeServerRole = ServerRole.NotSet;
-        }
-
-        public void Action_RecheckServerRole()
-        {
-            int isPrincipal = 0;
-            int isMirror = 0;
-            foreach (MirrorDatabase mirrorState in Information_MirrorDatabases.Where(s => s.IsMirroringEnabled))
-            {
-                if (mirrorState.IsPrincipal)
+                ConfiguredDatabaseForMirroring configuredDatabase;
+                if (ConfiguredMirrorDatabases.TryGetValue(new DatabaseName(database.Name), out configuredDatabase))
                 {
-                    isPrincipal += 1;
+                    try
+                    {
+                        throw new NotImplementedException();
+                        database.ExecuteNonQuery("EXEC sys.sp_dbmmonitoraddmonitoring " + configuredDatabase.MirrorMonitoringUpdateMinutes);
+                        Logger.LogDebug(string.Format("Mirroring monitoring every {0} minutes started {1} with partner endpoint on {2} port {3}"
+                            , configuredDatabase.MirrorMonitoringUpdateMinutes, configuredDatabase.DatabaseName, configuredDatabase.RemoteServer, configuredDatabase.Endpoint_ListenerPort));
+
+
+                        //1 Oldest unsent transaction
+                        //Specifies the number of minutes worth of transactions that can accumulate in the send queue
+                        //before a warning is generated on the principal server instance.This warning helps measure the
+                        //potential for data loss in terms of time, and it is particularly relevant for high - performance mode.
+                        //However, the warning is also relevant for high - safety mode when mirroring is paused or suspended because the
+                        //partners become disconnected.
+
+                        //--Event ID 32042
+                        //EXEC sp_dbmmonitorchangealert DatabaseName, 1, 2, 1 ; --OLDEST UNSENT TRANSACTION (set to 2 minutes)
+
+
+                        //2 Unsent log
+                        //Specifies how many kilobytes(KB) of unsent log generate a warning on the principal server instance.This warning
+                        //helps measure the potential for data loss in terms of KB, and it is particularly relevant for high - performance mode.
+                        //However, the warning is also relevant for high - safety mode when mirroring is paused or suspended because the partners
+                        //become disconnected.
+
+                        //--Event ID 32043
+                        //EXEC sp_dbmmonitorchangealert DatabaseName, 2, 10000, 1; --UNSENT LOG SIZE ON P(set to 10000K)
+
+                        //3 Unrestored log
+                        //Specifies how many KB of unrestored log generate a warning on the mirror server instance.This warning helps measure
+                        //failover time.Failover time consists mainly of the time that the former mirror server requires to roll forward any log
+                        //remaining in its redo queue, plus a short additional time.
+
+                        //--Event ID 32044
+                        //EXEC sp_dbmmonitorchangealert DatabaseName, 3, 10000, 1; --UNRESTORED LOG ON M(set to 10000K)
+
+                        //4 Mirror commit overhead
+                        //Specifies the number of milliseconds of average delay per transaction that are tolerated before a warning is generated
+                        //on the principal server.This delay is the amount of overhead incurred while the principal server instance waits for the
+                        //mirror server instance to write the transaction's log record into the redo queue. This value is relevant only in high-safety mode.
+
+                        //-- Event ID 32045
+                        //EXEC sp_dbmmonitorchangealert DatabaseName, 4, 1000, 1; --MIRRORING COMMIT OVERHEAD (milisecond delay for txn on P_
+
+                        //5 Retention period
+                        //Metadata that controls how long rows in the database mirroring status table are preserved.
+
+                        //EXEC sp_dbmmonitorchangealert DatabaseName, 5, 48, 1 ;
+
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new SqlServerMirroringException(string.Format("Action_SetupMonitoring failed for {0}", configuredDatabase.DatabaseName.ToString()), ex);
+                    }
                 }
-                if (mirrorState.IsMirror)
-                {
-                    isMirror += 1;
-                }
-            }
-            if (isMirror == 0 && isPrincipal > 0)
-            {
-                /* Sure primary */
-                _activeServerRole = ServerRole.Primary;
-            }
-            else if (isPrincipal == 0 && isMirror > 0)
-            {
-                /* Sure secondary */
-                _activeServerRole = ServerRole.Secondary;
-            }
-            else if (isPrincipal > isMirror)
-            {
-                /* Mainly primary */
-                Logger.LogWarning("Server is mainly in primary role but has mirror databases. Make switchover to bring to correct state.");
-                _activeServerRole = ServerRole.MainlyPrimary;
-            }
-            else if (isMirror < isPrincipal)
-            {
-                /* Mainly secondary */
-                Logger.LogWarning("Server is mainly in secondary role but has principal databases. Make switchover to bring to correct state.");
-                _activeServerRole = ServerRole.MainlySecondary;
-            }
-            else
-            {
-                /* Neither */
-                Logger.LogWarning("Server has no principal or mirror database. Investigate what went wrong.");
-                _activeServerRole = ServerRole.Neither;
             }
         }
 
@@ -636,10 +519,12 @@ namespace SqlServerMirroring
                     Action_UpdateRemoteServerState_ConnectedRemoteServer();
                     if (Information_ServerState.State == ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE)
                     {
+                        Action_UpdateServerState(LocalMasterDatabase, true, true, false, Information_ServerRole, Information_ServerState, 0);
                         Action_MakeServerStateChange(ServerStateEnum.PRIMARY_RUNNING_STATE);
                     }
                     else if (Information_ServerState.State == ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE)
                     {
+                        Action_UpdateServerState(LocalMasterDatabase, true, true, false, Information_ServerRole, Information_ServerState, 0);
                         Action_MakeServerStateChange(ServerStateEnum.SECONDARY_RUNNING_STATE);
                     }
                 }
@@ -862,6 +747,123 @@ namespace SqlServerMirroring
         #endregion
 
         #region Private Instance Methods
+
+        private void Information_StartUpMirrorCheck(Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases, bool serverPrimary)
+        {
+            foreach (MirrorDatabase mirrorState in Information_MirrorDatabases)
+            {
+                if (mirrorState.IsMirroringEnabled)
+                {
+                    if (!configuredMirrorDatabases.ContainsKey(mirrorState.DatabaseName))
+                    {
+                        Logger.LogWarning(string.Format("Database {0} was set up for mirroring but is not in configuration", mirrorState.DatabaseName));
+                        Action_RemoveDatabaseFromMirroring(mirrorState, serverPrimary);
+                    }
+                }
+                else
+                {
+                    if (configuredMirrorDatabases.ContainsKey(mirrorState.DatabaseName))
+                    {
+                        Logger.LogWarning(string.Format("Database {0} is not set up for mirroring but is in configuration", mirrorState.DatabaseName));
+                        ConfiguredDatabaseForMirroring configuredDatabase;
+                        configuredMirrorDatabases.TryGetValue(mirrorState.DatabaseName, out configuredDatabase);
+                        Action_AddDatabaseToMirroring(configuredDatabase, serverPrimary);
+                    }
+                }
+            }
+        }
+
+        private List<string> Information_Instance_Endpoints()
+        {
+            List<string> returnList = new List<string>();
+            foreach (Endpoint endpoint in DatabaseServerInstance.Endpoints)
+            {
+                returnList.Add(endpoint.ToString());
+            }
+            return returnList;
+        }
+
+        private bool Information_IsValidServerStateChange(ServerStateEnum newState)
+        {
+            return Information_ServerState.ValidTransition(newState);
+        }
+
+        private void Action_SetupInstanceForMirroring()
+        {
+            Action_EnableAgentXps();
+            if (DatabaseServerInstance.ServiceStartMode == Microsoft.SqlServer.Management.Smo.ServiceStartMode.Manual ||
+                DatabaseServerInstance.ServiceStartMode == Microsoft.SqlServer.Management.Smo.ServiceStartMode.Disabled)
+            {
+                // TODO fix security issue (guess)
+                Logger.LogDebug("Bug: Cannot change to automatic start");
+                Action_ChangeDatabaseServiceToAutomaticStart();
+                Logger.LogInfo("Sql Server was set to Automatic start");
+            }
+            if (!DatabaseServerInstance.JobServer.SqlAgentAutoStart)
+            {
+                // TODO fix security issue (guess)
+                Logger.LogDebug("Bug: Cannot change to automatic start");
+                Action_ChangeSqlAgentServiceToAutomaticStart();
+                Logger.LogInfo("Sql Agent was set to Automatic start");
+            }
+            if (!Action_CheckSqlAgentRunning())
+            {
+                // TODO fix security issue (guess)
+                Logger.LogDebug("Bug: Cannot start service");
+                Action_StartSqlAgent();
+                Logger.LogInfo("Sql Agent service was started");
+            }
+        }
+
+        private void Action_ResetServerRole()
+        {
+            _activeServerRole = ServerRole.NotSet;
+        }
+
+        private void Action_RecheckServerRole()
+        {
+            int isPrincipal = 0;
+            int isMirror = 0;
+            foreach (MirrorDatabase mirrorState in Information_MirrorDatabases.Where(s => s.IsMirroringEnabled))
+            {
+                if (mirrorState.IsPrincipal)
+                {
+                    isPrincipal += 1;
+                }
+                if (mirrorState.IsMirror)
+                {
+                    isMirror += 1;
+                }
+            }
+            if (isMirror == 0 && isPrincipal > 0)
+            {
+                /* Sure primary */
+                _activeServerRole = ServerRole.Primary;
+            }
+            else if (isPrincipal == 0 && isMirror > 0)
+            {
+                /* Sure secondary */
+                _activeServerRole = ServerRole.Secondary;
+            }
+            else if (isPrincipal > isMirror)
+            {
+                /* Mainly primary */
+                Logger.LogWarning("Server is mainly in primary role but has mirror databases. Make switchover to bring to correct state.");
+                _activeServerRole = ServerRole.MainlyPrimary;
+            }
+            else if (isMirror < isPrincipal)
+            {
+                /* Mainly secondary */
+                Logger.LogWarning("Server is mainly in secondary role but has principal databases. Make switchover to bring to correct state.");
+                _activeServerRole = ServerRole.MainlySecondary;
+            }
+            else
+            {
+                /* Neither */
+                Logger.LogWarning("Server has no principal or mirror database. Investigate what went wrong.");
+                _activeServerRole = ServerRole.Neither;
+            }
+        }
 
         private void Action_SwitchOverAllDatabasesIfPossible(bool failoverPrincipal, bool failIfNotSwitchingOver)
         {
@@ -1586,11 +1588,12 @@ namespace SqlServerMirroring
                 return false;
             }
         }
+
         private bool Action_UpdateSecondaryRunningNoPrimaryCount_ShiftState()
         {
             Logger.LogDebug("Action_CheckLastDatabaseStateErrorAndCount_ShiftState started.");
             int checksToShutDown = ConfiguredMirrorDatabases.First().Value.ShutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
-            Action_UpdateServerState(Information_ServerState, 1);
+            Action_UpdateServerState(LocalMasterDatabase, true, true, false, Information_ServerRole, Information_ServerState, 1);
 
             int countOfChecks = Information_GetServerStateSecondaryRunningNoPrimaryStateCount();
             if (countOfChecks > checksToShutDown)
@@ -1609,7 +1612,7 @@ namespace SqlServerMirroring
         {
             Logger.LogDebug("Action_CheckLastDatabaseStateErrorAndCount_ShiftState started.");
             int checksToSwitch = ConfiguredMirrorDatabases.First().Value.SwitchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState;
-            Action_UpdateServerState(Information_ServerState, 1);
+            Action_UpdateServerState(LocalMasterDatabase, true, true, false, Information_ServerRole, Information_ServerState, 1);
 
             int countOfChecks = Information_GetServerStatePrimaryRunningNoSecondaryStateCount();
             if (countOfChecks > checksToSwitch)
@@ -1622,6 +1625,51 @@ namespace SqlServerMirroring
                 Logger.LogDebug(string.Format("Should not shift state because of Server State is allowed as count {0} is not above {1}.", countOfChecks, checksToSwitch));
                 return false;
             }
+        }
+
+        private int Information_GetServerStatePrimaryRunningNoSecondaryStateCount()
+        {
+            return Information_GetServerStateCount(ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE);
+        }
+
+        private int Information_GetServerStateSecondaryRunningNoPrimaryStateCount()
+        {
+            return Information_GetServerStateCount(ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE);
+        }
+
+        private int Information_GetServerStateCount(ServerStateEnum serverState)
+        {
+            try
+            {
+                Logger.LogDebug(string.Format("Information_GetServerStateCount for {0} started",serverState));
+                string sqlQuery = "SELECT TOP (1) StateCount FROM ServerState WHERE LastState = " + serverState + " AND UpdaterLocal = 1 AND AboutLocal = 1 ";
+
+                DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
+                foreach (DataTable table in dataSet.Tables)
+                {
+                    foreach (DataRow row in table.Rows)
+                    {
+                        foreach (DataColumn column in row.Table.Columns)
+                        {
+                            if (column.DataType == typeof(Int32))
+                            {
+                                int? returnValue = (int?)row[column];
+                                Logger.LogDebug(string.Format("Information_GetServerStateCount for {0} ended with value {1}", serverState, returnValue));
+                                if (returnValue.HasValue)
+                                {
+                                    return returnValue.Value;
+                                }
+                            }
+                        }
+                    }
+                }
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException("Information_GetServerStateCount failed", ex);
+            }
+
         }
 
         private int Information_GetDatabaseStateErrorCount()
@@ -1765,7 +1813,7 @@ namespace SqlServerMirroring
                 Column column6 = new Column(localServerStateTable, "LastWriteDate", DataType.DateTime2(7));
                 column6.Nullable = false;
                 localServerStateTable.Columns.Add(column6);
-                Column column7 = new Column(localServerStateTable, "Count", DataType.Int);
+                Column column7 = new Column(localServerStateTable, "StateCount", DataType.Int);
                 column7.Nullable = false;
                 localServerStateTable.Columns.Add(column7);
 
@@ -1786,7 +1834,7 @@ namespace SqlServerMirroring
             {
                 Logger.LogDebug("Action_InsertServerStateBaseState started.");
 
-                string sqlQuery = "INSERT INTO ServerState (UpdaterLocal, AboutLocal, Connected, LastRole, LastState, LastWriteDate, Count) ";
+                string sqlQuery = "INSERT INTO ServerState (UpdaterLocal, AboutLocal, Connected, LastRole, LastState, LastWriteDate, StateCount) ";
                 sqlQuery += "VALUES ";
                 sqlQuery += "(1,1,0,NotSet,INITIAL_STATE,SYSDATETIME(),0),";
                 sqlQuery += "(1,0,0,NotSet,INITIAL_STATE,SYSDATETIME(),0),";
@@ -1807,12 +1855,12 @@ namespace SqlServerMirroring
             {
                 Logger.LogDebug("Action_UpdateServerState started.");
 
-                string sqlQuery = "UPDATE ServerState (UpdaterLocal, AboutLocal, Connected, LastState, LastWriteDate, Count) ";
+                string sqlQuery = "UPDATE ServerState (UpdaterLocal, AboutLocal, Connected, LastState, LastWriteDate, StateCount) ";
                 sqlQuery += "SET Connected = " + (connected ? "1 " : "0 ");
                 sqlQuery += ", LastRole = " + activeServerRole.ToString() + " ";
                 sqlQuery += ", LastState = " + activeServerState.ToString() + " ";
                 sqlQuery += ", LastWriteDate = SYSDATETIME() ";
-                sqlQuery += ", Count = " + (increaseCount == 0 ? "0 " : "Count + " + increaseCount.ToString() + " ");
+                sqlQuery += ", StateCount = " + (increaseCount == 0 ? "0 " : "StateCount + " + increaseCount.ToString() + " ");
                 sqlQuery += "WHERE UpdaterLocal = " + (updaterLocal ? "1 " : "0 ");
                 sqlQuery += "AND AboutLocal = " + (aboutLocal ? "1 " : "0 ");
 
