@@ -49,8 +49,8 @@ namespace HelperFunctions
                 {
                     logger.LogDebug(string.Format("No share existing. Creating share {0}.", shareName));
                     ShareFolder(logger, directoryPath, shareName, shareDescription);
+                    SharePermissions(logger, shareName, domain, user, WindowsShare.AccessMaskTypes.FullControl);
                 }
-                SharePermissions(logger, shareName, domain, user, WindowsShare.AccessMaskTypes.FullControl);
                 TestReadWriteAccessToShare(logger, new UncPath(new RemoteServer(Environment.MachineName), shareName));
             }
             catch (Exception ex)
