@@ -7,7 +7,7 @@ using System.Text;
 
 namespace SqlServerMirroring
 {
-    public class ConfiguredDatabaseForMirroring
+    public class ConfigurationForDatabase
     {
         private DatabaseName _databaseName;
         private DirectoryPath _localBackupDirectory;
@@ -19,15 +19,8 @@ namespace SqlServerMirroring
         private SubDirectory _localTransferSubDircetory;
         private SubDirectory _remoteTransferSubDircetory;
         private SubDirectory _remoteDeliverySubDirectory;
-        private int _endpoint_SslPort;
-        private int _endpoint_ListenerPort;
-        private double _backupExpirationTime;
-        private int _shutDownAfterNumberOfChecksForDatabaseState;
-        private int _switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState;
-        private int _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
-        private int _mirrorMonitoringUpdateMinutes;
 
-        public ConfiguredDatabaseForMirroring(
+        public ConfigurationForDatabase(
             DatabaseName databaseName,
             DirectoryPath localDirectoryForBackup,
             DirectoryPath localDirectoryForShare,
@@ -37,14 +30,7 @@ namespace SqlServerMirroring
             ShareName remoteShareName,
             SubDirectory localTransferSubDircetory,
             SubDirectory remoteTransferSubDircetory,
-            SubDirectory remoteDeliverySubDirectory,
-            int endpoint_SslPort,
-            int endpoint_ListenerPort,
-            double backupExpirationTime,
-            int shutDownAfterNumberOfChecksForDatabaseState,
-            int switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState,
-            int shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState,
-            int mirrorMonitoringUpdateMinutes
+            SubDirectory remoteDeliverySubDirectory
             )
         {
             _databaseName = databaseName;
@@ -57,13 +43,6 @@ namespace SqlServerMirroring
             _localTransferSubDircetory = localTransferSubDircetory;
             _remoteTransferSubDircetory = remoteTransferSubDircetory;
             _remoteDeliverySubDirectory = remoteDeliverySubDirectory;
-            _endpoint_SslPort = endpoint_SslPort;
-            _endpoint_ListenerPort = endpoint_ListenerPort;
-            _backupExpirationTime = backupExpirationTime;
-            _shutDownAfterNumberOfChecksForDatabaseState = shutDownAfterNumberOfChecksForDatabaseState;
-            _switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState = switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState;
-            _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState = shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
-            MirrorMonitoringUpdateMinutes = mirrorMonitoringUpdateMinutes;
         }
 
         public DatabaseName DatabaseName
@@ -255,73 +234,6 @@ namespace SqlServerMirroring
             get
             {
                 return _remoteShareName;
-            }
-        }
-
-        public int Endpoint_SslPort
-        {
-            get
-            {
-                return _endpoint_SslPort;
-            }
-        }
-
-        public int Endpoint_ListenerPort
-        {
-            get
-            {
-                return _endpoint_ListenerPort;
-            }
-        }
-
-        public double BackupExpirationTime
-        {
-            get
-            {
-                return _backupExpirationTime;
-            }
-        }
-
-        public int ShutDownAfterNumberOfChecksForDatabaseState
-        {
-            get
-            {
-                return _shutDownAfterNumberOfChecksForDatabaseState;
-            }
-        }
-
-        public int MirrorMonitoringUpdateMinutes
-        {
-            get
-            {
-                return _mirrorMonitoringUpdateMinutes;
-            }
-            private set
-            {
-                if (value > 0 && value < 121)
-                {
-                    _mirrorMonitoringUpdateMinutes = value;
-                }
-                else
-                {
-                    throw new SqlServerMirroringException(string.Format("Could not set mirror monitoring update to {0} minutes as it is surposed to be between 1 and 120.", value));
-                }
-            }
-        }
-
-        public int ShutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState
-        {
-            get
-            {
-                return _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
-            }
-        }
-
-        public int SwitchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState
-        {
-            get
-            {
-                return _switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState;
             }
         }
     }

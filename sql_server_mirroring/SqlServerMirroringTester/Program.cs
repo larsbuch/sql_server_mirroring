@@ -13,6 +13,14 @@ namespace SqlServerMirroringTester
         static void Main(string[] args)
         {
             Configuration.Add(CONNECTION_STRING, "Server=localhost;Trusted_Connection=True;");
+            Configuration.Add(LOCALSERVER, ConsoleTest.GetNextInput("Local Server: ", Environment.MachineName));
+            Configuration.Add(REMOTESERVER, ConsoleTest.GetNextInput("Remote Server: "));
+            Configuration.Add(DIRECORYFORLOCALBACKUP, ConsoleTest.GetNextInput("Directory for local backup: ", "C:\\Test\\LocalBackup"));
+            Configuration.Add(DIRECORYFORLOCALSHARE, ConsoleTest.GetNextInput("Directory for local share: ", "C:\\Test\\Share"));
+            Configuration.Add(DIRECORYFORLOCALRESTORE, ConsoleTest.GetNextInput("Directory for local restore: ", "C:\\Test\\LocalRestore"));
+            Configuration.Add(LISTENER_PORT, ConsoleTest.GetNextInput("Listener Port: ", "7022"));
+            Configuration.Add(DATABASESFORMIRRORING, ConsoleTest.GetNextInput("Databases for mirroring (comma separates)"));
+
 
             ConsoleTest.AddTest("Information", "Try to connect to server with SMO", () => Test_Information_InstanceStatus());
             ConsoleTest.AddTest("Information", "Get instance information", () => Test_Information_Instance());
@@ -175,6 +183,18 @@ namespace SqlServerMirroringTester
         #region Helper functions and constructs
 
         private const string CONNECTION_STRING = "CONNECTION_STRING";
+
+
+
+
+        private const string LOCALSERVER = "LOCALSERVER";
+        private const string REMOTESERVER = "REMOTESERVER";
+        private const string DIRECORYFORLOCALBACKUP = "DIRECORYFORLOCALBACKUP";
+        private const string DIRECORYFORLOCALSHARE = "DIRECORYFORLOCALSHARE";
+        private const string DIRECORYFORLOCALRESTORE = "DIRECORYFORLOCALRESTORE";
+        private const string LISTENER_PORT = "LISTENER_PORT";
+        private const string DATABASESFORMIRRORING = "DATABASESFORMIRRORING";
+
         private static SqlServerInstance _sqlServerInstance;
         private static Dictionary<string, string> _configuration;
 
@@ -190,71 +210,76 @@ namespace SqlServerMirroringTester
             }
         }
 
+        private static string GetConfiguration(string key)
+        {
+            string returnString;
+            if (Configuration.TryGetValue(key, out returnString))
+            {
+                return returnString;
+            }
+            else
+            {
+                throw new SqlServerMirroringTesterException(string.Format("Configuration value {0} is missing in Configuration.", CONNECTION_STRING));
+            }
+
+        }
+
         private static SqlServerInstance SqlServer
         {
             get
             {
-                if(_sqlServerInstance == null)
+                if (_sqlServerInstance == null)
                 {
-                    string connectionString;
-                    if(Configuration.TryGetValue(CONNECTION_STRING, out connectionString))
-                    {
-                        _sqlServerInstance = new SqlServerInstance(Logger, connectionString);
-                        _sqlServerInstance.ConfiguredMirrorDatabases = BuildConfigurationData();
-                    }
-                    else
-                    {
-                        throw new SqlServerMirroringTesterException(string.Format("Configuration value {0} is missing in Configuration.", CONNECTION_STRING));
-                    }
+                    _sqlServerInstance = new SqlServerInstance(Logger, GetConfiguration(CONNECTION_STRING));
+                    _sqlServerInstance.ConfigurationForDatabases = BuildDatabaseConfiguration();
+                    _sqlServerInstance.ConfigurationForInstance = BuildInstanceConfiguration();
                 }
                 return _sqlServerInstance;
             }
         }
 
-        private static Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> BuildConfigurationData()
+        private static ConfigurationForInstance BuildInstanceConfiguration()
         {
-            //Build data
-            Dictionary<DatabaseName, ConfiguredDatabaseForMirroring> configuredMirrorDatabases = new Dictionary<DatabaseName, ConfiguredDatabaseForMirroring>();
-            ConfiguredDatabaseForMirroring configured1 = new ConfiguredDatabaseForMirroring(
-                new DatabaseName("TestMirror1"),
-                new DirectoryPath("E:\\Test\\LocalBackup"),
-                new DirectoryPath("E:\\Test\\Share"),
-                new DirectoryPath("E:\\Test\\LocalRestore"),
-                new ShareName("LocalShare"),
-                new RemoteServer("RemoteServer"),
-                new ShareName("RemoteShare"),
-                new SubDirectory("LocalTransfer"),
-                new SubDirectory("RemoteTransfer"),
-                new SubDirectory("RemoteDelivery"),
-                5022,
-                7022,
+            return new ConfigurationForInstance(
+                new RemoteServer(GetConfiguration(REMOTESERVER)),
+                int.Parse(GetConfiguration(LISTENER_PORT)),
                 7,
                 60,
-                1,
                 60,
-                60
+                60,
+                1
                 );
-            configuredMirrorDatabases.Add(configured1.DatabaseName, configured1);
-            ConfiguredDatabaseForMirroring configured2 = new ConfiguredDatabaseForMirroring(
-                new DatabaseName("TestMirror2"),
-                new DirectoryPath("E:\\Test\\LocalBackup"),
-                new DirectoryPath("E:\\Test\\Share"),
-                new DirectoryPath("E:\\Test\\LocalRestore"),
-                new ShareName("LocalShare"),
-                new RemoteServer("RemoteServer"),
-                new ShareName("RemoteShare"),
-                new SubDirectory("LocalTransfer"),
-                new SubDirectory("RemoteTransfer"),
-                new SubDirectory("RemoteDelivery"),
-                5023,
-                7023,
-                7,
-                60,
-                1,
-                60,
-                60
-                );
-            configuredMirrorDatabases.Add(configured2.DatabaseName, configured2);
+
+        }
+
+        private static Dictionary<string, ConfigurationForDatabase> BuildDatabaseConfiguration()
+        {
+            string localServer = GetConfiguration(LOCALSERVER);
+            string remoteServer = GetConfiguration(REMOTESERVER);
+            string directoryForLocalBackup = GetConfiguration(DIRECORYFORLOCALBACKUP);
+            string directoryForLocalShare = GetConfiguration(DIRECORYFORLOCALSHARE);
+            string directoryForLocalRestore = GetConfiguration(DIRECORYFORLOCALRESTORE);
+            string databasesForMirroring = GetConfiguration(DATABASESFORMIRRORING);
+            Dictionary<string, ConfigurationForDatabase> configuredMirrorDatabases = new Dictionary<string, ConfigurationForDatabase>();
+
+            string[] databases = databasesForMirroring.Split(',');
+
+            foreach(string database in databases)
+            {
+                ConfigurationForDatabase configured = new ConfigurationForDatabase(
+                    new DatabaseName(database.Trim()),
+                    new DirectoryPath(directoryForLocalBackup),
+                    new DirectoryPath(directoryForLocalShare),
+                    new DirectoryPath(directoryForLocalRestore),
+                    new ShareName(localServer.Replace("-","_") + "Share"),
+                    new RemoteServer(remoteServer),
+                    new ShareName(remoteServer.Replace("-", "_") + "Share"),
+                    new SubDirectory("LocalTransfer"),
+                    new SubDirectory("RemoteTransfer"),
+                    new SubDirectory("RemoteDelivery")
+                    );
+                configuredMirrorDatabases.Add(configured.DatabaseName.ToString(), configured);
+            }
             return configuredMirrorDatabases;
         }
 
@@ -313,29 +338,42 @@ namespace SqlServerMirroringTester
 
         public class ConsoleLogger : ILogger
         {
+            private const string LOGNAME = "Log.log";
+            public ConsoleLogger()
+            {
+                File.Delete(LOGNAME);
+            }
+
             public void LogDebug(string message)
             {
                 Console.WriteLine("LogDebug: " + message);
+                File.AppendAllText(LOGNAME, "LogDebug: " + message + "\n");
             }
 
             public void LogInfo(string message)
             {
                 Console.WriteLine("LogInfo: " + message);
+                File.AppendAllText(LOGNAME, "LogInfo: " + message + "\n");
             }
 
             public void LogWarning(string message)
             {
                 Console.WriteLine("LogWarning: " + message);
+                File.AppendAllText(LOGNAME, "LogWarning: " + message + "\n");
             }
             public void LogError(string message)
             {
                 Console.WriteLine("LogError: " + message);
+                File.AppendAllText(LOGNAME, "LogError: " + message + "\n");
             }
             public void LogError(string message, Exception exception)
             {
                 Console.WriteLine("LogError: " + message);
+                File.AppendAllText(LOGNAME, "LogError: " + message + "\n");
                 Console.WriteLine("Exception Message: " + exception.Message);
+                File.AppendAllText(LOGNAME, "Exception Message: " + exception.Message + "\n");
                 Console.WriteLine("Exception StackTrace: " + exception.StackTrace);
+                File.AppendAllText(LOGNAME, "Exception StackTrace: " + exception.StackTrace + "\n");
             }
         }
         #endregion

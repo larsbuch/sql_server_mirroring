@@ -16,14 +16,6 @@ namespace HelperFunctions
             _databaseName = databaseName;
         }
 
-        public string Endpoint_Name
-        {
-            get
-            {
-                return "Mirroring_Endpoint_" + _databaseName;
-            }
-        }
-
         private void ValidateDatabaseName(string databaseName)
         {
             Regex regex = new Regex(@"^[\w_][\w_\d]{0,127}$");

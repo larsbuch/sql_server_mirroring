@@ -51,7 +51,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ConfiguredDatabaseForMirroring.cs" />
+    <Compile Include="ConfigurationForDatabase.cs" />
+    <Compile Include="ConfigurationForInstance.cs" />
     <Compile Include="ServerRole.cs" />
     <Compile Include="ServerState.cs" />
     <Compile Include="SqlServerInstance.cs" />
