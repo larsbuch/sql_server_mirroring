@@ -45,31 +45,47 @@ namespace MirrorLib
         }
 
 
-///*Create endpoints on both servers*/
+        ///*Create endpoints on both servers*/
 
-//CREATE ENDPOINT EndPointName
-//STATE = STARTED AS TCP(LISTENER_PORT = PortNumber, LISTENER_IP = ALL)
-//FOR DATA_MIRRORING(ROLE = PARTNER, AUTHENTICATION = WINDOWS NEGOTIATE, ENCRYPTION = REQUIRED ALGORITHM RC4)
+        //CREATE ENDPOINT EndPointName
+        //STATE = STARTED AS TCP(LISTENER_PORT = PortNumber, LISTENER_IP = ALL)
+        //FOR DATA_MIRRORING(ROLE = PARTNER, AUTHENTICATION = WINDOWS NEGOTIATE, ENCRYPTION = REQUIRED ALGORITHM RC4)
 
-///*Set partner and setup job on mirror server*/
+        ///*Set partner and setup job on mirror server*/
 
-//ALTER DATABASE DatabaseName SET PARTNER = N'TCP://PrincipalServer:PortNumber'
-//EXEC sys.sp_dbmmonitoraddmonitoring -- default is 1 minute
+        //ALTER DATABASE DatabaseName SET PARTNER = N'TCP://PrincipalServer:PortNumber'
+        //EXEC sys.sp_dbmmonitoraddmonitoring -- default is 1 minute
 
-///*Set partner, set asynchronous mode, and setup job on principal server*/
+        ///*Set partner, set asynchronous mode, and setup job on principal server*/
 
-//ALTER DATABASE DatabaseName SET PARTNER = N'TCP://MirrorServer:PortNumber'
-//ALTER DATABASE DatabaseName SET SAFETY OFF
-//EXEC sys.sp_dbmmonitoraddmonitoring -- default is 1 minute
+        //ALTER DATABASE DatabaseName SET PARTNER = N'TCP://MirrorServer:PortNumber'
+        //ALTER DATABASE DatabaseName SET SAFETY OFF
+        //EXEC sys.sp_dbmmonitoraddmonitoring -- default is 1 minute
 
-///*FAILOVER */
+        ///*FAILOVER */
 
-//ALTER DATABASE<database_name> SET PARTNER FAILOVER
-//ALTER DATABASE <database_name> SET PARTNER FORCE_SERVICE_ALLOW_DATA_LOSS
+        //ALTER DATABASE<database_name> SET PARTNER FAILOVER
+        //ALTER DATABASE <database_name> SET PARTNER FORCE_SERVICE_ALLOW_DATA_LOSS
 
 
 
         #region Public Properties
+
+        public bool Information_HasAccessToRemoteServer()
+        {
+            try
+            {
+                RemoteDatabaseServerInstance.ConnectionContext.ConnectTimeout = 1;
+                RemoteDatabaseServerInstance.ConnectionContext.Connect();
+                Logger.LogDebug("Access to remote server.");
+                return true;
+            }
+            catch (Exception)
+            {
+                Logger.LogInfo("No access to remote server.");
+                return false;
+            }
+        }
 
         public ServerState Information_ServerState
         {
@@ -203,7 +219,7 @@ namespace MirrorLib
             {
                 if(_remoteServer == null)
                 {
-                    string remoteServerName = ConfigurationForDatabases.First().Value.RemoteServer.ToString();
+                    string remoteServerName = ConfigurationForInstance.RemoteServer.ToString();
                     string remoteConnectionString = string.Format("Server={0};Trusted_Connection=True;", remoteServerName);
                     /* Do not validate connection as server might not be installed */
                     _remoteServer = new Server(new ServerConnection(new SqlConnection(remoteConnectionString)));
@@ -1833,22 +1849,6 @@ namespace MirrorLib
             Logger.LogDebug("Action_UpdateLocalServerState_ConnectedRemoteServer started.");
             Action_UpdateServerState(LocalMasterDatabase, true, false, true, Information_ServerRole, Information_ServerState, 0);
             Logger.LogDebug("Action_UpdateLocalServerState_ConnectedRemoteServer ended.");
-        }
-
-        private bool Information_HasAccessToRemoteServer()
-        {
-            try
-            {
-                RemoteDatabaseServerInstance.ConnectionContext.ConnectTimeout = 1;
-                RemoteDatabaseServerInstance.ConnectionContext.Connect();
-                Logger.LogDebug("Access to remote server.");
-                return true;
-            }
-            catch (Exception)
-            {
-                Logger.LogInfo("No access to remote server.");
-                return false;
-            }
         }
 
         private void Action_CreateMasterServerStateTable()

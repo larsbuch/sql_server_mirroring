@@ -28,6 +28,7 @@ namespace MirrorLibTester
             ConsoleTest.AddTest("Information", "Check Windows Authentification", () => Test_Information_WindowsAuthentificationActive());
             ConsoleTest.AddTest("Information", "Check Sql Server Authentification", () => Test_Information_SqlServerAuthentificationActive());
             ConsoleTest.AddTest("Information", "Check for instance readyness for mirroring", () => Test_Information_CheckInstanceForMirroring());
+            ConsoleTest.AddTest("Information", "Check for connection to remote server", () => Test_Information_HasAccessToRemoteServer());
             ConsoleTest.AddTest("Action", "Run Start Primary", () => Test_Action_StartPrimary());
             ConsoleTest.AddTest("Action", "Run Start Secondary", () => Test_Action_StartSecondary());
             ConsoleTest.AddTest("Action", "Setup Monitoring", () => Test_Action_SetupMonitoring());
@@ -91,6 +92,13 @@ namespace MirrorLibTester
         private static void Test_Information_CheckInstanceForMirroring()
         {
             Console.WriteLine(string.Format("Instance Ready for mirroring: {0}", SqlServer.Information_CheckInstanceForMirroring() ? "Yes" : "No"));
+
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
+
+        private static void Test_Information_HasAccessToRemoteServer()
+        {
+            Console.WriteLine(string.Format("Instance Ready for mirroring: {0}", SqlServer.Information_HasAccessToRemoteServer() ? "Yes" : "No"));
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
