@@ -1722,7 +1722,7 @@ namespace SqlServerMirroring
             try
             {
                 Logger.LogDebug("Information_GetDatabaseMirringRole started");
-                string sqlQuery = "SELECT TOP (1) mirroring_role_desc FROM sys.database_mirroring WHERE database_id = DB_ID(" + databaseName + ")";
+                string sqlQuery = "SELECT TOP (1) mirroring_role_desc FROM sys.database_mirroring WHERE database_id = DB_ID('" + databaseName + "')";
 
                 DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
                 foreach (DataTable table in dataSet.Tables)
@@ -1733,15 +1733,14 @@ namespace SqlServerMirroring
                         {
                             if (column.DataType == typeof(string))
                             {
-                                string returnValue = (string)row[column];
-                                Logger.LogDebug(string.Format("Information_GetDatabaseMirringRole ended with value {0}", returnValue));
-                                if (returnValue == null)
+                                Logger.LogDebug(string.Format("Information_GetDatabaseMirringRole ended with value {0}", (row[column] is DBNull)?"DBNull":row[column].ToString()));
+                                if (row[column] is DBNull)
                                 {
-                                    return string.Empty;
+                                    return "NotSet";
                                 }
                                 else
                                 {
-                                    return returnValue;
+                                    return (string)row[column];
                                 }
                             }
                         }
