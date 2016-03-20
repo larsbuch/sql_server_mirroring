@@ -568,7 +568,7 @@ namespace SqlServerMirroring
             {
                 try
                 {
-                    Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+                    Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).First();
 
                     database.ChangeMirroringState(MirroringOption.Resume);
                     database.Alter(TerminationClause.RollbackTransactionsImmediately);
@@ -587,7 +587,7 @@ namespace SqlServerMirroring
             {
                 try
                 {
-                    Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+                    Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).First();
 
                     database.ChangeMirroringState(MirroringOption.Suspend);
                     database.Alter(TerminationClause.RollbackTransactionsImmediately);
@@ -618,7 +618,7 @@ namespace SqlServerMirroring
             {
                 try
                 {
-                    Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+                    Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).First();
 
                     database.ChangeMirroringState(MirroringOption.ForceFailoverAndAllowDataLoss);
                     database.Alter(TerminationClause.RollbackTransactionsImmediately);
@@ -661,7 +661,7 @@ namespace SqlServerMirroring
             {
                 try
                 {
-                    Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+                    Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).First();
                     database.ChangeMirroringState(MirroringOption.Failover);
                     database.Alter(TerminationClause.RollbackTransactionsImmediately);
                 }
@@ -883,7 +883,18 @@ namespace SqlServerMirroring
             {
                 try
                 {
-                    Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+                    Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
+                    if(database == null)
+                    {
+                        if(failIfNotSwitchingOver)
+                        {
+                            throw new SqlServerMirroringException(string.Format("Did not switch database {0} as it is unknown.", configuredDatabase.DatabaseName));
+                        }
+                        else
+                        {
+                            continue;
+                        }
+                    }
                     string databaseRole = Information_GetDatabaseMirringRole(new DatabaseName(database.Name));
                     if (databaseRole.Equals(failoverRole))
                     {
@@ -1539,7 +1550,7 @@ namespace SqlServerMirroring
 
                 string sqlQuery = "INSERT INTO DatabaseStateError (LastRole, LastWriteDate, ErrorCount) ";
                 sqlQuery += "VALUES ";
-                sqlQuery += "(NotSet,SYSDATETIME(),0)";
+                sqlQuery += "('NotSet',SYSDATETIME(),0)";
 
                 LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
                 Logger.LogDebug("Action_InsertDatabaseStateErrorBaseState ended.");
@@ -1822,6 +1833,10 @@ namespace SqlServerMirroring
                 Logger.LogDebug("Action_CreateMasterServerStateTable ended.");
                 Action_InsertServerStateBaseState();
             }
+            catch (SqlServerMirroringException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 throw new SqlServerMirroringException("Action_CreateMasterServerStateTable failed", ex);
@@ -1836,9 +1851,9 @@ namespace SqlServerMirroring
 
                 string sqlQuery = "INSERT INTO ServerState (UpdaterLocal, AboutLocal, Connected, LastRole, LastState, LastWriteDate, StateCount) ";
                 sqlQuery += "VALUES ";
-                sqlQuery += "(1,1,0,NotSet,INITIAL_STATE,SYSDATETIME(),0),";
-                sqlQuery += "(1,0,0,NotSet,INITIAL_STATE,SYSDATETIME(),0),";
-                sqlQuery += "(0,1,0,NotSet,INITIAL_STATE,SYSDATETIME(),0)";
+                sqlQuery += "(1,1,0,'NotSet','INITIAL_STATE',SYSDATETIME(),0),";
+                sqlQuery += "(1,0,0,'NotSet','INITIAL_STATE',SYSDATETIME(),0),";
+                sqlQuery += "(0,1,0,'NotSet','INITIAL_STATE',SYSDATETIME(),0)";
 
                 LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
                 Logger.LogDebug("Action_InsertServerStateBaseState ended.");
@@ -1889,7 +1904,7 @@ namespace SqlServerMirroring
 
         private void Action_AddDatabaseToMirroring(ConfiguredDatabaseForMirroring configuredDatabase, bool serverPrimary)
         {
-            Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName)).First();
+            Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).First();
             if (database.RecoveryModel != RecoveryModel.Full)
             {
                 try
