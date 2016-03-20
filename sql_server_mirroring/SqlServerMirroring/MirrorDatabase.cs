@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.SqlServer.Management.Smo;
 using HelperFunctions;
 
-namespace SqlServerMirroring
+namespace MirrorLib
 {
     public class MirrorDatabase
     {

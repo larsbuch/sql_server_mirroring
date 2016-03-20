@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 
-namespace SqlServerMirroring
+namespace MirrorLib
 {
     [Serializable]
     internal class SqlServerMirroringException : Exception

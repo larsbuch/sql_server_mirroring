@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace SqlServerMirroring
+namespace MirrorLib
 {
     public class ConfigurationForInstance
     {

@@ -1,11 +1,11 @@
 ﻿using ConsoleTester;
 using HelperFunctions;
-using SqlServerMirroring;
+using MirrorLib;
 using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace SqlServerMirroringTester
+namespace MirrorLibTester
 {
     class Program
     {
@@ -19,7 +19,7 @@ namespace SqlServerMirroringTester
             Configuration.Add(DIRECORYFORLOCALSHARE, ConsoleTest.GetNextInput("Directory for local share: ", "C:\\Test\\Share"));
             Configuration.Add(DIRECORYFORLOCALRESTORE, ConsoleTest.GetNextInput("Directory for local restore: ", "C:\\Test\\LocalRestore"));
             Configuration.Add(LISTENER_PORT, ConsoleTest.GetNextInput("Listener Port: ", "7022"));
-            Configuration.Add(DATABASESFORMIRRORING, ConsoleTest.GetNextInput("Databases for mirroring (comma separates)"));
+            Configuration.Add(DATABASESFORMIRRORING, ConsoleTest.GetNextInput("Databases for mirroring (comma separates): "));
 
 
             ConsoleTest.AddTest("Information", "Try to connect to server with SMO", () => Test_Information_InstanceStatus());

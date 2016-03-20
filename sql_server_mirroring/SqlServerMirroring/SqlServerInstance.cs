@@ -14,7 +14,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Data;
 
-namespace SqlServerMirroring
+namespace MirrorLib
 {
     public class SqlServerInstance
     {

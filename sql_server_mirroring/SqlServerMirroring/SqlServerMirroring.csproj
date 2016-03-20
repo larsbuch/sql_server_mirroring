@@ -7,8 +7,8 @@
     <ProjectGuid>{7D048B24-B28F-4ECF-996A-BB5F1EF33E90}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SqlServerMirroring</RootNamespace>
-    <AssemblyName>SqlServerMirroring</AssemblyName>
+    <RootNamespace>MirrorLib</RootNamespace>
+    <AssemblyName>MirrorLib</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
