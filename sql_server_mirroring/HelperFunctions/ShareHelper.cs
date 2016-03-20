@@ -61,6 +61,7 @@ namespace HelperFunctions
         
         private static void ShareFolder(ILogger logger, DirectoryPath directoryPath, ShareName shareName, string shareDescription)
         {
+            logger.LogDebug(string.Format("Starts trying to share {0} as {1}", directoryPath, shareName));
             WindowsShare.MethodStatus methodStatus = WindowsShare.Create(directoryPath.PathString, shareName.ToString(), WindowsShare.ShareType.DiskDrive, null, shareDescription, null);
             if (methodStatus != WindowsShare.MethodStatus.Success)
             {
@@ -71,6 +72,7 @@ namespace HelperFunctions
 
         private static void SharePermissions(ILogger logger, ShareName shareName, string domain, string user, WindowsShare.AccessMaskTypes accessMask)
         {
+            logger.LogDebug(string.Format("Trying to set permissions to share {0} for user {1}\\{2}", shareName, domain, user));
             WindowsShare windowsShare = WindowsShare.GetShareByName(shareName.ToString());
             if (windowsShare == null)
             {
