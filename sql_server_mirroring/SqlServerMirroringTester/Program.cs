@@ -13,14 +13,15 @@ namespace MirrorLibTester
         static void Main(string[] args)
         {
             Configuration.Add(CONNECTION_STRING, "Server=localhost;Trusted_Connection=True;");
-            Configuration.Add(LOCALSERVER, ConsoleTest.GetNextInput("Local Server: ", Environment.MachineName));
+            string localServer = ConsoleTest.GetNextInput("Local Server: ", Environment.MachineName);
+            Configuration.Add(LOCALSERVER, localServer);
             Configuration.Add(REMOTESERVER, ConsoleTest.GetNextInput("Remote Server: "));
             Configuration.Add(DIRECORYFORLOCALBACKUP, ConsoleTest.GetNextInput("Directory for local backup: ", "C:\\Test\\LocalBackup"));
             Configuration.Add(DIRECORYFORLOCALSHARE, ConsoleTest.GetNextInput("Directory for local share: ", "C:\\Test\\Share"));
             Configuration.Add(DIRECORYFORLOCALRESTORE, ConsoleTest.GetNextInput("Directory for local restore: ", "C:\\Test\\LocalRestore"));
+            Configuration.Add(LOCALSHARENAME, ConsoleTest.GetNextInput("Local share name: ", localServer.Replace("-", "_") + "Share"));
             Configuration.Add(LISTENER_PORT, ConsoleTest.GetNextInput("Listener Port: ", "7022"));
             Configuration.Add(DATABASESFORMIRRORING, ConsoleTest.GetNextInput("Databases for mirroring (comma separates): "));
-
 
             ConsoleTest.AddTest("Information", "Try to connect to server with SMO", () => Test_Information_InstanceStatus());
             ConsoleTest.AddTest("Information", "Get instance information", () => Test_Information_Instance());
@@ -191,15 +192,12 @@ namespace MirrorLibTester
         #region Helper functions and constructs
 
         private const string CONNECTION_STRING = "CONNECTION_STRING";
-
-
-
-
         private const string LOCALSERVER = "LOCALSERVER";
         private const string REMOTESERVER = "REMOTESERVER";
         private const string DIRECORYFORLOCALBACKUP = "DIRECORYFORLOCALBACKUP";
         private const string DIRECORYFORLOCALSHARE = "DIRECORYFORLOCALSHARE";
         private const string DIRECORYFORLOCALRESTORE = "DIRECORYFORLOCALRESTORE";
+        private const string LOCALSHARENAME = "LOCALSHARENAME";
         private const string LISTENER_PORT = "LISTENER_PORT";
         private const string DATABASESFORMIRRORING = "DATABASESFORMIRRORING";
 
@@ -250,6 +248,10 @@ namespace MirrorLibTester
         {
             return new ConfigurationForInstance(
                 new RemoteServer(GetConfiguration(REMOTESERVER)),
+                new DirectoryPath(GetConfiguration(DIRECORYFORLOCALBACKUP)),
+                new DirectoryPath(GetConfiguration(DIRECORYFORLOCALSHARE)),
+                new DirectoryPath(GetConfiguration(DIRECORYFORLOCALRESTORE)),
+                new ShareName(GetConfiguration(LOCALSHARENAME)),
                 int.Parse(GetConfiguration(LISTENER_PORT)),
                 7,
                 60,
@@ -267,6 +269,7 @@ namespace MirrorLibTester
             string directoryForLocalBackup = GetConfiguration(DIRECORYFORLOCALBACKUP);
             string directoryForLocalShare = GetConfiguration(DIRECORYFORLOCALSHARE);
             string directoryForLocalRestore = GetConfiguration(DIRECORYFORLOCALRESTORE);
+            string localShareName = GetConfiguration(LOCALSHARENAME);
             string databasesForMirroring = GetConfiguration(DATABASESFORMIRRORING);
             Dictionary<string, ConfigurationForDatabase> configuredMirrorDatabases = new Dictionary<string, ConfigurationForDatabase>();
 
@@ -355,33 +358,33 @@ namespace MirrorLibTester
             public void LogDebug(string message)
             {
                 Console.WriteLine("LogDebug: " + message);
-                File.AppendAllText(LOGNAME, "LogDebug: " + message + "\n");
+                File.AppendAllText(LOGNAME, "LogDebug: " + message + System.Environment.NewLine);
             }
 
             public void LogInfo(string message)
             {
                 Console.WriteLine("LogInfo: " + message);
-                File.AppendAllText(LOGNAME, "LogInfo: " + message + "\n");
+                File.AppendAllText(LOGNAME, "LogInfo: " + message + System.Environment.NewLine);
             }
 
             public void LogWarning(string message)
             {
                 Console.WriteLine("LogWarning: " + message);
-                File.AppendAllText(LOGNAME, "LogWarning: " + message + "\n");
+                File.AppendAllText(LOGNAME, "LogWarning: " + message + System.Environment.NewLine);
             }
             public void LogError(string message)
             {
                 Console.WriteLine("LogError: " + message);
-                File.AppendAllText(LOGNAME, "LogError: " + message + "\n");
+                File.AppendAllText(LOGNAME, "LogError: " + message + System.Environment.NewLine);
             }
             public void LogError(string message, Exception exception)
             {
                 Console.WriteLine("LogError: " + message);
-                File.AppendAllText(LOGNAME, "LogError: " + message + "\n");
+                File.AppendAllText(LOGNAME, "LogError: " + message + System.Environment.NewLine);
                 Console.WriteLine("Exception Message: " + exception.Message);
-                File.AppendAllText(LOGNAME, "Exception Message: " + exception.Message + "\n");
+                File.AppendAllText(LOGNAME, "Exception Message: " + exception.Message + System.Environment.NewLine);
                 Console.WriteLine("Exception StackTrace: " + exception.StackTrace);
-                File.AppendAllText(LOGNAME, "Exception StackTrace: " + exception.StackTrace + "\n");
+                File.AppendAllText(LOGNAME, "Exception StackTrace: " + exception.StackTrace + System.Environment.NewLine);
             }
         }
         #endregion

@@ -197,7 +197,7 @@ namespace MirrorLib
             }
         }
 
-        public DirectoryPath LocalRestoreDircetory
+        public DirectoryPath LocalRestoreDirectory
         {
             get
             {
@@ -205,7 +205,7 @@ namespace MirrorLib
             }
         }
 
-        public DirectoryPath LocalRestoreDircetoryWithSubDirectory
+        public DirectoryPath LocalRestoreDirectoryWithSubDirectory
         {
             get
             {

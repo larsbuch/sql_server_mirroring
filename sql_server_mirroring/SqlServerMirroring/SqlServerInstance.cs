@@ -44,31 +44,6 @@ namespace MirrorLib
             Action_BuildServerStates();
         }
 
-
-        ///*Create endpoints on both servers*/
-
-        //CREATE ENDPOINT EndPointName
-        //STATE = STARTED AS TCP(LISTENER_PORT = PortNumber, LISTENER_IP = ALL)
-        //FOR DATA_MIRRORING(ROLE = PARTNER, AUTHENTICATION = WINDOWS NEGOTIATE, ENCRYPTION = REQUIRED ALGORITHM RC4)
-
-        ///*Set partner and setup job on mirror server*/
-
-        //ALTER DATABASE DatabaseName SET PARTNER = N'TCP://PrincipalServer:PortNumber'
-        //EXEC sys.sp_dbmmonitoraddmonitoring -- default is 1 minute
-
-        ///*Set partner, set asynchronous mode, and setup job on principal server*/
-
-        //ALTER DATABASE DatabaseName SET PARTNER = N'TCP://MirrorServer:PortNumber'
-        //ALTER DATABASE DatabaseName SET SAFETY OFF
-        //EXEC sys.sp_dbmmonitoraddmonitoring -- default is 1 minute
-
-        ///*FAILOVER */
-
-        //ALTER DATABASE<database_name> SET PARTNER FAILOVER
-        //ALTER DATABASE <database_name> SET PARTNER FORCE_SERVICE_ALLOW_DATA_LOSS
-
-
-
         #region Public Properties
 
         public bool Information_HasAccessToRemoteServer()
@@ -390,6 +365,21 @@ namespace MirrorLib
             if (!Action_CheckSqlAgentRunning())
             {
                 Logger.LogWarning("Sql Server Agent service is not running");
+                return false;
+            }
+            if (!Action_TestReadWriteAccessToDirectory(ConfigurationForInstance.LocalBackupDirectory))
+            {
+                Logger.LogWarning(string.Format("Not full access to LocalBackupDirectory: {0}", ConfigurationForInstance.LocalBackupDirectory));
+                return false;
+            }
+            if (!Action_TestReadWriteAccessToDirectory(ConfigurationForInstance.LocalRestoreDirectory))
+            {
+                Logger.LogWarning(string.Format("Not full access to LocalRestoreDirectory: {0}", ConfigurationForInstance.LocalRestoreDirectory));
+                return false;
+            }
+            if (!Action_TestReadWriteAccessToDirectory(ConfigurationForInstance.LocalShareDirectory))
+            {
+                Logger.LogWarning(string.Format("Not full access to LocalShareDirectory: {0}", ConfigurationForInstance.LocalShareDirectory));
                 return false;
             }
             return true;
@@ -799,6 +789,19 @@ namespace MirrorLib
         #endregion
 
         #region Private Instance Methods
+
+        private bool Action_TestReadWriteAccessToDirectory(DirectoryPath directoryPath)
+        {
+            try
+            {
+                DirectoryHelper.TestReadWriteAccessToDirectory(Logger, directoryPath);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
 
         private void Action_StartUpMirrorCheck(Dictionary<string, ConfigurationForDatabase> configuredMirrorDatabases, bool serverPrimary)
         {
@@ -1568,7 +1571,27 @@ namespace MirrorLib
             {
                 Action_CreateMasterDatabaseStateErrorTable();
             }
+            Action_CreateDirectoryAndShare();
             Logger.LogDebug("Action_StartInitialServerState ended.");
+        }
+
+        private void Action_CreateDirectoryAndShare()
+        {
+            Logger.LogDebug(string.Format("Action_CreateDirectoryAndShare started"));
+            try
+            {
+                Logger.LogDebug(string.Format("Creating LocalBackupDirectory: {0}", ConfigurationForInstance.LocalBackupDirectory));
+                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, ConfigurationForInstance.LocalBackupDirectory);
+                Logger.LogDebug(string.Format("Creating LocalRestoreDirectory: {0}", ConfigurationForInstance.LocalRestoreDirectory));
+                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, ConfigurationForInstance.LocalRestoreDirectory);
+                Logger.LogDebug(string.Format("Creating LocalShareDirectory {0} and LocalShare {1}", ConfigurationForInstance.LocalRestoreDirectory, ConfigurationForInstance.LocalShareName));
+                ShareHelper.CreateLocalShareDirectoryIfNotExistingAndGiveAuthenticatedUsersAccess(Logger, ConfigurationForInstance.LocalShareDirectory, ConfigurationForInstance.LocalShareName);
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException("Action_CreateDirectoryAndShare failed", ex);
+            }
+            Logger.LogDebug(string.Format("Action_CreateDirectoryAndShare ended"));
         }
 
         private bool Information_CheckLocalMasterDatabaseStateErrorTable()
@@ -2251,7 +2274,7 @@ namespace MirrorLib
                 if (Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles(configuredDatabase))
                 {
 
-                    DirectoryPath localRestoreDircetoryWithSubDirectory = configuredDatabase.LocalRestoreDircetoryWithSubDirectory;
+                    DirectoryPath localRestoreDircetoryWithSubDirectory = configuredDatabase.LocalRestoreDirectoryWithSubDirectory;
 
                     fileName = Information_GetNewesteFilename(configuredDatabase.DatabaseName.ToString(), localRestoreDircetoryWithSubDirectory.ToString());
 
@@ -2351,7 +2374,7 @@ namespace MirrorLib
             DirectoryPath localRemoteDeliveryDirectory = configuredDatabase.LocalRemoteDeliveryDirectoryWithSubDirectory;
             DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localRemoteDeliveryDirectory);
             string localRemoteDeliveryDirectoryNewestFileName = string.Empty;
-            DirectoryPath localRestoreDirectory = configuredDatabase.LocalRestoreDircetoryWithSubDirectory;
+            DirectoryPath localRestoreDirectory = configuredDatabase.LocalRestoreDirectoryWithSubDirectory;
             DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localRestoreDirectory);
             string localRestoreDirectoryNewestFileName = string.Empty;
             if (Information_HasAccessToRemoteServer())

@@ -9,6 +9,10 @@ namespace MirrorLib
     public class ConfigurationForInstance
     {
         private RemoteServer _remoteServer;
+        private DirectoryPath _localBackupDirectory;
+        private DirectoryPath _localShareDirectory;
+        private DirectoryPath _localRestoreDircetory;
+        private ShareName _localShareName;
         private int _endpoint_ListenerPort;
         private double _backupExpiresAfterDays;
         private int _shutDownAfterNumberOfChecksForDatabaseState;
@@ -18,6 +22,10 @@ namespace MirrorLib
 
         public ConfigurationForInstance(
             RemoteServer remoteServer,
+            DirectoryPath localDirectoryForBackup,
+            DirectoryPath localDirectoryForShare,
+            DirectoryPath localDircetoryForRestore,
+            ShareName localShareName,
             int endpoint_ListenerPort,
             double backupExpiresAfterDays,
             int shutDownAfterNumberOfChecksForDatabaseState,
@@ -27,6 +35,10 @@ namespace MirrorLib
             )
         {
             _remoteServer = remoteServer;
+            _localBackupDirectory = localDirectoryForBackup;
+            _localShareDirectory = localDirectoryForShare;
+            _localRestoreDircetory = localDircetoryForRestore;
+            _localShareName = localShareName;
             _endpoint_ListenerPort = endpoint_ListenerPort;
             _backupExpiresAfterDays = backupExpiresAfterDays;
             _shutDownAfterNumberOfChecksForDatabaseState = shutDownAfterNumberOfChecksForDatabaseState;
@@ -41,6 +53,39 @@ namespace MirrorLib
                 return _remoteServer;
             }
         }
+
+        public ShareName LocalShareName
+        {
+            get
+            {
+                return _localShareName;
+            }
+        }
+
+        public DirectoryPath LocalBackupDirectory
+        {
+            get
+            {
+                return _localBackupDirectory.Clone();
+            }
+        }
+
+        public DirectoryPath LocalShareDirectory
+        {
+            get
+            {
+                return _localShareDirectory.Clone();
+            }
+        }
+
+        public DirectoryPath LocalRestoreDirectory
+        {
+            get
+            {
+                return _localRestoreDircetory.Clone();
+            }
+        }
+
         public int Endpoint_ListenerPort
         {
             get
