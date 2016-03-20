@@ -956,38 +956,37 @@ namespace MirrorLib
                 try
                 {
                     Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
-                    if(database == null)
-                    {
-                        if(failIfNotSwitchingOver)
-                        {
-                            throw new SqlServerMirroringException(string.Format("Did not switch database {0} as it is unknown.", configuredDatabase.DatabaseName));
-                        }
-                        else
-                        {
-                            continue;
-                        }
-                    }
-                    string databaseRole = Information_GetDatabaseMirringRole(new DatabaseName(database.Name));
-                    if (databaseRole.Equals(failoverRole))
-                    {
-                        Logger.LogDebug(string.Format("Trying to switch {0} as it in {1}.", database.Name, databaseRole));
-                        database.ChangeMirroringState(MirroringOption.Failover);
-                        database.Alter(TerminationClause.RollbackTransactionsImmediately);
-                        Logger.LogDebug(string.Format("Database {0} switched from {1} to {2}.", database.Name, databaseRole, failoverRole));
-                    }
-                    else if (databaseRole.Equals(ignoreRole))
-                    {
-                        Logger.LogDebug(string.Format("Did not switch {0} as it is already in {1}.", database.Name, databaseRole));
-                    }
-                    else
+                    if (database == null)
                     {
                         if (failIfNotSwitchingOver)
                         {
-                            throw new SqlServerMirroringException(string.Format("Did not switch {0} as role {1} is unknown.", database.Name, databaseRole));
+                            throw new SqlServerMirroringException(string.Format("Did not switch database {0} as it is unknown.", configuredDatabase.DatabaseName));
+                        }
+                    }
+                    else
+                    {
+                        string databaseRole = Information_GetDatabaseMirringRole(new DatabaseName(database.Name));
+                        if (databaseRole.Equals(failoverRole))
+                        {
+                            Logger.LogDebug(string.Format("Trying to switch {0} as it in {1}.", database.Name, databaseRole));
+                            database.ChangeMirroringState(MirroringOption.Failover);
+                            database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                            Logger.LogDebug(string.Format("Database {0} switched from {1} to {2}.", database.Name, databaseRole, failoverRole));
+                        }
+                        else if (databaseRole.Equals(ignoreRole))
+                        {
+                            Logger.LogDebug(string.Format("Did not switch {0} as it is already in {1}.", database.Name, databaseRole));
                         }
                         else
                         {
-                            Logger.LogWarning(string.Format("Did not switch {0} as role {1} is unknown.", database.Name, databaseRole));
+                            if (failIfNotSwitchingOver)
+                            {
+                                throw new SqlServerMirroringException(string.Format("Did not switch {0} as role {1} is unknown.", database.Name, databaseRole));
+                            }
+                            else
+                            {
+                                Logger.LogWarning(string.Format("Did not switch {0} as role {1} is unknown.", database.Name, databaseRole));
+                            }
                         }
                     }
                 }
