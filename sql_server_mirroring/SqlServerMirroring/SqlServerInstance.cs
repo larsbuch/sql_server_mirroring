@@ -1007,7 +1007,10 @@ namespace MirrorLib
                 }
                 catch (Exception ex)
                 {
-                    throw new SqlServerMirroringException(string.Format("Failover failed for {0}", configuredDatabase.DatabaseName), ex);
+                    if (failIfNotSwitchingOver)
+                    {
+                        throw new SqlServerMirroringException(string.Format("Failover failed for {0}", configuredDatabase.DatabaseName), ex);
+                    }
                 }
             }
             Action_RecheckServerRole();
