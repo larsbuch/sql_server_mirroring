@@ -2377,14 +2377,16 @@ namespace MirrorLib
             var list = directory.GetFiles("*.bak");
             if (list.Count() > 0)
             {
-                result = list.Where(s => s.Name.StartsWith(databaseName)).OrderByDescending(f => f.Name).First();
+                result = list.Where(s => s.Name.StartsWith(databaseName)).OrderByDescending(f => f.Name).FirstOrDefault();
             }
             if (result != null)
             {
+                Logger.LogDebug(string.Format("Found {0} in {1} searching for {2}(...).bak", result.Name, fullPathString, databaseName));
                 return result.Name;
             }
             else
             {
+                Logger.LogDebug(string.Format("Found nothing in {0} searching for {1}(...).bak", fullPathString, databaseName));
                 return string.Empty;
             }
         }
@@ -2630,6 +2632,7 @@ namespace MirrorLib
         {
             if(string.IsNullOrWhiteSpace(fileName))
             {
+                Logger.LogDebug("fileName empty");
                 return 0;
             }
             Regex regex = new Regex(@"^(?:[\w_][\w_\d]*_)(\d*)(?:\.bak)$");
@@ -2640,6 +2643,7 @@ namespace MirrorLib
                 long returnValue;
                 if(long.TryParse(capture, out returnValue))
                 {
+                    Logger.LogDebug(string.Format("Found filename {0} datepart {1}", fileName, returnValue));
                     return returnValue;
                 }
             }
