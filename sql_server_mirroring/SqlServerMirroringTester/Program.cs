@@ -257,7 +257,8 @@ namespace MirrorLibTester
                 60,
                 60,
                 60,
-                1
+                1,
+                10
                 );
 
         }

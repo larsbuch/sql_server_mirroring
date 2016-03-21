@@ -19,6 +19,7 @@ namespace MirrorLib
         private int _switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState;
         private int _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
         private int _mirrorMonitoringUpdateMinutes;
+        private int _remoteServerAccessTimeoutSeconds;
 
         public ConfigurationForInstance(
             RemoteServer remoteServer,
@@ -31,7 +32,8 @@ namespace MirrorLib
             int shutDownAfterNumberOfChecksForDatabaseState,
             int switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState,
             int shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState,
-            int mirrorMonitoringUpdateMinutes
+            int mirrorMonitoringUpdateMinutes,
+            int remoteServerAccessTimeoutSeconds
             )
         {
             _remoteServer = remoteServer;
@@ -45,6 +47,7 @@ namespace MirrorLib
             _switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState = switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState;
             _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState = shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
             MirrorMonitoringUpdateMinutes = mirrorMonitoringUpdateMinutes;
+            _remoteServerAccessTimeoutSeconds = remoteServerAccessTimeoutSeconds;
         }
         public RemoteServer RemoteServer
         {
@@ -150,6 +153,14 @@ namespace MirrorLib
             get
             {
                 return "Mirroring_Endpoint";
+            }
+        }
+
+        public int RemoteServerAccessTimeoutSeconds
+        {
+            get
+            {
+                return _remoteServerAccessTimeoutSeconds;
             }
         }
     }

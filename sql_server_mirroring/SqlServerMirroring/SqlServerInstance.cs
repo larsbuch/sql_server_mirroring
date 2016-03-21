@@ -50,7 +50,7 @@ namespace MirrorLib
         {
             try
             {
-                RemoteDatabaseServerInstance.ConnectionContext.ConnectTimeout = 1;
+                RemoteDatabaseServerInstance.ConnectionContext.ConnectTimeout = ConfigurationForInstance.RemoteServerAccessTimeoutSeconds;
                 RemoteDatabaseServerInstance.ConnectionContext.Connect();
                 Logger.LogDebug("Access to remote server.");
                 return true;
