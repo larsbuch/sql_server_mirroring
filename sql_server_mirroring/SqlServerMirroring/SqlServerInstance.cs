@@ -2393,7 +2393,15 @@ namespace MirrorLib
 
         private void Action_DeleteAllFilesExcept(string fileName, string fullPathString)
         {
-            List<string> files = Directory.EnumerateFiles(fullPathString).Where(s => !s.EndsWith(fileName)).ToList();
+            List<string> files;
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                files = Directory.EnumerateFiles(fullPathString).ToList();
+            }
+            else
+            {
+                files = Directory.EnumerateFiles(fullPathString).Where(s => !s.EndsWith(fileName)).ToList();
+            }
             files.ForEach(x => { try { System.IO.File.Delete(x); Logger.LogDebug(string.Format("Action_DeleteAllFilesExcept deleted file {0}.", x)); } catch { } });
             Logger.LogDebug(string.Format("Action_DeleteAllFilesExcept for {0} except {1}.", fullPathString, fileName));
         }
