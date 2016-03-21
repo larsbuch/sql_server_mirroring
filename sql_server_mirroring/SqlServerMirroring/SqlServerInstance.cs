@@ -50,10 +50,16 @@ namespace MirrorLib
         {
             try
             {
-                RemoteDatabaseServerInstance.ConnectionContext.ConnectTimeout = ConfigurationForInstance.RemoteServerAccessTimeoutSeconds;
-                RemoteDatabaseServerInstance.ConnectionContext.Connect();
-                Logger.LogDebug("Access to remote server.");
-                return true;
+                if (Information_RemoteServer_InstanceStatus().Equals("Online"))
+                {
+                    Logger.LogDebug("Access to remote server.");
+                    return true;
+                }
+                else
+                {
+                    Logger.LogInfo("No access to remote server.");
+                    return false;
+                }
             }
             catch (Exception)
             {
@@ -195,9 +201,13 @@ namespace MirrorLib
                 if(_remoteServer == null)
                 {
                     string remoteServerName = ConfigurationForInstance.RemoteServer.ToString();
-                    string remoteConnectionString = string.Format("Server={0};Trusted_Connection=True;", remoteServerName);
+                    Logger.LogDebug(string.Format("Trying to connect to remote server {0}", remoteServerName));
                     /* Do not validate connection as server might not be installed */
-                    _remoteServer = new Server(new ServerConnection(new SqlConnection(remoteConnectionString)));
+                    SqlConnectionStringBuilder connectionBuilder = new SqlConnectionStringBuilder();
+                    connectionBuilder.ConnectTimeout = ConfigurationForInstance.RemoteServerAccessTimeoutSeconds;
+                    connectionBuilder.DataSource = remoteServerName;
+                    connectionBuilder.IntegratedSecurity = true;
+                    _remoteServer = new Server(new ServerConnection(new SqlConnection(connectionBuilder.ToString())));
                 }
                 return _remoteServer;
             }
@@ -269,6 +279,11 @@ namespace MirrorLib
         public string Information_InstanceStatus()
         {
             return DatabaseServerInstance.Status.ToString();
+        }
+
+        public string Information_RemoteServer_InstanceStatus()
+        {
+            return RemoteDatabaseServerInstance.Status.ToString();
         }
 
         public Dictionary<string, string> Information_Instance()

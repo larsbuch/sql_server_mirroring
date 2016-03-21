@@ -21,15 +21,19 @@ namespace MirrorLibTester
             Configuration.Add(DIRECORYFORLOCALRESTORE, ConsoleTest.GetNextInput("Directory for local restore: ", "C:\\Test\\LocalRestore"));
             Configuration.Add(LOCALSHARENAME, ConsoleTest.GetNextInput("Local share name: ", localServer.Replace("-", "_") + "Share"));
             Configuration.Add(LISTENER_PORT, ConsoleTest.GetNextInput("Listener Port: ", "7022"));
+            Configuration.Add(REMOTESERVERCOMMUNICATIONTIMEOUT, ConsoleTest.GetNextInput("Remote Communication Timeout: ", 10.ToString()));
             Configuration.Add(DATABASESFORMIRRORING, ConsoleTest.GetNextInput("Databases for mirroring (comma separates): "));
 
-            ConsoleTest.AddTest("Information", "Try to connect to server with SMO", () => Test_Information_InstanceStatus());
+            ConsoleTest.AddTest("Information", "Get local instance status", () => Test_Information_InstanceStatus());
             ConsoleTest.AddTest("Information", "Get instance information", () => Test_Information_Instance());
             ConsoleTest.AddTest("Information", "Get sql agent information", () => Test_Information_SqlAgent());
             ConsoleTest.AddTest("Information", "Check Windows Authentification", () => Test_Information_WindowsAuthentificationActive());
             ConsoleTest.AddTest("Information", "Check Sql Server Authentification", () => Test_Information_SqlServerAuthentificationActive());
             ConsoleTest.AddTest("Information", "Check for instance readyness for mirroring", () => Test_Information_CheckInstanceForMirroring());
-            ConsoleTest.AddTest("Information", "Check for connection to remote server", () => Test_Information_HasAccessToRemoteServer());
+
+            ConsoleTest.AddTest("RemoteServer", "Check for connection to remote server", () => Test_Information_HasAccessToRemoteServer());
+            ConsoleTest.AddTest("RemoteServer", "Get remote instance status", () => Test_Information_RemoteServer_InstanceStatus());
+            
             ConsoleTest.AddTest("Action", "Run Start Primary", () => Test_Action_StartPrimary());
             ConsoleTest.AddTest("Action", "Run Start Secondary", () => Test_Action_StartSecondary());
             ConsoleTest.AddTest("Action", "Setup Monitoring", () => Test_Action_SetupMonitoring());
@@ -100,6 +104,13 @@ namespace MirrorLibTester
         private static void Test_Information_HasAccessToRemoteServer()
         {
             Console.WriteLine(string.Format("Instance Ready for mirroring: {0}", SqlServer.Information_HasAccessToRemoteServer() ? "Yes" : "No"));
+
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
+
+        private static void Test_Information_RemoteServer_InstanceStatus()
+        {
+            Console.WriteLine(string.Format("Remote Instance Status: {0}", SqlServer.Information_RemoteServer_InstanceStatus()));
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
@@ -200,6 +211,7 @@ namespace MirrorLibTester
         private const string LOCALSHARENAME = "LOCALSHARENAME";
         private const string LISTENER_PORT = "LISTENER_PORT";
         private const string DATABASESFORMIRRORING = "DATABASESFORMIRRORING";
+        private const string REMOTESERVERCOMMUNICATIONTIMEOUT = "REMOTESERVERCOMMUNICATIONTIMEOUT";
 
         private static SqlServerInstance _sqlServerInstance;
         private static Dictionary<string, string> _configuration;
@@ -258,7 +270,7 @@ namespace MirrorLibTester
                 60,
                 60,
                 1,
-                10
+                int.Parse(GetConfiguration(REMOTESERVERCOMMUNICATIONTIMEOUT))
                 );
 
         }
