@@ -2001,6 +2001,17 @@ namespace MirrorLib
 
         private void Action_AddDatabaseToMirroring(ConfigurationForDatabase configuredDatabase, bool serverPrimary)
         {
+            if (!serverPrimary)
+            {
+                if (Action_RestoreDatabase(configuredDatabase))
+                {
+                    Logger.LogInfo("Restored backup");
+                }
+                else
+                {
+                    Logger.LogInfo("Moved database from remote share and restored Backup");
+                }
+            }
             Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).First();
             if (database.RecoveryModel != RecoveryModel.Full)
             {
@@ -2030,17 +2041,6 @@ namespace MirrorLib
                 else
                 {
                     Logger.LogInfo("Backup created and moved to local share due to missing access to remote share");
-                }
-            }
-            else
-            {
-                if (Action_RestoreDatabase(configuredDatabase))
-                {
-                    Logger.LogInfo("Restored backup");
-                }
-                else
-                {
-                    Logger.LogInfo("Moved database from remote share and restored Backup");
                 }
             }
 
