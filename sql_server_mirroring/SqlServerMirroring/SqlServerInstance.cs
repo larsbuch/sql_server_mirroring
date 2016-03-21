@@ -848,7 +848,7 @@ namespace MirrorLib
             {
                 Logger.LogDebug(string.Format("Checking database {0}", configurationDatabase.DatabaseName));
                 MirrorDatabase mirrorDatabase = Information_MirrorDatabases.Where(s => s.DatabaseName.ToString().Equals(configurationDatabase.DatabaseName.ToString())).FirstOrDefault();
-                if(mirrorDatabase == null || mirrorDatabase.IsMirroringEnabled)
+                if(mirrorDatabase == null || !mirrorDatabase.IsMirroringEnabled)
                 {
                     Logger.LogWarning(string.Format("Database {0} is not set up for mirroring but is in configuration", configurationDatabase.DatabaseName));
                     Action_AddDatabaseToMirroring(configurationDatabase, serverPrimary);
@@ -2404,157 +2404,160 @@ namespace MirrorLib
         {
             Logger.LogDebug(string.Format("Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles started for {0}", configuredDatabase.DatabaseName));
 
-            string databaseNameString = configuredDatabase.DatabaseName.ToString();
-            UncPath remoteLocalTransferDirectory = configuredDatabase.RemoteLocalTransferDirectoryWithSubDirectory;
-            string remoteLocalTransferDirectoryNewestFileName = string.Empty;
-            DirectoryPath localRemoteTransferDirectory = configuredDatabase.LocalRemoteTransferDirectoryWithSubDirectory;
-            DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localRemoteTransferDirectory);
-            string localRemoteTransferDirectoryNewestFileName = string.Empty;
-            DirectoryPath localRemoteDeliveryDirectory = configuredDatabase.LocalRemoteDeliveryDirectoryWithSubDirectory;
-            DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localRemoteDeliveryDirectory);
-            string localRemoteDeliveryDirectoryNewestFileName = string.Empty;
-            DirectoryPath localRestoreDirectory = configuredDatabase.LocalRestoreDirectoryWithSubDirectory;
-            DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localRestoreDirectory);
-            string localRestoreDirectoryNewestFileName = string.Empty;
-            if (Information_HasAccessToRemoteServer())
+            try
             {
-                try
+                string databaseNameString = configuredDatabase.DatabaseName.ToString();
+                UncPath remoteLocalTransferDirectory = configuredDatabase.RemoteLocalTransferDirectoryWithSubDirectory;
+                string remoteLocalTransferDirectoryNewestFileName = string.Empty;
+                DirectoryPath localRemoteTransferDirectory = configuredDatabase.LocalRemoteTransferDirectoryWithSubDirectory;
+                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localRemoteTransferDirectory);
+                string localRemoteTransferDirectoryNewestFileName = string.Empty;
+                DirectoryPath localRemoteDeliveryDirectory = configuredDatabase.LocalRemoteDeliveryDirectoryWithSubDirectory;
+                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localRemoteDeliveryDirectory);
+                string localRemoteDeliveryDirectoryNewestFileName = string.Empty;
+                DirectoryPath localRestoreDirectory = configuredDatabase.LocalRestoreDirectoryWithSubDirectory;
+                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localRestoreDirectory);
+                string localRestoreDirectoryNewestFileName = string.Empty;
+                if (Information_HasAccessToRemoteServer())
                 {
-                    Logger.LogDebug(string.Format("Remote server LocalTransfer {0} started for {1}", remoteLocalTransferDirectory.ToString(), databaseNameString));
-                    remoteLocalTransferDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, remoteLocalTransferDirectory.ToString());
+                    try
+                    {
+                        remoteLocalTransferDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, remoteLocalTransferDirectory.ToString());
+                    }
+                    catch (Exception)
+                    {
+                        Logger.LogWarning(string.Format("Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles: Could not access remote directory {0} but have access to server.", remoteLocalTransferDirectory.ToString()));
+                    }
                 }
-                catch (Exception ex)
+                localRemoteTransferDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRemoteTransferDirectory.ToString());
+                localRemoteDeliveryDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRemoteDeliveryDirectory.ToString());
+                localRestoreDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRestoreDirectory.ToString());
+                long remoteLocalTransferDirectoryNewestValue = Information_GetFileTimePart(remoteLocalTransferDirectoryNewestFileName);
+                long localRemoteTransferDirectoryNewestValue = Information_GetFileTimePart(localRemoteTransferDirectoryNewestFileName);
+                long localRemoteDeliveryDirectoryNewestValue = Information_GetFileTimePart(localRemoteDeliveryDirectoryNewestFileName);
+                long localRestoreDirectoryNewestValue = Information_GetFileTimePart(localRestoreDirectoryNewestFileName);
+
+                /* Add all to array and select max */
+                long[] values = new long[] { remoteLocalTransferDirectoryNewestValue, localRemoteTransferDirectoryNewestValue, localRemoteDeliveryDirectoryNewestValue, localRestoreDirectoryNewestValue };
+                long maxValue = values.Max();
+
+                if (maxValue == 0)
                 {
-                    throw new SqlServerMirroringException(string.Format("Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles: Could not access remote directory {0}.", remoteLocalTransferDirectory.ToString()), ex);
+                    /* No files found so none moved */
+                    Logger.LogDebug("Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles no files found so nothing was moved.");
+                    return false;
+                }
+                else
+                {
+                    /* Match for nearest to home first */
+                    bool found = false;
+                    #region Local Restore
+
+                    if (localRestoreDirectoryNewestValue == maxValue)
+                    {
+                        found = true;
+                        Logger.LogInfo(string.Format("Backup file {0} found in {1}.", localRestoreDirectoryNewestFileName, localRestoreDirectory.ToString()));
+                        /* delete all files */
+                        Action_DeleteAllFilesExcept(localRestoreDirectoryNewestFileName, localRestoreDirectory.ToString());
+                        Logger.LogDebug(string.Format("Deleted all files except {0} in {1}.", localRestoreDirectoryNewestFileName, localRestoreDirectory.ToString()));
+                        /* No move action needed */
+                    }
+                    else if (localRestoreDirectoryNewestValue == 0)
+                    {
+                        Logger.LogDebug(string.Format("No files found in {0}.", localRestoreDirectory.ToString()));
+                    }
+                    else
+                    {
+                        /* delete all files */
+                        Action_DeleteAllFilesExcept(string.Empty, localRestoreDirectory.ToString());
+                        Logger.LogDebug(string.Format("Deleted all files in {0}.", localRestoreDirectory.ToString()));
+                    }
+
+                    #endregion
+
+                    #region Local Remote Delivery
+
+                    if (!found && localRemoteDeliveryDirectoryNewestValue == maxValue)
+                    {
+                        found = true;
+                        Logger.LogInfo(string.Format("Backup file {0} found in {1}.", localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory.ToString()));
+                        /* delete all files */
+                        Action_DeleteAllFilesExcept(localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory.ToString());
+                        Logger.LogDebug(string.Format("Deleted all files except {0} in {1}.", localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory.ToString()));
+                        /* Move actions needed */
+                        Action_MoveFileLocal(localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory, localRestoreDirectory);
+                    }
+                    else if (localRemoteDeliveryDirectoryNewestValue == 0)
+                    {
+                        Logger.LogDebug(string.Format("No files found in {0}.", localRemoteDeliveryDirectory.ToString()));
+                    }
+                    else
+                    {
+                        /* delete all files */
+                        Action_DeleteAllFilesExcept(string.Empty, localRemoteDeliveryDirectory.ToString());
+                        Logger.LogDebug(string.Format("Deleted all files in {0}.", localRemoteDeliveryDirectory.ToString()));
+                    }
+
+                    #endregion
+
+                    #region Local Remote Transfer
+
+                    if (!found && localRemoteTransferDirectoryNewestValue == maxValue)
+                    {
+                        found = true;
+                        Logger.LogInfo(string.Format("Backup file {0} found in {1}.", localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory.ToString()));
+                        /* delete all files */
+                        Action_DeleteAllFilesExcept(localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory.ToString());
+                        Logger.LogDebug(string.Format("Deleted all files except {0} in {1}.", localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory.ToString()));
+                        /* Move actions needed */
+                        Action_MoveFileLocal(localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory, localRemoteDeliveryDirectory);
+                        Action_MoveFileLocal(localRemoteTransferDirectoryNewestFileName, localRemoteDeliveryDirectory, localRestoreDirectory);
+                    }
+                    else if (localRemoteDeliveryDirectoryNewestValue == 0)
+                    {
+                        Logger.LogDebug(string.Format("No files found in {0}.", localRemoteTransferDirectory.ToString()));
+                    }
+                    else
+                    {
+                        /* delete all files */
+                        Action_DeleteAllFilesExcept(string.Empty, localRemoteTransferDirectory.ToString());
+                        Logger.LogDebug(string.Format("Deleted all files in {0}.", localRemoteTransferDirectory.ToString()));
+                    }
+
+                    #endregion
+
+                    #region Remote Local Transfer
+
+                    if (!found && remoteLocalTransferDirectoryNewestValue == maxValue)
+                    {
+                        found = true;
+                        Logger.LogInfo(string.Format("Backup file {0} found in {1}.", remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory.ToString()));
+                        /* delete all files */
+                        Action_DeleteAllFilesExcept(remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory.ToString());
+                        Logger.LogDebug(string.Format("Deleted all files except {0} in {1}.", remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory.ToString()));
+                        /* Move actions needed */
+                        Action_MoveFileRemoteToLocal(remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory, localRemoteTransferDirectory);
+                        Action_MoveFileLocal(remoteLocalTransferDirectoryNewestFileName, localRemoteTransferDirectory, localRemoteDeliveryDirectory);
+                        Action_MoveFileLocal(remoteLocalTransferDirectoryNewestFileName, localRemoteDeliveryDirectory, localRestoreDirectory);
+                    }
+                    else if (localRemoteDeliveryDirectoryNewestValue == 0)
+                    {
+                        Logger.LogDebug(string.Format("No files found in {0}.", remoteLocalTransferDirectory.ToString()));
+                    }
+                    else
+                    {
+                        /* delete all files */
+                        Action_DeleteAllFilesExcept(string.Empty, remoteLocalTransferDirectory.ToString());
+                        Logger.LogDebug(string.Format("Deleted all files in {0}.", localRemoteTransferDirectory.ToString()));
+                    }
+                    #endregion
+
+                    return true;
                 }
             }
-            Logger.LogDebug(string.Format("Local server RemoteTransfer {0} started for {1}", localRemoteTransferDirectory.ToString(), databaseNameString));
-            localRemoteTransferDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRemoteTransferDirectory.ToString());
-            Logger.LogDebug(string.Format("Local server RemoteDelivery {0} started for {1}", localRemoteDeliveryDirectory.ToString(), databaseNameString));
-            localRemoteDeliveryDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRemoteDeliveryDirectory.ToString());
-            Logger.LogDebug(string.Format("Local server LocalRestore {0} started for {1}", localRestoreDirectory.ToString(), databaseNameString));
-            localRestoreDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRestoreDirectory.ToString());
-            long remoteLocalTransferDirectoryNewestValue = Information_GetFileTimePart(remoteLocalTransferDirectoryNewestFileName);
-            long localRemoteTransferDirectoryNewestValue = Information_GetFileTimePart(localRemoteTransferDirectoryNewestFileName);
-            long localRemoteDeliveryDirectoryNewestValue = Information_GetFileTimePart(localRemoteDeliveryDirectoryNewestFileName);
-            long localRestoreDirectoryNewestValue = Information_GetFileTimePart(localRestoreDirectoryNewestFileName);
-
-            /* Add all to array and select max */
-            long[] values = new long[] { remoteLocalTransferDirectoryNewestValue, localRemoteTransferDirectoryNewestValue, localRemoteDeliveryDirectoryNewestValue, localRestoreDirectoryNewestValue };
-            long maxValue = values.Max();
-
-            if (maxValue == 0)
+            catch(Exception ex)
             {
-                /* No files found so none moved */
-                Logger.LogDebug("Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles no files found so nothing was moved.");
-                return false;
-            }
-            else
-            {
-                /* Match for nearest to home first */
-                bool found = false;
-                #region Local Restore
-
-                if(localRestoreDirectoryNewestValue == maxValue)
-                {
-                    found = true;
-                    Logger.LogInfo(string.Format("Backup file {0} found in {1}.", localRestoreDirectoryNewestFileName, localRestoreDirectory.ToString()));
-                    /* delete all files */
-                    Action_DeleteAllFilesExcept(localRestoreDirectoryNewestFileName, localRestoreDirectory.ToString());
-                    Logger.LogDebug(string.Format("Deleted all files except {0} in {1}.", localRestoreDirectoryNewestFileName, localRestoreDirectory.ToString()));
-                    /* No move action needed */
-                }
-                else if (localRestoreDirectoryNewestValue == 0)
-                {
-                    Logger.LogDebug(string.Format("No files found in {0}.", localRestoreDirectory.ToString()));
-                }
-                else
-                {
-                    /* delete all files */
-                    Action_DeleteAllFilesExcept(string.Empty, localRestoreDirectory.ToString());
-                    Logger.LogDebug(string.Format("Deleted all files in {0}.", localRestoreDirectory.ToString()));
-                }
-
-                #endregion
-
-                #region Local Remote Delivery
-
-                if (!found && localRemoteDeliveryDirectoryNewestValue == maxValue)
-                {
-                    found = true;
-                    Logger.LogInfo(string.Format("Backup file {0} found in {1}.", localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory.ToString()));
-                    /* delete all files */
-                    Action_DeleteAllFilesExcept(localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory.ToString());
-                    Logger.LogDebug(string.Format("Deleted all files except {0} in {1}.", localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory.ToString()));
-                    /* Move actions needed */
-                    Action_MoveFileLocal(localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory, localRestoreDirectory);
-                }
-                else if (localRemoteDeliveryDirectoryNewestValue == 0)
-                {
-                    Logger.LogDebug(string.Format("No files found in {0}.", localRemoteDeliveryDirectory.ToString()));
-                }
-                else
-                {
-                    /* delete all files */
-                    Action_DeleteAllFilesExcept(string.Empty, localRemoteDeliveryDirectory.ToString());
-                    Logger.LogDebug(string.Format("Deleted all files in {0}.", localRemoteDeliveryDirectory.ToString()));
-                }
-
-                #endregion
-
-                #region Local Remote Transfer
-
-                if (!found && localRemoteTransferDirectoryNewestValue == maxValue)
-                {
-                    found = true;
-                    Logger.LogInfo(string.Format("Backup file {0} found in {1}.", localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory.ToString()));
-                    /* delete all files */
-                    Action_DeleteAllFilesExcept(localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory.ToString());
-                    Logger.LogDebug(string.Format("Deleted all files except {0} in {1}.", localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory.ToString()));
-                    /* Move actions needed */
-                    Action_MoveFileLocal(localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory, localRemoteDeliveryDirectory);
-                    Action_MoveFileLocal(localRemoteTransferDirectoryNewestFileName, localRemoteDeliveryDirectory, localRestoreDirectory);
-                }
-                else if (localRemoteDeliveryDirectoryNewestValue == 0)
-                {
-                    Logger.LogDebug(string.Format("No files found in {0}.", localRemoteTransferDirectory.ToString()));
-                }
-                else
-                {
-                    /* delete all files */
-                    Action_DeleteAllFilesExcept(string.Empty, localRemoteTransferDirectory.ToString());
-                    Logger.LogDebug(string.Format("Deleted all files in {0}.", localRemoteTransferDirectory.ToString()));
-                }
-
-                #endregion
-
-                #region Remote Local Transfer
-
-                if (!found && remoteLocalTransferDirectoryNewestValue == maxValue)
-                {
-                    found = true;
-                    Logger.LogInfo(string.Format("Backup file {0} found in {1}.", remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory.ToString()));
-                    /* delete all files */
-                    Action_DeleteAllFilesExcept(remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory.ToString());
-                    Logger.LogDebug(string.Format("Deleted all files except {0} in {1}.", remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory.ToString()));
-                    /* Move actions needed */
-                    Action_MoveFileRemoteToLocal(remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory, localRemoteTransferDirectory);
-                    Action_MoveFileLocal(remoteLocalTransferDirectoryNewestFileName, localRemoteTransferDirectory, localRemoteDeliveryDirectory);
-                    Action_MoveFileLocal(remoteLocalTransferDirectoryNewestFileName, localRemoteDeliveryDirectory, localRestoreDirectory);
-                }
-                else if (localRemoteDeliveryDirectoryNewestValue == 0)
-                {
-                    Logger.LogDebug(string.Format("No files found in {0}.", remoteLocalTransferDirectory.ToString()));
-                }
-                else
-                {
-                    /* delete all files */
-                    Action_DeleteAllFilesExcept(string.Empty, remoteLocalTransferDirectory.ToString());
-                    Logger.LogDebug(string.Format("Deleted all files in {0}.", localRemoteTransferDirectory.ToString()));
-                }
-                #endregion
-
-                return true;
+                throw new SqlServerMirroringException("Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles failed", ex);
             }
         }
 
@@ -2639,7 +2642,7 @@ namespace MirrorLib
             Match match = regex.Match(fileName);
             if(match.Success)
             {
-                string capture = match.Value;
+                string capture = match.Groups[1].Value;
                 long returnValue;
                 if(long.TryParse(capture, out returnValue))
                 {
