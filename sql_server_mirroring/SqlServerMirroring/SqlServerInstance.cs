@@ -2381,12 +2381,12 @@ namespace MirrorLib
             }
             if (result != null)
             {
-                Logger.LogDebug(string.Format("Found {0} in {1} searching for {2}(...).bak", result.Name, fullPathString, databaseName));
+                Logger.LogDebug(string.Format("Information_GetNewesteFilename: Found {0} in {1} searching for {2}(...).bak", result.Name, fullPathString, databaseName));
                 return result.Name;
             }
             else
             {
-                Logger.LogDebug(string.Format("Found nothing in {0} searching for {1}(...).bak", fullPathString, databaseName));
+                Logger.LogDebug(string.Format("Information_GetNewesteFilename: Found nothing in {0} searching for {1}(...).bak", fullPathString, databaseName));
                 return string.Empty;
             }
         }
@@ -2394,8 +2394,8 @@ namespace MirrorLib
         private void Action_DeleteAllFilesExcept(string fileName, string fullPathString)
         {
             List<string> files = Directory.EnumerateFiles(fullPathString).Where(s => s != fileName).ToList();
-            files.ForEach(x => { try { System.IO.File.Delete(x); } catch { } });
-            Logger.LogDebug(string.Format("Action Delete All Files Except for {0} except {1}.", fullPathString, fileName));
+            files.ForEach(x => { try { System.IO.File.Delete(x); Logger.LogDebug(string.Format("Action_DeleteAllFilesExcept deleted file {0}.", x)); } catch { } });
+            Logger.LogDebug(string.Format("Action_DeleteAllFilesExcept for {0} except {1}.", fullPathString, fileName));
         }
 
         /* Create local directories if not existing as this might be first time running and 
@@ -2565,13 +2565,13 @@ namespace MirrorLib
         {
             try
             {
-                Logger.LogDebug(string.Format("Trying to move file {0} from {1} to {2}.", fileName, source, destination));
+                Logger.LogDebug(string.Format("Action_MoveFileLocal: Trying to move file {0} from {1} to {2}.", fileName, source, destination));
                 File.Move(source.ToString() + DIRECTORY_SPLITTER + fileName, destination.ToString() + DIRECTORY_SPLITTER + fileName);
-                Logger.LogInfo(string.Format("Moved file {0} from {1} to {2}.", fileName, source, destination));
+                Logger.LogInfo(string.Format("Action_MoveFileLocal: Moved file {0} from {1} to {2}.", fileName, source, destination));
             }
             catch (Exception ex)
             {
-                throw new SqlServerMirroringException(string.Format("Failed moving file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()), ex);
+                throw new SqlServerMirroringException(string.Format("Action_MoveFileLocal: Failed moving file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()), ex);
             }
         }
 
@@ -2579,13 +2579,13 @@ namespace MirrorLib
         {
             try
             {
-                Logger.LogDebug(string.Format("Trying to move file {0} from {1} to {2}.", fileName, source, destination));
+                Logger.LogDebug(string.Format("Action_MoveFileRemoteToLocal: Trying to move file {0} from {1} to {2}.", fileName, source, destination));
                 File.Move(source.ToString() + DIRECTORY_SPLITTER + fileName, destination.ToString() + DIRECTORY_SPLITTER + fileName);
-                Logger.LogInfo(string.Format("Moved file {0} from {1} to {2}.", fileName, source, destination));
+                Logger.LogInfo(string.Format("Action_MoveFileRemoteToLocal: Moved file {0} from {1} to {2}.", fileName, source, destination));
             }
             catch (Exception ex)
             {
-                throw new SqlServerMirroringException(string.Format("Failed moving file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()), ex);
+                throw new SqlServerMirroringException(string.Format("Action_MoveFileRemoteToLocal: Failed moving file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()), ex);
             }
         }
 
@@ -2593,13 +2593,13 @@ namespace MirrorLib
         {
             try
             {
-                Logger.LogDebug(string.Format("Trying to move file {0} from {1} to {2}.", fileName, source, destination));
+                Logger.LogDebug(string.Format("Action_MoveFileLocalToRemote: Trying to move file {0} from {1} to {2}.", fileName, source, destination));
                 File.Move(source.ToString() + DIRECTORY_SPLITTER + fileName, destination.ToString() + DIRECTORY_SPLITTER + fileName);
-                Logger.LogInfo(string.Format("Moved file {0} from {1} to {2}.", fileName, source, destination));
+                Logger.LogInfo(string.Format("Action_MoveFileLocalToRemote: Moved file {0} from {1} to {2}.", fileName, source, destination));
             }
             catch (Exception ex)
             {
-                throw new SqlServerMirroringException(string.Format("Failed moving file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()), ex);
+                throw new SqlServerMirroringException(string.Format("Action_MoveFileLocalToRemote: Failed moving file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()), ex);
             }
         }
 
@@ -2607,13 +2607,13 @@ namespace MirrorLib
         {
             try
             {
-                Logger.LogDebug(string.Format("Trying to move file {0} from {1} to {2}.", fileName, source, destination));
+                Logger.LogDebug(string.Format("Action_MoveFileRemoteToRemote: Trying to move file {0} from {1} to {2}.", fileName, source, destination));
                 File.Move(source.ToString() + DIRECTORY_SPLITTER + fileName, destination.ToString() + DIRECTORY_SPLITTER + fileName);
-                Logger.LogInfo(string.Format("Moved file {0} from {1} to {2}.", fileName, source, destination));
+                Logger.LogInfo(string.Format("Action_MoveFileRemoteToRemote: Moved file {0} from {1} to {2}.", fileName, source, destination));
             }
             catch (Exception ex)
             {
-                throw new SqlServerMirroringException(string.Format("Failed moving file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()), ex);
+                throw new SqlServerMirroringException(string.Format("Action_MoveFileRemoteToRemote: Failed moving file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()), ex);
             }
         }
 
@@ -2621,13 +2621,13 @@ namespace MirrorLib
         {
             try
             {
-                Logger.LogDebug(string.Format("Trying to copy file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()));
+                Logger.LogDebug(string.Format("Action_CopyFileLocal: Trying to copy file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()));
                 File.Move(source.ToString() + DIRECTORY_SPLITTER + fileName, destination.ToString() + DIRECTORY_SPLITTER + fileName);
-                Logger.LogInfo(string.Format("Copied file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()));
+                Logger.LogInfo(string.Format("Action_CopyFileLocal: Copied file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()));
             }
             catch (Exception ex)
             {
-                throw new SqlServerMirroringException(string.Format("Failed copying file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()), ex);
+                throw new SqlServerMirroringException(string.Format("Action_CopyFileLocal: Failed copying file {0} from {1} to {2}.", fileName, source.ToString(), destination.ToString()), ex);
             }
         }
 
