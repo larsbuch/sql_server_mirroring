@@ -2302,6 +2302,8 @@ namespace MirrorLib
         // Setup Restore with RestoreDatabase (responsible for restoring database)
         private bool Action_RestoreDatabase(ConfigurationForDatabase configuredDatabase)
         {
+            Logger.LogDebug(string.Format("Action_RestoreDatabase started for {0}", configuredDatabase.DatabaseName));
+
             string fileName;
             try {
                 if (Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles(configuredDatabase))
@@ -2398,6 +2400,8 @@ namespace MirrorLib
         *  returns false if no file is found and true if one is found */
         private bool Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles(ConfigurationForDatabase configuredDatabase)
         {
+            Logger.LogDebug(string.Format("Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles started for {0}", configuredDatabase.DatabaseName));
+
             string databaseNameString = configuredDatabase.DatabaseName.ToString();
             UncPath remoteLocalTransferDirectory = configuredDatabase.RemoteLocalTransferDirectoryWithSubDirectory;
             string remoteLocalTransferDirectoryNewestFileName = string.Empty;
@@ -2414,6 +2418,7 @@ namespace MirrorLib
             {
                 try
                 {
+                    Logger.LogDebug(string.Format("Remote server LocalTransfer {0} started for {1}", remoteLocalTransferDirectory.ToString(), databaseNameString));
                     remoteLocalTransferDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, remoteLocalTransferDirectory.ToString());
                 }
                 catch (Exception ex)
@@ -2421,8 +2426,11 @@ namespace MirrorLib
                     throw new SqlServerMirroringException(string.Format("Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles: Could not access remote directory {0}.", remoteLocalTransferDirectory.ToString()), ex);
                 }
             }
+            Logger.LogDebug(string.Format("Local server RemoteTransfer {0} started for {1}", localRemoteTransferDirectory.ToString(), databaseNameString));
             localRemoteTransferDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRemoteTransferDirectory.ToString());
+            Logger.LogDebug(string.Format("Local server RemoteDelivery {0} started for {1}", localRemoteDeliveryDirectory.ToString(), databaseNameString));
             localRemoteDeliveryDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRemoteDeliveryDirectory.ToString());
+            Logger.LogDebug(string.Format("Local server LocalRestore {0} started for {1}", localRestoreDirectory.ToString(), databaseNameString));
             localRestoreDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRestoreDirectory.ToString());
             long remoteLocalTransferDirectoryNewestValue = Information_GetFileTimePart(remoteLocalTransferDirectoryNewestFileName);
             long localRemoteTransferDirectoryNewestValue = Information_GetFileTimePart(localRemoteTransferDirectoryNewestFileName);
