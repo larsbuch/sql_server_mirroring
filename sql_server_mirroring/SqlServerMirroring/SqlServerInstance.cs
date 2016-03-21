@@ -848,7 +848,7 @@ namespace MirrorLib
             {
                 Logger.LogDebug(string.Format("Checking database {0}", configurationDatabase.DatabaseName));
                 MirrorDatabase mirrorDatabase = Information_MirrorDatabases.Where(s => s.DatabaseName.ToString().Equals(configurationDatabase.DatabaseName.ToString())).FirstOrDefault();
-                if(mirrorDatabase == null | mirrorDatabase.IsMirroringEnabled)
+                if(mirrorDatabase == null || mirrorDatabase.IsMirroringEnabled)
                 {
                     Logger.LogWarning(string.Format("Database {0} is not set up for mirroring but is in configuration", configurationDatabase.DatabaseName));
                     Action_AddDatabaseToMirroring(configurationDatabase, serverPrimary);
