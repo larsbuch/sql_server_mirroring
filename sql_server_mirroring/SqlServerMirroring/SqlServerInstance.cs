@@ -2322,7 +2322,7 @@ namespace MirrorLib
 
                     // Declare a BackupDeviceItem by supplying the backup device file name in the constructor, and the type of device is a file. 
                     BackupDeviceItem bdi = default(BackupDeviceItem);
-                    bdi = new BackupDeviceItem(fileName, DeviceType.File);
+                    bdi = new BackupDeviceItem(fullFileName, DeviceType.File);
 
                     // Add the device that contains the full database backup to the Restore object. 
                     rs.Devices.Add(bdi);
