@@ -2312,7 +2312,7 @@ namespace MirrorLib
                     DirectoryPath localRestoreDircetoryWithSubDirectory = configuredDatabase.LocalRestoreDirectoryWithSubDirectory;
 
                     fileName = Information_GetNewesteFilename(configuredDatabase.DatabaseName.ToString(), localRestoreDircetoryWithSubDirectory.ToString());
-
+                    string fullFileName = localRestoreDircetoryWithSubDirectory + DIRECTORY_SPLITTER + fileName;
                     // Define a Restore object variable.
                     Restore rs = new Restore();
 
