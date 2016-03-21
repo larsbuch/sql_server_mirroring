@@ -837,17 +837,22 @@ namespace MirrorLib
                 }
                 else
                 {
-                    if (configuredMirrorDatabases.ContainsKey(mirrorState.DatabaseName.ToString()))
-                    {
-                        Logger.LogWarning(string.Format("Database {0} is not set up for mirroring but is in configuration", mirrorState.DatabaseName));
-                        ConfigurationForDatabase configuredDatabase;
-                        configuredMirrorDatabases.TryGetValue(mirrorState.DatabaseName.ToString(), out configuredDatabase);
-                        Action_AddDatabaseToMirroring(configuredDatabase, serverPrimary);
-                    }
-                    else
-                    {
-                        Logger.LogDebug(string.Format("Database {0} was not setup for mirroring and not configured for it.", mirrorState.DatabaseName));
-                    }
+                    Logger.LogDebug(string.Format("Database {0} was not setup for mirroring and not configured for it.", mirrorState.DatabaseName));
+                }
+
+            }
+            /* Check databases setup */
+            foreach (ConfigurationForDatabase configurationDatabase in ConfigurationForDatabases.Values)
+            {
+                MirrorDatabase mirrorDatabase = Information_MirrorDatabases.Where(s => s.DatabaseName.ToString().Equals(configurationDatabase.DatabaseName.ToString())).FirstOrDefault();
+                if(mirrorDatabase == null | mirrorDatabase.IsMirroringEnabled)
+                {
+                    Logger.LogWarning(string.Format("Database {0} is not set up for mirroring but is in configuration", configurationDatabase.DatabaseName));
+                    Action_AddDatabaseToMirroring(configurationDatabase, serverPrimary);
+                }
+                else
+                {
+                    Logger.LogDebug(string.Format("Database {0} is set up for mirroring and is in configuration", configurationDatabase.DatabaseName));
                 }
             }
             Logger.LogDebug(string.Format("Action_StartUpMirrorCheck ended"));
@@ -1296,7 +1301,7 @@ namespace MirrorLib
                     Action_SetupInstanceForMirroring();
                 }
                 Action_StartUpMirrorCheck(ConfigurationForDatabases, false);
-                Action_SwitchOverAllPrincipalDatabasesIfPossible(true);
+                Action_SwitchOverAllPrincipalDatabasesIfPossible(false);
                 Logger.LogDebug("StartStartupState ended");
                 if (Information_HasAccessToRemoteServer())
                 {
