@@ -820,9 +820,10 @@ namespace MirrorLib
 
         private void Action_StartUpMirrorCheck(Dictionary<string, ConfigurationForDatabase> configuredMirrorDatabases, bool serverPrimary)
         {
-            Logger.LogDebug(string.Format("Action_StartUpMirrorCheck starting"));
+            Logger.LogDebug(string.Format("Action_StartUpMirrorCheck check if databases mirrored but not configured"));
             foreach (MirrorDatabase mirrorState in Information_MirrorDatabases)
             {
+                Logger.LogDebug(string.Format("Checking database {0}", mirrorState.DatabaseName));
                 if (mirrorState.IsMirroringEnabled)
                 {
                     if (!configuredMirrorDatabases.ContainsKey(mirrorState.DatabaseName.ToString()))
@@ -841,9 +842,11 @@ namespace MirrorLib
                 }
 
             }
+            Logger.LogDebug(string.Format("Action_StartUpMirrorCheck check if databases needs to be set up"));
             /* Check databases setup */
             foreach (ConfigurationForDatabase configurationDatabase in ConfigurationForDatabases.Values)
             {
+                Logger.LogDebug(string.Format("Checking database {0}", configurationDatabase.DatabaseName));
                 MirrorDatabase mirrorDatabase = Information_MirrorDatabases.Where(s => s.DatabaseName.ToString().Equals(configurationDatabase.DatabaseName.ToString())).FirstOrDefault();
                 if(mirrorDatabase == null | mirrorDatabase.IsMirroringEnabled)
                 {
@@ -1839,22 +1842,30 @@ namespace MirrorLib
                 string sqlQuery = "SELECT TOP (1) mirroring_role_desc FROM sys.database_mirroring WHERE database_id = DB_ID('" + databaseName + "')";
 
                 DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
-                foreach (DataTable table in dataSet.Tables)
+                if (dataSet == null || dataSet.Tables.Count == 0)
                 {
-                    foreach (DataRow row in table.Rows)
+                    Logger.LogWarning("Information_GetDatabaseMirringRole found no rows returning NoDatabase as it might not be an error");
+                    return "NoDatabase";
+                }
+                else
+                {
+                    foreach (DataTable table in dataSet.Tables)
                     {
-                        foreach (DataColumn column in row.Table.Columns)
+                        foreach (DataRow row in table.Rows)
                         {
-                            if (column.DataType == typeof(string))
+                            foreach (DataColumn column in row.Table.Columns)
                             {
-                                Logger.LogDebug(string.Format("Information_GetDatabaseMirringRole ended with value {0}", (row[column] is DBNull)?"DBNull":row[column].ToString()));
-                                if (row[column] is DBNull)
+                                if (column.DataType == typeof(string))
                                 {
-                                    return "NotSet";
-                                }
-                                else
-                                {
-                                    return (string)row[column];
+                                    Logger.LogDebug(string.Format("Information_GetDatabaseMirringRole ended with value {0}", (row[column] is DBNull) ? "DBNull" : row[column].ToString()));
+                                    if (row[column] is DBNull)
+                                    {
+                                        return "NotSet";
+                                    }
+                                    else
+                                    {
+                                        return (string)row[column];
+                                    }
                                 }
                             }
                         }
