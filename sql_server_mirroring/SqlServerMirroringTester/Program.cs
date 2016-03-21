@@ -394,10 +394,23 @@ namespace MirrorLibTester
             {
                 Console.WriteLine("LogError: " + message);
                 File.AppendAllText(LOGNAME, "LogError: " + message + System.Environment.NewLine);
-                Console.WriteLine("Exception Message: " + exception.Message);
-                File.AppendAllText(LOGNAME, "Exception Message: " + exception.Message + System.Environment.NewLine);
+                string exceptionHierarcy = BuildExceptionHierarchy(exception);
+                Console.WriteLine("Exception Message: " + exceptionHierarcy);
+                File.AppendAllText(LOGNAME, "Exception Message: " + exceptionHierarcy);
                 Console.WriteLine("Exception StackTrace: " + exception.StackTrace);
                 File.AppendAllText(LOGNAME, "Exception StackTrace: " + exception.StackTrace + System.Environment.NewLine);
+            }
+
+            private string BuildExceptionHierarchy(Exception exception)
+            {
+                if(exception.InnerException == null)
+                {
+                    return exception.Message + System.Environment.NewLine;
+                }
+                else
+                {
+                    return exception.Message + System.Environment.NewLine + BuildExceptionHierarchy(exception.InnerException);
+                }
             }
         }
         #endregion
