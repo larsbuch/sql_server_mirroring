@@ -397,6 +397,19 @@ namespace MirrorLib
                 Logger.LogWarning(string.Format("Not full access to LocalShareDirectory: {0}", ConfigurationForInstance.LocalShareDirectory));
                 return false;
             }
+            if(Information_EndpointExists(ConfigurationForInstance.Endpoint_Name))
+            {
+                if(!Information_EndpointStarted(ConfigurationForInstance.Endpoint_Name))
+                {
+                    Logger.LogWarning(string.Format("Endpoint {0} for server not started", ConfigurationForInstance.Endpoint_Name));
+                    return false;
+                }
+            }
+            else
+            {
+                Logger.LogWarning(string.Format("Endpoint {0} for server does not exist", ConfigurationForInstance.Endpoint_Name));
+                return false;
+            }
             return true;
         }
 
@@ -937,8 +950,6 @@ namespace MirrorLib
             {
                 Action_CreateEndpoint();
             }
-
-
         }
 
         private void Action_ResetServerRole()
