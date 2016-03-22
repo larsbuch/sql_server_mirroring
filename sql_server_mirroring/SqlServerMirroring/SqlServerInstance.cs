@@ -2040,32 +2040,32 @@ namespace MirrorLib
                     Logger.LogInfo("Action_AddDatabaseToMirroring: Moved database from remote share and restored Backup");
                 }
             }
-            Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
-            if(database == null)
+            else
             {
-                throw new SqlServerMirroringException(string.Format("Action_AddDatabaseToMirroring: Could not find database {0}", configuredDatabase.DatabaseName));
-            }
-            if (database.RecoveryModel != RecoveryModel.Full)
-            {
-                try
+                Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
+                if (database == null)
                 {
-                    database.RecoveryModel = RecoveryModel.Full;
+                    throw new SqlServerMirroringException(string.Format("Action_AddDatabaseToMirroring: Could not find database {0}", configuredDatabase.DatabaseName));
+                }
+                if (database.RecoveryModel != RecoveryModel.Full)
+                {
+                    try
+                    {
+                        database.RecoveryModel = RecoveryModel.Full;
+                        database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                        Logger.LogDebug(string.Format("Action_AddDatabaseToMirroring: Database {0} has been set to full recovery", database.Name));
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new SqlServerMirroringException(string.Format("Action_AddDatabaseToMirroring: Could not set database {0} to Full Recovery", database.Name), ex);
+                    }
+                }
+                if (!database.BrokerEnabled)
+                {
+                    database.BrokerEnabled = true;
                     database.Alter(TerminationClause.RollbackTransactionsImmediately);
-                    Logger.LogDebug(string.Format("Action_AddDatabaseToMirroring: Database {0} has been set to full recovery", database.Name));
+                    Logger.LogDebug(string.Format("Action_AddDatabaseToMirroring: Database {0} has enabled service broker", database.Name));
                 }
-                catch (Exception ex)
-                {
-                    throw new SqlServerMirroringException(string.Format("Action_AddDatabaseToMirroring: Could not set database {0} to Full Recovery", database.Name), ex);
-                }
-            }
-            if (!database.BrokerEnabled)
-            {
-                database.BrokerEnabled = true;
-                database.Alter(TerminationClause.RollbackTransactionsImmediately);
-                Logger.LogDebug(string.Format("Action_AddDatabaseToMirroring: Database {0} has enabled service broker", database.Name));
-            }
-            if (serverPrimary)
-            {
                 if (Action_BackupDatabaseForMirrorServer(configuredDatabase))
                 {
                     Logger.LogInfo("Action_AddDatabaseToMirroring: Backup created and moved to remote share");
