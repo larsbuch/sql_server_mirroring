@@ -20,7 +20,8 @@ namespace MirrorLibTester
             Configuration.Add(DIRECORYFORLOCALSHARE, ConsoleTest.GetNextInput("Directory for local share: ", "C:\\Test\\Share"));
             Configuration.Add(DIRECORYFORLOCALRESTORE, ConsoleTest.GetNextInput("Directory for local restore: ", "C:\\Test\\LocalRestore"));
             Configuration.Add(LOCALSHARENAME, ConsoleTest.GetNextInput("Local share name: ", localServer.Replace("-", "_") + "Share"));
-            Configuration.Add(LISTENER_PORT, ConsoleTest.GetNextInput("Listener Port: ", "7022"));
+            Configuration.Add(ENDPOINT_NAME, ConsoleTest.GetNextInput("Endpoint Name: ", "Mirroring_Endpoint"));
+            Configuration.Add(ENDPOINT_LISTENERPORT, ConsoleTest.GetNextInput("Endpoint Listener Port: ", "7022"));
             Configuration.Add(REMOTESERVERCOMMUNICATIONTIMEOUT, ConsoleTest.GetNextInput("Remote Communication Timeout: ", 10.ToString()));
             Configuration.Add(DATABASESFORMIRRORING, ConsoleTest.GetNextInput("Databases for mirroring (comma separates): "));
 
@@ -42,7 +43,8 @@ namespace MirrorLibTester
             ConsoleTest.AddTest("Action", "Suspend Mirroring For All Mirror Databases", () => Test_Action_SuspendMirroringForAllMirrorDatabases());
             ConsoleTest.AddTest("Action", "Force Failover With Data Loss For All Mirror Databases", () => Test_Action_ForceFailoverWithDataLossForAllMirrorDatabases());
             ConsoleTest.AddTest("Action", "Failover For All Mirror Databases", () => Test_Action_FailoverForAllMirrorDatabases());
-            ConsoleTest.AddTest("Action", "Backup For All Mirror Databases", () => Test_Action_BackupForAllMirrorDatabases());
+            ConsoleTest.AddTest("Action", "Backup For All Configured Databases", () => Test_Action_BackupForAllConfiguredDatabases());
+            ConsoleTest.AddTest("Action", "Restore All Configured Databases", () => Test_Action_RestoreForAllConfiguredDatabases());
             ConsoleTest.AddTest("Action", "Shut Down Mirroring Service", () => Test_Action_ShutDownMirroringService());
             ConsoleTest.AddTest("Action", "Force Shut Down Mirroring Service", () => Test_Action_ForceShutDownMirroringService());
 
@@ -177,9 +179,16 @@ namespace MirrorLibTester
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
-        private static void Test_Action_BackupForAllMirrorDatabases()
+        private static void Test_Action_BackupForAllConfiguredDatabases()
         {
-            SqlServer.Action_BackupForAllPrincipalDatabases();
+            SqlServer.Action_BackupForAllConfiguredDatabases();
+
+            ConsoleTest.GetNextInput("Press Enter to exit test.");
+        }
+
+        private static void Test_Action_RestoreForAllConfiguredDatabases()
+        {
+            SqlServer.Action_RestoreForAllConfiguredDatabases();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
@@ -209,7 +218,8 @@ namespace MirrorLibTester
         private const string DIRECORYFORLOCALSHARE = "DIRECORYFORLOCALSHARE";
         private const string DIRECORYFORLOCALRESTORE = "DIRECORYFORLOCALRESTORE";
         private const string LOCALSHARENAME = "LOCALSHARENAME";
-        private const string LISTENER_PORT = "LISTENER_PORT";
+        private const string ENDPOINT_LISTENERPORT = "ENDPOINT_LISTENERPORT";
+        private const string ENDPOINT_NAME = "ENDPOINT_NAME";
         private const string DATABASESFORMIRRORING = "DATABASESFORMIRRORING";
         private const string REMOTESERVERCOMMUNICATIONTIMEOUT = "REMOTESERVERCOMMUNICATIONTIMEOUT";
 
@@ -264,13 +274,14 @@ namespace MirrorLibTester
                 new DirectoryPath(GetConfiguration(DIRECORYFORLOCALSHARE)),
                 new DirectoryPath(GetConfiguration(DIRECORYFORLOCALRESTORE)),
                 new ShareName(GetConfiguration(LOCALSHARENAME)),
-                int.Parse(GetConfiguration(LISTENER_PORT)),
+                int.Parse(GetConfiguration(ENDPOINT_LISTENERPORT)),
                 7,
                 60,
                 60,
                 60,
                 1,
-                int.Parse(GetConfiguration(REMOTESERVERCOMMUNICATIONTIMEOUT))
+                int.Parse(GetConfiguration(REMOTESERVERCOMMUNICATIONTIMEOUT)),
+                GetConfiguration(ENDPOINT_NAME)
                 );
 
         }

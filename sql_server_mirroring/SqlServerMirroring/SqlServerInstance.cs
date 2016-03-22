@@ -410,6 +410,11 @@ namespace MirrorLib
                 Logger.LogWarning(string.Format("Endpoint {0} for server does not exist", ConfigurationForInstance.Endpoint_Name));
                 return false;
             }
+            if (!Information_Endpoint_HasConnectRights(ConfigurationForInstance.Endpoint_Name))
+            {
+                Logger.LogWarning(string.Format("Application is not allowed to connect to Endpoint {0}", ConfigurationForInstance.Endpoint_Name));
+                return false;
+            }
             return true;
         }
 
@@ -765,14 +770,15 @@ namespace MirrorLib
             return true;
         }
 
-        public bool Action_BackupForAllPrincipalDatabases()
+        public bool Action_BackupForAllConfiguredDatabases()
         {
             Logger.LogDebug("Action_BackupForAllPrincipalDatabases started");
             foreach (ConfigurationForDatabase configuredDatabase in ConfigurationForDatabases.Values)
             {
                 try
                 {
-                    Action_BackupDatabaseForMirrorServer(configuredDatabase);
+                    Action_BackupDatabaseForMirrorServer(configuredDatabase, true);
+                    Action_BackupDatabaseForMirrorServer(configuredDatabase, false);
                 }
                 catch (Exception ex)
                 {
@@ -780,6 +786,25 @@ namespace MirrorLib
                 }
             }
             Logger.LogDebug("Action_BackupForAllPrincipalDatabases ended");
+            return true;
+        }
+
+        public bool Action_RestoreForAllConfiguredDatabases()
+        {
+            Logger.LogDebug("Action_RestoreForAllMirrorDatabases started");
+            foreach (ConfigurationForDatabase configuredDatabase in ConfigurationForDatabases.Values)
+            {
+                try
+                {
+                    Action_RestoreDatabase(configuredDatabase);
+                    Action_RestoreDatabaseLog(configuredDatabase);
+                }
+                catch (Exception ex)
+                {
+                    throw new SqlServerMirroringException(string.Format("Action_RestoreForAllMirrorDatabases: Restore failed for {0}", configuredDatabase.DatabaseName), ex);
+                }
+            }
+            Logger.LogDebug("Action_RestoreForAllMirrorDatabases ended");
             return true;
         }
 
@@ -895,6 +920,14 @@ namespace MirrorLib
                         {
                             Logger.LogInfo("Action_StartUpMirrorCheck: Moved database from remote share and restored Backup");
                         }
+                        if (Action_RestoreDatabaseLog(configurationDatabase))
+                        {
+                            Logger.LogInfo("Action_StartUpMirrorCheck: Restored log backup");
+                        }
+                        else
+                        {
+                            Logger.LogInfo("Action_StartUpMirrorCheck: Moved database from remote share and restored log Backup");
+                        }
                     }
                 }
                 else
@@ -912,26 +945,24 @@ namespace MirrorLib
 
         private void Action_SetupInstanceForMirroring()
         {
+            Logger.LogDebug("Action_SetupInstanceForMirroring started");
             Action_EnableAgentXps();
             if (DatabaseServerInstance.ServiceStartMode == Microsoft.SqlServer.Management.Smo.ServiceStartMode.Manual ||
                 DatabaseServerInstance.ServiceStartMode == Microsoft.SqlServer.Management.Smo.ServiceStartMode.Disabled)
             {
-                // TODO fix security issue (guess)
-                Logger.LogDebug("Bug: Cannot change to automatic start");
+                Logger.LogDebug("Bug/SecurityIssue: Might not be able to change to automatic start");
                 Action_ChangeDatabaseServiceToAutomaticStart();
                 Logger.LogInfo("Sql Server was set to Automatic start");
             }
             if (!DatabaseServerInstance.JobServer.SqlAgentAutoStart)
             {
-                // TODO fix security issue (guess)
-                Logger.LogDebug("Bug: Cannot change to automatic start");
+                Logger.LogDebug("Bug/SecurityIssue: Might not be able to change to automatic start");
                 Action_ChangeSqlAgentServiceToAutomaticStart();
                 Logger.LogInfo("Sql Agent was set to Automatic start");
             }
             if (!Action_CheckSqlAgentRunning())
             {
-                // TODO fix security issue (guess)
-                Logger.LogDebug("Bug: Cannot start service");
+                Logger.LogDebug("Bug/SecurityIssue: Might not be able to start service");
                 Action_StartSqlAgent();
                 Logger.LogInfo("Sql Agent service was started");
             }
@@ -949,6 +980,11 @@ namespace MirrorLib
             else
             {
                 Action_CreateEndpoint();
+            }
+            if (!Information_Endpoint_HasConnectRights(ConfigurationForInstance.Endpoint_Name))
+            {
+                Logger.LogInfo(string.Format("No connect rights identified for endpoint {0}", ConfigurationForInstance.Endpoint_Name));
+                Action_Endpoint_GrantConnectRights(ConfigurationForInstance.Endpoint_Name);
             }
         }
 
@@ -1389,7 +1425,7 @@ namespace MirrorLib
                 }
                 Action_StartUpMirrorCheck(ConfigurationForDatabases, true);
                 Action_SwitchOverAllMirrorDatabasesIfPossible(true);
-                Action_BackupForAllPrincipalDatabases();
+                Action_BackupForAllConfiguredDatabases();
 
                 Logger.LogDebug("StartStartupState ended");
                 if (Information_HasAccessToRemoteServer())
@@ -2081,13 +2117,21 @@ namespace MirrorLib
                 database.Alter(TerminationClause.RollbackTransactionsImmediately);
                 Logger.LogDebug(string.Format("Action_AddDatabaseToMirroring: Database {0} has enabled service broker", database.Name));
             }
-            if (Action_BackupDatabaseForMirrorServer(configuredDatabase))
+            if (Action_BackupDatabaseForMirrorServer(configuredDatabase, true))
             {
                 Logger.LogInfo("Action_AddDatabaseToMirroring: Backup created and moved to remote share");
             }
             else
             {
                 Logger.LogInfo("Action_AddDatabaseToMirroring: Backup created and moved to local share due to missing access to remote share");
+            }
+            if (Action_BackupDatabaseForMirrorServer(configuredDatabase, false))
+            {
+                Logger.LogInfo("Action_AddDatabaseToMirroring: Log backup created and moved to remote share");
+            }
+            else
+            {
+                Logger.LogInfo("Action_AddDatabaseToMirroring: Log backup created and moved to local share due to missing access to remote share");
             }
 
             if (Information_HasAccessToRemoteServer())
@@ -2182,21 +2226,69 @@ namespace MirrorLib
         {
             try
             {
-                Endpoint ep = default(Endpoint);
-                ep = new Endpoint(DatabaseServerInstance, ConfigurationForInstance.Endpoint_Name);
-                ep.ProtocolType = ProtocolType.Tcp;
-                ep.EndpointType = EndpointType.DatabaseMirroring;
-                ep.Protocol.Tcp.ListenerPort = ConfigurationForInstance.Endpoint_ListenerPort;
-                ep.Payload.DatabaseMirroring.ServerMirroringRole = ServerMirroringRole.All;
+                Endpoint endpoint = default(Endpoint);
+                endpoint = new Endpoint(DatabaseServerInstance, ConfigurationForInstance.Endpoint_Name);
+                endpoint.ProtocolType = ProtocolType.Tcp;
+                endpoint.EndpointType = EndpointType.DatabaseMirroring;
+                endpoint.Protocol.Tcp.ListenerPort = ConfigurationForInstance.Endpoint_ListenerPort;
+                endpoint.Payload.DatabaseMirroring.ServerMirroringRole = ServerMirroringRole.All;
                 Logger.LogDebug(string.Format("Action_CreateEndpoint: Creates endpoint {0}", ConfigurationForInstance.Endpoint_Name));
-                ep.Create();
+                endpoint.Create();
                 Logger.LogDebug(string.Format("Action_CreateEndpoint: Starts endpoint {0}", ConfigurationForInstance.Endpoint_Name));
-                ep.Start();
-                Logger.LogDebug(string.Format("Action_CreateEndpoint: Created endpoint and started. Endpoint in state {1}.", ep.EndpointState));
+                endpoint.Start();
+                Logger.LogDebug(string.Format("Action_CreateEndpoint: Created endpoint and started. Endpoint in state {1}.", endpoint.EndpointState));
             }
             catch (Exception ex)
             {
                 throw new SqlServerMirroringException(string.Format("Action_CreateEndpoint: Creation of endpoint for {0} failed", ConfigurationForInstance.Endpoint_Name), ex);
+            }
+        }
+
+        private bool Information_Endpoint_HasConnectRights(string endpointName)
+        {
+            string runnerOfSqlServer = DatabaseServerInstance.ServiceAccount;
+            try
+            {
+                string sqlQuery = "SELECT endpoints.name ";
+                sqlQuery += "FROM sys.server_permissions ";
+                sqlQuery += "    INNER JOIN sys.endpoints ";
+                sqlQuery += "        ON server_permissions.major_id = endpoints.endpoint_id ";
+                sqlQuery += "    INNER JOIN sys.server_principals GranteePrincipals ";
+                sqlQuery += "        ON server_permissions.grantee_principal_id = GranteePrincipals.principal_id ";
+                sqlQuery += "WHERE server_permissions.class_desc = 'ENDPOINT' ";
+                sqlQuery += string.Format("AND endpoints.name = '{0}' ", endpointName);
+                sqlQuery += string.Format("AND GranteePrincipals.name = '{0}' ", runnerOfSqlServer);
+
+                DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
+                if (dataSet.Tables.Count == 0)
+                {
+                    Logger.LogDebug(string.Format("Information_Endpoint_HasConnectRights {0} has no connect for {1}", endpointName, runnerOfSqlServer));
+                    return false;
+                }
+                else
+                {
+                    Logger.LogDebug(string.Format("Information_Endpoint_HasConnectRights {0} has connect for {1}", endpointName, runnerOfSqlServer));
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException(string.Format("Information_Endpoint_HasConnectRights {0} failed for {1}", endpointName, runnerOfSqlServer), ex);
+            }
+        }
+
+        private void Action_Endpoint_GrantConnectRights(string endpointName)
+        {
+            string runnerOfSqlServer = DatabaseServerInstance.ServiceAccount;
+            try
+            {
+                string sqlQuery = string.Format("GRANT CONNECT ON ENDPOINT::{0} TO [{1}]", endpointName, runnerOfSqlServer);
+                LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
+                Logger.LogDebug(string.Format("Action_Endpoint_GrantConnectRights {0} failed for {1}", endpointName, runnerOfSqlServer));
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException(string.Format("Action_Endpoint_GrantConnectRights {0} failed for {1}", endpointName, runnerOfSqlServer), ex);
             }
         }
 
@@ -2243,6 +2335,73 @@ namespace MirrorLib
             return false;
         }
 
+        private string Action_BackupDatabaseLog(ConfigurationForDatabase configuredDatabase)
+        {
+            try
+            {
+                DirectoryPath localDirectoryForBackup = configuredDatabase.LocalBackupDirectoryWithSubDirectory;
+                DirectoryHelper.CreateLocalDirectoryIfNotExistingAndGiveFullControlToAuthenticatedUsers(Logger, localDirectoryForBackup);
+
+                Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
+                if (database == null)
+                {
+                    throw new SqlServerMirroringException(string.Format("Action_BackupDatabaseLog: Could not find database {0}", configuredDatabase.DatabaseName));
+                }
+
+                string fileName = configuredDatabase.DatabaseName + "_" + DateTime.Now.ToFileTime() + "." + ConfigurationForInstance.DatabaseLogBackupFileEnd;
+                string fullFileName = localDirectoryForBackup.PathString + DIRECTORY_SPLITTER + fileName;
+
+                // Define a Backup object variable. 
+                Backup logBackup = new Backup();
+
+                // Specify the type of backup, the description, the name, and the database to be backed up. 
+                logBackup.Action = BackupActionType.Log;
+                logBackup.BackupSetDescription = "Transaction log backup of " + configuredDatabase.DatabaseName.ToString();
+                logBackup.BackupSetName = configuredDatabase.DatabaseName.ToString() + " Log Backup";
+                logBackup.Database = configuredDatabase.DatabaseName.ToString();
+
+                // Declare a BackupDeviceItem by supplying the backup device file name in the constructor, and the type of device is a file. 
+                BackupDeviceItem bdi = default(BackupDeviceItem);
+                bdi = new BackupDeviceItem(fullFileName, DeviceType.File);
+
+                // Add the device to the Backup object. 
+                logBackup.Devices.Add(bdi);
+                // Set the Incremental property to False to specify that this is a full database backup. 
+                logBackup.Incremental = false;
+
+                // Set the expiration date. 
+                System.DateTime backupdate = System.DateTime.Now.AddDays(ConfigurationForInstance.BackupExpiresAfterDays);
+                logBackup.ExpirationDate = backupdate;
+
+                // Specify that the log must be truncated after the backup is complete. 
+                logBackup.LogTruncation = BackupTruncateLogType.Truncate;
+
+                logBackup.Initialize = true;
+
+                logBackup.PercentComplete += Action_BackupDatabaseLog_CompletionStatusInPercent;
+
+                // Run SqlBackup to perform the full database backup on the instance of SQL Server. 
+                logBackup.SqlBackup(DatabaseServerInstance);
+
+                // Inform the user that the backup has been completed. 
+                Logger.LogInfo(string.Format("Action_BackupDatabaseLog: Log backup of {0} done", configuredDatabase.DatabaseName));
+
+                // Remove the backup device from the Backup object. 
+                logBackup.Devices.Remove(bdi);
+
+                return fileName;
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException(string.Format("Action_BackupDatabaseLog: Log backup of database {0} failed", configuredDatabase.DatabaseName), ex);
+            }
+        }
+
+        private void Action_BackupDatabaseLog_CompletionStatusInPercent(object sender, PercentCompleteEventArgs args)
+        {
+            Logger.LogInfo(string.Format("Action_BackupDatabaseLog: Percent completed: {0}%.", args.Percent));
+        }
+
         private string Action_BackupDatabase(ConfigurationForDatabase configuredDatabase)
         {
             try
@@ -2256,55 +2415,72 @@ namespace MirrorLib
                     throw new SqlServerMirroringException(string.Format("Action_BackupDatabase: Could not find database {0}", configuredDatabase.DatabaseName));
                 }
 
-                string fileName = configuredDatabase.DatabaseName + "_" + DateTime.Now.ToFileTime() + ".bak";
+                string fileName = configuredDatabase.DatabaseName + "_" + DateTime.Now.ToFileTime() + "." + ConfigurationForInstance.DatabaseBackupFileEnd;
                 string fullFileName = localDirectoryForBackup.PathString + DIRECTORY_SPLITTER + fileName;
 
                 // Define a Backup object variable. 
-                Backup bk = new Backup();
+                Backup backup = new Backup();
 
                 // Specify the type of backup, the description, the name, and the database to be backed up. 
-                bk.Action = BackupActionType.Database;
-                bk.BackupSetDescription = "Full backup of " + configuredDatabase.DatabaseName.ToString();
-                bk.BackupSetName = configuredDatabase.DatabaseName.ToString() + " Backup";
-                bk.Database = configuredDatabase.DatabaseName.ToString();
+                backup.Action = BackupActionType.Database;
+                backup.BackupSetDescription = "Full backup of " + configuredDatabase.DatabaseName.ToString();
+                backup.BackupSetName = configuredDatabase.DatabaseName.ToString() + " Backup";
+                backup.Database = configuredDatabase.DatabaseName.ToString();
 
                 // Declare a BackupDeviceItem by supplying the backup device file name in the constructor, and the type of device is a file. 
                 BackupDeviceItem bdi = default(BackupDeviceItem);
                 bdi = new BackupDeviceItem(fullFileName, DeviceType.File);
 
                 // Add the device to the Backup object. 
-                bk.Devices.Add(bdi);
+                backup.Devices.Add(bdi);
                 // Set the Incremental property to False to specify that this is a full database backup. 
-                bk.Incremental = false;
+                backup.Incremental = false;
 
                 // Set the expiration date. 
                 System.DateTime backupdate = System.DateTime.Now.AddDays(ConfigurationForInstance.BackupExpiresAfterDays);
-                bk.ExpirationDate = backupdate;
+                backup.ExpirationDate = backupdate;
 
                 // Specify that the log must be truncated after the backup is complete. 
-                bk.LogTruncation = BackupTruncateLogType.Truncate;
+                backup.LogTruncation = BackupTruncateLogType.Truncate;
+
+                backup.Initialize = true;
+                backup.CompressionOption = BackupCompressionOptions.On;
+                backup.PercentComplete += Action_BackupDatabase_CompletionStatusInPercent;
 
                 // Run SqlBackup to perform the full database backup on the instance of SQL Server. 
-                bk.SqlBackup(DatabaseServerInstance);
+                backup.SqlBackup(DatabaseServerInstance);
 
                 // Inform the user that the backup has been completed. 
-                Logger.LogInfo(string.Format("Full backup of {0} done", configuredDatabase.DatabaseName));
+                Logger.LogInfo(string.Format("Action_BackupDatabase: Full backup of {0} done", configuredDatabase.DatabaseName));
 
                 // Remove the backup device from the Backup object. 
-                bk.Devices.Remove(bdi);
+                backup.Devices.Remove(bdi);
 
                 return fileName;
             }
             catch (Exception ex)
             {
-                throw new SqlServerMirroringException(string.Format("Backup of database {0} failed", configuredDatabase.DatabaseName), ex);
+                throw new SqlServerMirroringException(string.Format("Action_BackupDatabase: Backup of database {0} failed", configuredDatabase.DatabaseName), ex);
             }
         }
+        private void Action_BackupDatabase_CompletionStatusInPercent(object sender, PercentCompleteEventArgs args)
+        {
+            Logger.LogInfo(string.Format("Action_BackupDatabase: Percent completed: {0}%.", args.Percent));
+        }
+
 
         // Setup Backup with BackupDatabase (responsible for moving database backup to remote share)
-        private bool Action_BackupDatabaseForMirrorServer(ConfigurationForDatabase configuredDatabase)
+        private bool Action_BackupDatabaseForMirrorServer(ConfigurationForDatabase configuredDatabase, bool isMainDatabase)
         {
-            string fileName = Action_BackupDatabase(configuredDatabase);
+            string fileName;
+            if (isMainDatabase)
+            {
+                fileName = Action_BackupDatabase(configuredDatabase);
+            }
+            else
+            {
+                fileName = Action_BackupDatabaseLog(configuredDatabase);
+            }
             DirectoryPath localBackupDirectoryWithSubDirectory = configuredDatabase.LocalBackupDirectoryWithSubDirectory;
             DirectoryHelper.TestReadWriteAccessToDirectory(Logger, localBackupDirectoryWithSubDirectory);
             DirectoryPath localLocalTransferDirectoryWithSubDirectory = configuredDatabase.LocalLocalTransferDirectoryWithSubDirectory;
@@ -2342,18 +2518,77 @@ namespace MirrorLib
         }
 
         // Setup Restore with RestoreDatabase (responsible for restoring database)
+        private bool Action_RestoreDatabaseLog(ConfigurationForDatabase configuredDatabase)
+        {
+            Logger.LogDebug(string.Format("Action_RestoreDatabaseLog started for {0}", configuredDatabase.DatabaseName));
+
+            string fileName;
+            try
+            {
+                if (Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles(configuredDatabase, ConfigurationForInstance.DatabaseLogBackupSearchPattern))
+                {
+
+                    DirectoryPath localRestoreDircetoryWithSubDirectory = configuredDatabase.LocalRestoreDirectoryWithSubDirectory;
+
+                    fileName = Information_GetNewesteFilename(configuredDatabase.DatabaseName.ToString(), localRestoreDircetoryWithSubDirectory.ToString(), ConfigurationForInstance.DatabaseLogBackupSearchPattern);
+                    string fullFileName = localRestoreDircetoryWithSubDirectory + DIRECTORY_SPLITTER + fileName;
+                    // Define a Restore object variable.
+                    Logger.LogDebug(string.Format("Action_RestoreDatabaseLog for {0} from {1}", configuredDatabase.DatabaseName, fullFileName));
+                    Restore rs = new Restore();
+
+                    // Set the NoRecovery property to true, so the transactions are not recovered. 
+                    rs.NoRecovery = true;
+                    rs.ReplaceDatabase = true;
+
+                    // Declare a BackupDeviceItem by supplying the backup device file name in the constructor, and the type of device is a file. 
+                    BackupDeviceItem bdi = default(BackupDeviceItem);
+                    bdi = new BackupDeviceItem(fullFileName, DeviceType.File);
+
+                    // Add the device that contains the full database backup to the Restore object. 
+                    rs.Devices.Add(bdi);
+
+                    // Specify the database name. 
+                    rs.Database = configuredDatabase.DatabaseName.ToString();
+
+                    // Restore the full database backup with no recovery. 
+                    rs.SqlRestore(DatabaseServerInstance);
+
+                    // Inform the user that the Full Database Restore is complete. 
+                    Logger.LogDebug(string.Format("Action_RestoreDatabaseLog for {0} complete", configuredDatabase.DatabaseName));
+
+                    return true;
+                }
+                else
+                {
+                    if (Information_DatabaseExists(configuredDatabase.DatabaseName.ToString()))
+                    {
+                        Logger.LogInfo(string.Format("Action_RestoreDatabaseLog: No log backup to restore for {0}.", configuredDatabase.DatabaseName.ToString()));
+                        return false;
+                    }
+                    else
+                    {
+                        throw new SqlServerMirroringException(string.Format("Action_RestoreDatabaseLog: Could not find database log to restore for {0}.", configuredDatabase.DatabaseName.ToString()));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException(string.Format("Action_RestoreDatabaseLog: Restore failed for {0}", configuredDatabase.DatabaseName), ex);
+            }
+        }
+
         private bool Action_RestoreDatabase(ConfigurationForDatabase configuredDatabase)
         {
             Logger.LogDebug(string.Format("Action_RestoreDatabase started for {0}", configuredDatabase.DatabaseName));
 
             string fileName;
             try {
-                if (Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles(configuredDatabase))
+                if (Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles(configuredDatabase, ConfigurationForInstance.DatabaseBackupSearchPattern))
                 {
 
                     DirectoryPath localRestoreDircetoryWithSubDirectory = configuredDatabase.LocalRestoreDirectoryWithSubDirectory;
 
-                    fileName = Information_GetNewesteFilename(configuredDatabase.DatabaseName.ToString(), localRestoreDircetoryWithSubDirectory.ToString());
+                    fileName = Information_GetNewesteFilename(configuredDatabase.DatabaseName.ToString(), localRestoreDircetoryWithSubDirectory.ToString(), ConfigurationForInstance.DatabaseBackupSearchPattern);
                     string fullFileName = localRestoreDircetoryWithSubDirectory + DIRECTORY_SPLITTER + fileName;
                     // Define a Restore object variable.
                     Logger.LogDebug(string.Format("Action_RestoreDatabase for {0} from {1}", configuredDatabase.DatabaseName, fullFileName));
@@ -2385,18 +2620,18 @@ namespace MirrorLib
                 {
                     if (Information_DatabaseExists(configuredDatabase.DatabaseName.ToString()))
                     {
-                        Logger.LogInfo(string.Format("No backup to restore for {0}.", configuredDatabase.DatabaseName.ToString()));
+                        Logger.LogInfo(string.Format("Action_RestoreDatabase: No backup to restore for {0}.", configuredDatabase.DatabaseName.ToString()));
                         return false;
                     }
                     else
                     {
-                        throw new SqlServerMirroringException(string.Format("Could not find database to restore for {0}.", configuredDatabase.DatabaseName.ToString()));
+                        throw new SqlServerMirroringException(string.Format("Action_RestoreDatabase: Could not find database to restore for {0}.", configuredDatabase.DatabaseName.ToString()));
                     }
                 }
             }
             catch (Exception ex)
             {
-                throw new SqlServerMirroringException(string.Format("Restore failed for {0}", configuredDatabase.DatabaseName), ex);
+                throw new SqlServerMirroringException(string.Format("Action_RestoreDatabase: Restore failed for {0}", configuredDatabase.DatabaseName), ex);
             }
         }
 
@@ -2413,45 +2648,45 @@ namespace MirrorLib
             }
         }
 
-        private string Information_GetNewesteFilename(string databaseName, string fullPathString)
+        private string Information_GetNewesteFilename(string databaseName, string fullPathString, string searchPattern)
         {
             FileInfo result = null;
             var directory = new DirectoryInfo(fullPathString);
-            var list = directory.GetFiles("*.bak");
+            var list = directory.GetFiles(searchPattern);
             if (list.Count() > 0)
             {
                 result = list.Where(s => s.Name.StartsWith(databaseName)).OrderByDescending(f => f.Name).FirstOrDefault();
             }
             if (result != null)
             {
-                Logger.LogDebug(string.Format("Information_GetNewesteFilename: Found {0} in {1} searching for {2}(...).bak", result.Name, fullPathString, databaseName));
+                Logger.LogDebug(string.Format("Information_GetNewesteFilename: Found {0} in {1} searching for {2}(...){3}", result.Name, fullPathString, databaseName, searchPattern.Replace("*.", ".")));
                 return result.Name;
             }
             else
             {
-                Logger.LogDebug(string.Format("Information_GetNewesteFilename: Found nothing in {0} searching for {1}(...).bak", fullPathString, databaseName));
+                Logger.LogDebug(string.Format("Information_GetNewesteFilename: Found nothing in {0} searching for {1}(...){2}", fullPathString, databaseName, searchPattern.Replace("*.", ".")));
                 return string.Empty;
             }
         }
 
-        private void Action_DeleteAllFilesExcept(string fileName, string fullPathString)
+        private void Action_DeleteAllFilesExcept(string fileName, string fullPathString, string searchPattern)
         {
             List<string> files;
             if (string.IsNullOrWhiteSpace(fileName))
             {
-                files = Directory.EnumerateFiles(fullPathString).ToList();
+                files = Directory.EnumerateFiles(fullPathString,searchPattern).ToList();
             }
             else
             {
-                files = Directory.EnumerateFiles(fullPathString).Where(s => !s.EndsWith(fileName)).ToList();
+                files = Directory.EnumerateFiles(fullPathString, searchPattern).Where(s => !s.EndsWith(fileName)).ToList();
             }
             files.ForEach(x => { try { System.IO.File.Delete(x); Logger.LogDebug(string.Format("Action_DeleteAllFilesExcept deleted file {0}.", x)); } catch { } });
-            Logger.LogDebug(string.Format("Action_DeleteAllFilesExcept for {0} except {1}.", fullPathString, fileName));
+            Logger.LogDebug(string.Format("Action_DeleteAllFilesExcept for {0} except {1} in pattern {2}.", fullPathString, fileName, searchPattern));
         }
 
         /* Create local directories if not existing as this might be first time running and 
         *  returns false if no file is found and true if one is found */
-        private bool Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles(ConfigurationForDatabase configuredDatabase)
+        private bool Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles(ConfigurationForDatabase configuredDatabase, string searchPattern)
         {
             Logger.LogDebug(string.Format("Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles started for {0}", configuredDatabase.DatabaseName));
 
@@ -2473,16 +2708,16 @@ namespace MirrorLib
                 {
                     try
                     {
-                        remoteLocalTransferDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, remoteLocalTransferDirectory.ToString());
+                        remoteLocalTransferDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, remoteLocalTransferDirectory.ToString(), searchPattern);
                     }
                     catch (Exception)
                     {
                         Logger.LogWarning(string.Format("Action_MoveRemoteFileToLocalRestoreAndDeleteOtherFiles: Could not access remote directory {0} but have access to server.", remoteLocalTransferDirectory.ToString()));
                     }
                 }
-                localRemoteTransferDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRemoteTransferDirectory.ToString());
-                localRemoteDeliveryDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRemoteDeliveryDirectory.ToString());
-                localRestoreDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRestoreDirectory.ToString());
+                localRemoteTransferDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRemoteTransferDirectory.ToString(),searchPattern);
+                localRemoteDeliveryDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRemoteDeliveryDirectory.ToString(), searchPattern);
+                localRestoreDirectoryNewestFileName = Information_GetNewesteFilename(databaseNameString, localRestoreDirectory.ToString(),searchPattern);
                 long remoteLocalTransferDirectoryNewestValue = Information_GetFileTimePart(remoteLocalTransferDirectoryNewestFileName);
                 long localRemoteTransferDirectoryNewestValue = Information_GetFileTimePart(localRemoteTransferDirectoryNewestFileName);
                 long localRemoteDeliveryDirectoryNewestValue = Information_GetFileTimePart(localRemoteDeliveryDirectoryNewestFileName);
@@ -2509,19 +2744,19 @@ namespace MirrorLib
                         found = true;
                         Logger.LogInfo(string.Format("Backup file {0} found in {1}.", localRestoreDirectoryNewestFileName, localRestoreDirectory.ToString()));
                         /* delete all files */
-                        Action_DeleteAllFilesExcept(localRestoreDirectoryNewestFileName, localRestoreDirectory.ToString());
-                        Logger.LogDebug(string.Format("Deleted all files except {0} in {1}.", localRestoreDirectoryNewestFileName, localRestoreDirectory.ToString()));
+                        Action_DeleteAllFilesExcept(localRestoreDirectoryNewestFileName, localRestoreDirectory.ToString(),searchPattern);
+                        Logger.LogDebug(string.Format("Deleted all files except {0} in {1} of pattern {2}.", localRestoreDirectoryNewestFileName, localRestoreDirectory.ToString(), searchPattern));
                         /* No move action needed */
                     }
                     else if (localRestoreDirectoryNewestValue == 0)
                     {
-                        Logger.LogDebug(string.Format("No files found in {0}.", localRestoreDirectory.ToString()));
+                        Logger.LogDebug(string.Format("No files found in {0} of pattern {1}.", localRestoreDirectory.ToString(), searchPattern));
                     }
                     else
                     {
                         /* delete all files */
-                        Action_DeleteAllFilesExcept(string.Empty, localRestoreDirectory.ToString());
-                        Logger.LogDebug(string.Format("Deleted all files in {0}.", localRestoreDirectory.ToString()));
+                        Action_DeleteAllFilesExcept(string.Empty, localRestoreDirectory.ToString(), searchPattern);
+                        Logger.LogDebug(string.Format("Deleted all files in {0} of pattern {1}.", localRestoreDirectory.ToString(), searchPattern));
                     }
 
                     #endregion
@@ -2533,20 +2768,20 @@ namespace MirrorLib
                         found = true;
                         Logger.LogInfo(string.Format("Backup file {0} found in {1}.", localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory.ToString()));
                         /* delete all files */
-                        Action_DeleteAllFilesExcept(localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory.ToString());
-                        Logger.LogDebug(string.Format("Deleted all files except {0} in {1}.", localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory.ToString()));
+                        Action_DeleteAllFilesExcept(localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory.ToString(), searchPattern);
+                        Logger.LogDebug(string.Format("Deleted all files except {0} in {1} of pattern {2}.", localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory.ToString(), searchPattern));
                         /* Move actions needed */
                         Action_MoveFileLocal(localRemoteDeliveryDirectoryNewestFileName, localRemoteDeliveryDirectory, localRestoreDirectory);
                     }
                     else if (localRemoteDeliveryDirectoryNewestValue == 0)
                     {
-                        Logger.LogDebug(string.Format("No files found in {0}.", localRemoteDeliveryDirectory.ToString()));
+                        Logger.LogDebug(string.Format("No files found in {0} of pattern {1}.", localRemoteDeliveryDirectory.ToString(), searchPattern));
                     }
                     else
                     {
                         /* delete all files */
-                        Action_DeleteAllFilesExcept(string.Empty, localRemoteDeliveryDirectory.ToString());
-                        Logger.LogDebug(string.Format("Deleted all files in {0}.", localRemoteDeliveryDirectory.ToString()));
+                        Action_DeleteAllFilesExcept(string.Empty, localRemoteDeliveryDirectory.ToString(), searchPattern);
+                        Logger.LogDebug(string.Format("Deleted all files in {0} of pattern {1}.", localRemoteDeliveryDirectory.ToString(), searchPattern));
                     }
 
                     #endregion
@@ -2558,21 +2793,21 @@ namespace MirrorLib
                         found = true;
                         Logger.LogInfo(string.Format("Backup file {0} found in {1}.", localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory.ToString()));
                         /* delete all files */
-                        Action_DeleteAllFilesExcept(localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory.ToString());
-                        Logger.LogDebug(string.Format("Deleted all files except {0} in {1}.", localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory.ToString()));
+                        Action_DeleteAllFilesExcept(localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory.ToString(), searchPattern);
+                        Logger.LogDebug(string.Format("Deleted all files except {0} in {1} of pattern {2}.", localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory.ToString(), searchPattern));
                         /* Move actions needed */
                         Action_MoveFileLocal(localRemoteTransferDirectoryNewestFileName, localRemoteTransferDirectory, localRemoteDeliveryDirectory);
                         Action_MoveFileLocal(localRemoteTransferDirectoryNewestFileName, localRemoteDeliveryDirectory, localRestoreDirectory);
                     }
                     else if (localRemoteDeliveryDirectoryNewestValue == 0)
                     {
-                        Logger.LogDebug(string.Format("No files found in {0}.", localRemoteTransferDirectory.ToString()));
+                        Logger.LogDebug(string.Format("No files found in {0} of pattern {1}.", localRemoteTransferDirectory.ToString(), searchPattern));
                     }
                     else
                     {
                         /* delete all files */
-                        Action_DeleteAllFilesExcept(string.Empty, localRemoteTransferDirectory.ToString());
-                        Logger.LogDebug(string.Format("Deleted all files in {0}.", localRemoteTransferDirectory.ToString()));
+                        Action_DeleteAllFilesExcept(string.Empty, localRemoteTransferDirectory.ToString(), searchPattern);
+                        Logger.LogDebug(string.Format("Deleted all files in {0} of pattern {1}.", localRemoteTransferDirectory.ToString(), searchPattern));
                     }
 
                     #endregion
@@ -2584,8 +2819,8 @@ namespace MirrorLib
                         found = true;
                         Logger.LogInfo(string.Format("Backup file {0} found in {1}.", remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory.ToString()));
                         /* delete all files */
-                        Action_DeleteAllFilesExcept(remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory.ToString());
-                        Logger.LogDebug(string.Format("Deleted all files except {0} in {1}.", remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory.ToString()));
+                        Action_DeleteAllFilesExcept(remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory.ToString(), searchPattern);
+                        Logger.LogDebug(string.Format("Deleted all files except {0} in {1} of pattern {2}.", remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory.ToString(), searchPattern));
                         /* Move actions needed */
                         Action_MoveFileRemoteToLocal(remoteLocalTransferDirectoryNewestFileName, remoteLocalTransferDirectory, localRemoteTransferDirectory);
                         Action_MoveFileLocal(remoteLocalTransferDirectoryNewestFileName, localRemoteTransferDirectory, localRemoteDeliveryDirectory);
@@ -2593,13 +2828,13 @@ namespace MirrorLib
                     }
                     else if (localRemoteDeliveryDirectoryNewestValue == 0)
                     {
-                        Logger.LogDebug(string.Format("No files found in {0}.", remoteLocalTransferDirectory.ToString()));
+                        Logger.LogDebug(string.Format("No files found in {0} of pattern {1}.", remoteLocalTransferDirectory.ToString(), searchPattern));
                     }
                     else
                     {
                         /* delete all files */
-                        Action_DeleteAllFilesExcept(string.Empty, remoteLocalTransferDirectory.ToString());
-                        Logger.LogDebug(string.Format("Deleted all files in {0}.", localRemoteTransferDirectory.ToString()));
+                        Action_DeleteAllFilesExcept(string.Empty, remoteLocalTransferDirectory.ToString(), searchPattern);
+                        Logger.LogDebug(string.Format("Deleted all files in {0} of pattern {1}.", localRemoteTransferDirectory.ToString(), searchPattern));
                     }
                     #endregion
 
@@ -2686,22 +2921,23 @@ namespace MirrorLib
         {
             if(string.IsNullOrWhiteSpace(fileName))
             {
-                Logger.LogDebug("fileName empty");
+                Logger.LogDebug("Information_GetFileTimePart: fileName empty");
                 return 0;
             }
-            Regex regex = new Regex(@"^(?:[\w_][\w_\d]*_)(\d*)(?:\.bak)$");
-            Match match = regex.Match(fileName);
+            string preparedFileName = Path.GetFileNameWithoutExtension(fileName);
+            Regex regex = new Regex(@"^(?:[\w_][\w_\d]*_)(\d*)$");
+            Match match = regex.Match(preparedFileName);
             if(match.Success)
             {
                 string capture = match.Groups[1].Value;
                 long returnValue;
                 if(long.TryParse(capture, out returnValue))
                 {
-                    Logger.LogDebug(string.Format("Found filename {0} datepart {1}", fileName, returnValue));
+                    Logger.LogDebug(string.Format("Information_GetFileTimePart: Found filename {0} datepart {1}", fileName, returnValue));
                     return returnValue;
                 }
             }
-            throw new SqlServerMirroringException(string.Format("GetFileTimePart failed to extract time part from {0}.", fileName));
+            throw new SqlServerMirroringException(string.Format("Information_GetFileTimePart: Failed to extract time part from {0}.", fileName));
         }
 
         #endregion

@@ -20,6 +20,7 @@ namespace MirrorLib
         private int _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
         private int _mirrorMonitoringUpdateMinutes;
         private int _remoteServerAccessTimeoutSeconds;
+        private string _endpoint_Name;
 
         public ConfigurationForInstance(
             RemoteServer remoteServer,
@@ -33,7 +34,8 @@ namespace MirrorLib
             int switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState,
             int shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState,
             int mirrorMonitoringUpdateMinutes,
-            int remoteServerAccessTimeoutSeconds
+            int remoteServerAccessTimeoutSeconds,
+            string endpoint_Name
             )
         {
             _remoteServer = remoteServer;
@@ -48,6 +50,7 @@ namespace MirrorLib
             _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState = shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
             MirrorMonitoringUpdateMinutes = mirrorMonitoringUpdateMinutes;
             _remoteServerAccessTimeoutSeconds = remoteServerAccessTimeoutSeconds;
+            _endpoint_Name = endpoint_Name;
         }
         public RemoteServer RemoteServer
         {
@@ -152,7 +155,7 @@ namespace MirrorLib
         {
             get
             {
-                return "Mirroring_Endpoint";
+                return _endpoint_Name;
             }
         }
 
@@ -161,6 +164,38 @@ namespace MirrorLib
             get
             {
                 return _remoteServerAccessTimeoutSeconds;
+            }
+        }
+
+        public string DatabaseBackupSearchPattern
+        {
+            get
+            {
+                return "*." + DatabaseBackupFileEnd;
+            }
+        }
+
+        public string DatabaseBackupFileEnd
+        {
+            get
+            {
+                return "bak";
+            }
+        }
+
+        public string DatabaseLogBackupSearchPattern
+        {
+            get
+            {
+                return "*." + DatabaseLogBackupFileEnd;
+            }
+        }
+
+        public string DatabaseLogBackupFileEnd
+        {
+            get
+            {
+                return "log";
             }
         }
     }
