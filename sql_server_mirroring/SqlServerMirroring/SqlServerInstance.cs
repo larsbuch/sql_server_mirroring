@@ -2180,29 +2180,23 @@ namespace MirrorLib
 
         private void Action_CreateEndpoint()
         {
-            // EndPoints Needed for each mirror database
             try
             {
-                //Set up a database mirroring endpoint on the server before 
-                //setting up a database mirror. 
-                //Define an Endpoint object variable for database mirroring. 
                 Endpoint ep = default(Endpoint);
                 ep = new Endpoint(DatabaseServerInstance, ConfigurationForInstance.Endpoint_Name);
                 ep.ProtocolType = ProtocolType.Tcp;
                 ep.EndpointType = EndpointType.DatabaseMirroring;
-                //Specify the protocol ports. 
                 ep.Protocol.Tcp.ListenerPort = ConfigurationForInstance.Endpoint_ListenerPort;
-                //Specify the role of the payload. 
                 ep.Payload.DatabaseMirroring.ServerMirroringRole = ServerMirroringRole.All;
-                //Create the endpoint on the instance of SQL Server. 
+                Logger.LogDebug(string.Format("Action_CreateEndpoint: Creates endpoint {0}", ConfigurationForInstance.Endpoint_Name));
                 ep.Create();
-                //Start the endpoint. 
+                Logger.LogDebug(string.Format("Action_CreateEndpoint: Starts endpoint {0}", ConfigurationForInstance.Endpoint_Name));
                 ep.Start();
-                Logger.LogDebug(string.Format("Created endpoint and started. Endpoint in state {1}.", ep.EndpointState));
+                Logger.LogDebug(string.Format("Action_CreateEndpoint: Created endpoint and started. Endpoint in state {1}.", ep.EndpointState));
             }
             catch (Exception ex)
             {
-                throw new SqlServerMirroringException(string.Format("Creation of endpoint for {0} failed", ConfigurationForInstance.Endpoint_Name), ex);
+                throw new SqlServerMirroringException(string.Format("Action_CreateEndpoint: Creation of endpoint for {0} failed", ConfigurationForInstance.Endpoint_Name), ex);
             }
         }
 

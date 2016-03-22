@@ -409,7 +409,7 @@ namespace MirrorLibTester
                 }
                 else
                 {
-                    return exception.Message + System.Environment.NewLine + BuildExceptionHierarchy(exception.InnerException);
+                    return exception.Message + System.Environment.NewLine + "InnerException: " + BuildExceptionHierarchy(exception.InnerException);
                 }
             }
         }
