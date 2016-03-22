@@ -752,9 +752,9 @@ namespace MirrorLib
             return true;
         }
 
-        public bool Action_BackupForAllMirrorDatabases()
+        public bool Action_BackupForAllPrincipalDatabases()
         {
-            Logger.LogDebug("Action_BackupForAllMirrorDatabases started");
+            Logger.LogDebug("Action_BackupForAllPrincipalDatabases started");
             foreach (ConfigurationForDatabase configuredDatabase in ConfigurationForDatabases.Values)
             {
                 try
@@ -763,10 +763,10 @@ namespace MirrorLib
                 }
                 catch (Exception ex)
                 {
-                    throw new SqlServerMirroringException(string.Format("Action_BackupForAllMirrorDatabases: Backup failed for {0}", configuredDatabase.DatabaseName), ex);
+                    throw new SqlServerMirroringException(string.Format("Action_BackupForAllPrincipalDatabases: Backup failed for {0}", configuredDatabase.DatabaseName), ex);
                 }
             }
-            Logger.LogDebug("Action_BackupForAllMirrorDatabases ended");
+            Logger.LogDebug("Action_BackupForAllPrincipalDatabases ended");
             return true;
         }
 
@@ -868,7 +868,21 @@ namespace MirrorLib
                 if(mirrorDatabase == null || !mirrorDatabase.IsMirroringEnabled)
                 {
                     Logger.LogWarning(string.Format("Database {0} is not set up for mirroring but is in configuration", configurationDatabase.DatabaseName));
-                    Action_AddDatabaseToMirroring(configurationDatabase, serverPrimary);
+                    if (serverPrimary)
+                    {
+                        Action_AddDatabaseToMirroring(configurationDatabase);
+                    }
+                    else
+                    {
+                        if (Action_RestoreDatabase(configurationDatabase))
+                        {
+                            Logger.LogInfo("Action_StartUpMirrorCheck: Restored backup");
+                        }
+                        else
+                        {
+                            Logger.LogInfo("Action_StartUpMirrorCheck: Moved database from remote share and restored Backup");
+                        }
+                    }
                 }
                 else
                 {
@@ -1364,6 +1378,8 @@ namespace MirrorLib
                 }
                 Action_StartUpMirrorCheck(ConfigurationForDatabases, true);
                 Action_SwitchOverAllMirrorDatabasesIfPossible(true);
+                Action_BackupForAllPrincipalDatabases();
+
                 Logger.LogDebug("StartStartupState ended");
                 if (Information_HasAccessToRemoteServer())
                 {
@@ -2027,58 +2043,45 @@ namespace MirrorLib
 
         #region Individual Databases
 
-        private void Action_AddDatabaseToMirroring(ConfigurationForDatabase configuredDatabase, bool serverPrimary)
+        private void Action_AddDatabaseToMirroring(ConfigurationForDatabase configuredDatabase)
         {
-            if (!serverPrimary)
+
+            Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
+            if (database == null)
             {
-                if (Action_RestoreDatabase(configuredDatabase))
+                throw new SqlServerMirroringException(string.Format("Action_AddDatabaseToMirroring: Could not find database {0}", configuredDatabase.DatabaseName));
+            }
+            if (database.RecoveryModel != RecoveryModel.Full)
+            {
+                try
                 {
-                    Logger.LogInfo("Action_AddDatabaseToMirroring: Restored backup");
+                    database.RecoveryModel = RecoveryModel.Full;
+                    database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                    Logger.LogDebug(string.Format("Action_AddDatabaseToMirroring: Database {0} has been set to full recovery", database.Name));
                 }
-                else
+                catch (Exception ex)
                 {
-                    Logger.LogInfo("Action_AddDatabaseToMirroring: Moved database from remote share and restored Backup");
+                    throw new SqlServerMirroringException(string.Format("Action_AddDatabaseToMirroring: Could not set database {0} to Full Recovery", database.Name), ex);
                 }
+            }
+            if (!database.BrokerEnabled)
+            {
+                database.BrokerEnabled = true;
+                database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                Logger.LogDebug(string.Format("Action_AddDatabaseToMirroring: Database {0} has enabled service broker", database.Name));
+            }
+            if (Action_BackupDatabaseForMirrorServer(configuredDatabase))
+            {
+                Logger.LogInfo("Action_AddDatabaseToMirroring: Backup created and moved to remote share");
             }
             else
             {
-                Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
-                if (database == null)
-                {
-                    throw new SqlServerMirroringException(string.Format("Action_AddDatabaseToMirroring: Could not find database {0}", configuredDatabase.DatabaseName));
-                }
-                if (database.RecoveryModel != RecoveryModel.Full)
-                {
-                    try
-                    {
-                        database.RecoveryModel = RecoveryModel.Full;
-                        database.Alter(TerminationClause.RollbackTransactionsImmediately);
-                        Logger.LogDebug(string.Format("Action_AddDatabaseToMirroring: Database {0} has been set to full recovery", database.Name));
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new SqlServerMirroringException(string.Format("Action_AddDatabaseToMirroring: Could not set database {0} to Full Recovery", database.Name), ex);
-                    }
-                }
-                if (!database.BrokerEnabled)
-                {
-                    database.BrokerEnabled = true;
-                    database.Alter(TerminationClause.RollbackTransactionsImmediately);
-                    Logger.LogDebug(string.Format("Action_AddDatabaseToMirroring: Database {0} has enabled service broker", database.Name));
-                }
-                if (Action_BackupDatabaseForMirrorServer(configuredDatabase))
-                {
-                    Logger.LogInfo("Action_AddDatabaseToMirroring: Backup created and moved to remote share");
-                }
-                else
-                {
-                    Logger.LogInfo("Action_AddDatabaseToMirroring: Backup created and moved to local share due to missing access to remote share");
-                }
+                Logger.LogInfo("Action_AddDatabaseToMirroring: Backup created and moved to local share due to missing access to remote share");
             }
 
             if (Information_HasAccessToRemoteServer())
             {
-                Action_CreateMirroring(configuredDatabase, serverPrimary);
+                Action_CreateMirroring(configuredDatabase);
             }
             else
             {
@@ -2142,7 +2145,7 @@ namespace MirrorLib
             return started;
         }
 
-        private void Action_CreateMirroring(ConfigurationForDatabase configuredDatabase, bool serverPrimary)
+        private void Action_CreateMirroring(ConfigurationForDatabase configuredDatabase)
         {
             Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
             if(database == null)
