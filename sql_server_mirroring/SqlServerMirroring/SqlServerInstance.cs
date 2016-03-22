@@ -30,6 +30,7 @@ namespace MirrorLib
         private ManagedComputer _managedComputer;
         private Dictionary<ServerStateEnum, ServerState> _serverStates;
         private ServerState _activeServerState;
+        private ServerState _oldServerState;
         private ConfigurationForInstance _configurationForInstance;
         private Dictionary<string, ConfigurationForDatabase> _configurationForDatabases;
         private ServerRole _activeServerRole = ServerRole.NotSet;
@@ -82,6 +83,18 @@ namespace MirrorLib
             {
                 _activeServerState = value;
                 Logger.LogDebug(string.Format("Active state set to {0}.", _activeServerState));
+            }
+        }
+
+        public ServerState Information_OldServerState
+        {
+            get
+            {
+                return _oldServerState;
+            }
+            set
+            {
+                _oldServerState = value;
             }
         }
 
@@ -377,7 +390,7 @@ namespace MirrorLib
                 Logger.LogWarning("Sql Agent not configured to auto start on server restart");
                 return false;
             }
-            if (!Action_CheckSqlAgentRunning())
+            if (!Information_CheckSqlAgentRunning())
             {
                 Logger.LogWarning("Sql Server Agent service is not running");
                 return false;
@@ -452,18 +465,17 @@ namespace MirrorLib
         public void Action_SetupMonitoring()
         {
             Logger.LogDebug("Action_SetupMonitoring started");
-            foreach (Database database in Information_UserDatabases)
+            try
             {
-                ConfigurationForDatabase configuredDatabase;
-                if (ConfigurationForDatabases.TryGetValue(database.Name, out configuredDatabase))
-                {
-                    try
-                    {
-                        throw new NotImplementedException();
-                        database.ExecuteNonQuery("EXEC sys.sp_dbmmonitoraddmonitoring " + ConfigurationForInstance.MirrorMonitoringUpdateMinutes);
-                        Logger.LogDebug(string.Format("Mirroring monitoring every {0} minutes started {1} with partner endpoint on {2} port {3}"
-                            , ConfigurationForInstance.MirrorMonitoringUpdateMinutes, configuredDatabase.DatabaseName, configuredDatabase.RemoteServer, ConfigurationForInstance.Endpoint_ListenerPort));
+                LocalMasterDatabase.ExecuteNonQuery("EXEC sys.sp_dbmmonitoraddmonitoring " + ConfigurationForInstance.MirrorMonitoringUpdateMinutes);
+                Logger.LogDebug(string.Format("Mirroring monitoring every {0} minutes started with partner endpoint on {1} port {2}"
+                    , ConfigurationForInstance.MirrorMonitoringUpdateMinutes, ConfigurationForInstance.RemoteServer, ConfigurationForInstance.Endpoint_ListenerPort));
 
+                foreach (Database database in Information_UserDatabases)
+                {
+                    ConfigurationForDatabase configuredDatabase;
+                    if (ConfigurationForDatabases.TryGetValue(database.Name, out configuredDatabase))
+                    {
 
                         //1 Oldest unsent transaction
                         //Specifies the number of minutes worth of transactions that can accumulate in the send queue
@@ -474,6 +486,8 @@ namespace MirrorLib
 
                         //--Event ID 32042
                         //EXEC sp_dbmmonitorchangealert DatabaseName, 1, 2, 1 ; --OLDEST UNSENT TRANSACTION (set to 2 minutes)
+                        database.ExecuteNonQuery(string.Format("EXEC sys.sp_dbmmonitorchangealert {0}, 1, 2, 1", database.Name));
+                        Logger.LogDebug(string.Format("sp_dbmmonitorchangealert OLDEST UNSENT TRANSACTION used for {0}", database.Name));
 
 
                         //2 Unsent log
@@ -484,6 +498,8 @@ namespace MirrorLib
 
                         //--Event ID 32043
                         //EXEC sp_dbmmonitorchangealert DatabaseName, 2, 10000, 1; --UNSENT LOG SIZE ON P(set to 10000K)
+                        database.ExecuteNonQuery(string.Format("EXEC sys.sp_dbmmonitorchangealert {0}, 2, 10000, 1", database.Name));
+                        Logger.LogDebug(string.Format("sp_dbmmonitorchangealert UNSENT LOG SIZE ON PRINCIPAL used for {0}", database.Name));
 
                         //3 Unrestored log
                         //Specifies how many KB of unrestored log generate a warning on the mirror server instance.This warning helps measure
@@ -492,6 +508,8 @@ namespace MirrorLib
 
                         //--Event ID 32044
                         //EXEC sp_dbmmonitorchangealert DatabaseName, 3, 10000, 1; --UNRESTORED LOG ON M(set to 10000K)
+                        database.ExecuteNonQuery(string.Format("EXEC sys.sp_dbmmonitorchangealert {0}, 3, 10000, 1", database.Name));
+                        Logger.LogDebug(string.Format("sp_dbmmonitorchangealert UNRESTORED LOG ON MIRROR used for {0}", database.Name));
 
                         //4 Mirror commit overhead
                         //Specifies the number of milliseconds of average delay per transaction that are tolerated before a warning is generated
@@ -500,18 +518,20 @@ namespace MirrorLib
 
                         //-- Event ID 32045
                         //EXEC sp_dbmmonitorchangealert DatabaseName, 4, 1000, 1; --MIRRORING COMMIT OVERHEAD (milisecond delay for txn on P_
+                        database.ExecuteNonQuery(string.Format("EXEC sys.sp_dbmmonitorchangealert {0}, 4, 1000, 1", database.Name));
+                        Logger.LogDebug(string.Format("sp_dbmmonitorchangealert MIRRORING COMMIT OVERHEAD used for {0}", database.Name));
 
                         //5 Retention period
                         //Metadata that controls how long rows in the database mirroring status table are preserved.
-
                         //EXEC sp_dbmmonitorchangealert DatabaseName, 5, 48, 1 ;
-
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new SqlServerMirroringException(string.Format("Action_SetupMonitoring failed for {0}", configuredDatabase.DatabaseName.ToString()), ex);
+                        database.ExecuteNonQuery(string.Format("EXEC sys.sp_dbmmonitorchangealert {0}, 5, 48, 1", database.Name));
+                        Logger.LogDebug(string.Format("sp_dbmmonitorchangealert DATABASE MIRRORING STATUS RETENTION PERIOD used for {0}", database.Name));
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException(string.Format("Action_SetupMonitoring failed"), ex);
             }
             Logger.LogDebug("Action_SetupMonitoring ended");
         }
@@ -960,7 +980,24 @@ namespace MirrorLib
                 Action_ChangeSqlAgentServiceToAutomaticStart();
                 Logger.LogInfo("Sql Agent was set to Automatic start");
             }
-            if (!Action_CheckSqlAgentRunning())
+            if (Information_CheckSqlAgentRunning())
+            {
+                Logger.LogDebug("Bug/SecurityIssue: Might not be able to stop service for enabling service broker on msdb");
+                Action_StopSqlAgent();
+                Logger.LogInfo("Sql Agent service was stopped");
+
+                Logger.LogDebug("Action_SetupInstanceForMirroring: Try to enable service broker on msdb");
+                foreach (Database database in DatabaseServerInstance.Databases)
+                {
+                    if (database.Name.Equals("msdb") && !database.BrokerEnabled)
+                    {
+                        database.BrokerEnabled = true;
+                        database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                        Logger.LogDebug(string.Format("Action_SetupInstanceForMirroring: Database {0} has enabled service broker", database.Name));
+                    }
+                }
+            }
+            if (!Information_CheckSqlAgentRunning())
             {
                 Logger.LogDebug("Bug/SecurityIssue: Might not be able to start service");
                 Action_StartSqlAgent();
@@ -1120,6 +1157,7 @@ namespace MirrorLib
                 if (_serverStates.TryGetValue(newState, out newServerState))
                 {
                     Logger.LogInfo(string.Format("Server state changed from {0} to {1}.", Information_ServerState, newServerState));
+                    Information_OldServerState = Information_ServerState;
                     Information_ServerState = newServerState;
                     Action_StartNewServerState(newState);
                     Logger.LogDebug(string.Format("Server in new state {0}.", newServerState));
@@ -1185,7 +1223,32 @@ namespace MirrorLib
             }
         }
 
-        private bool Action_CheckSqlAgentRunning()
+        private void Action_StopSqlAgent()
+        {
+            /* TODO: Check that it is the correct instance sql agent */
+            foreach (Service service in Information_SqlServerServicesInstalled.Where(s => s.Type == ManagedServiceType.SqlAgent))
+            {
+                Logger.LogDebug(string.Format("Checking Sql Agent {0}({1}) in state {2}", service.Name, service.DisplayName, service.ServiceState));
+                if (service.ServiceState != ServiceState.Stopped)
+                {
+                    int timeoutCounter = 0;
+                    service.Stop();
+                    while (service.ServiceState != ServiceState.Stopped && timeoutCounter > Information_ServiceStartTimeout)
+                    {
+                        timeoutCounter += Information_ServiceStartTimeoutStep;
+                        System.Threading.Thread.Sleep(Information_ServiceStartTimeoutStep);
+                        Console.WriteLine(string.Format("Waited {0} seconds for Sql Agent {1}({2}) stopping: {3}", (timeoutCounter / 1000), service.Name, service.DisplayName, service.ServiceState));
+                        service.Refresh();
+                    }
+                    if (timeoutCounter > Information_ServiceStartTimeout)
+                    {
+                        throw new SqlServerMirroringException(string.Format("Timed out waiting for Sql Agent {1}({2}) stopping", service.Name, service.DisplayName));
+                    }
+                }
+            }
+        }
+
+        private bool Information_CheckSqlAgentRunning()
         {
             /* TODO: Check that it is the correct instance sql agent */
             foreach (Service service in Information_SqlServerServicesInstalled.Where(s => s.Type == ManagedServiceType.SqlAgent))
@@ -1328,7 +1391,18 @@ namespace MirrorLib
             Logger.LogDebug("Action_StartSecondaryMaintenanceState starting");
             try
             {
-                /* Does not do something special */
+                if (Information_OldServerState.State == ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE)
+                {
+                    Logger.LogInfo(string.Format("Action_StartSecondaryMaintenanceState: Resume mirroring if not active"));
+                    if (Action_ResumeMirroringForAllDatabases())
+                    {
+                        Logger.LogInfo(string.Format("Action_StartSecondaryMaintenanceState: Mirroring resumed on databases needed"));
+                    }
+                    else
+                    {
+                        Logger.LogWarning(string.Format("Action_StartSecondaryMaintenanceState could not resume on databases."));
+                    }
+                }
                 Logger.LogDebug("Action_StartSecondaryMaintenanceState starting");
             }
             catch (Exception ex)
@@ -1356,18 +1430,32 @@ namespace MirrorLib
 
         private void Action_StartSecondaryRunningState()
         {
-            Logger.LogDebug("StartSecondaryRunningState starting");
+            Logger.LogDebug("Action_StartSecondaryRunningState starting");
             try
             {
+                if (Information_OldServerState.State == ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE)
+                {
+                    Logger.LogInfo(string.Format("Action_StartSecondaryRunningState: Resume mirroring if not active"));
+                    if (Action_ResumeMirroringForAllDatabases())
+                    {
+                        Logger.LogInfo(string.Format("Action_StartSecondaryRunningState: Mirroring resumed on databases needed"));
+                    }
+                    else
+                    {
+                        Logger.LogWarning(string.Format("Action_StartSecondaryRunningState could not resume on databases. Switching to old state."));
+                        Action_MakeServerStateChange(Information_OldServerState.State);
+                    }
+                }
+
                 if (!(Information_ServerRole == ServerRole.Secondary))
                 {
                     Action_MakeServerStateChange(ServerStateEnum.SECONDARY_MANUAL_FAILOVER_STATE);
                 }
-                Logger.LogDebug("StartSecondaryRunningState ended.");
+                Logger.LogDebug("Action_StartSecondaryRunningState ended.");
             }
             catch (Exception ex)
             {
-                Logger.LogError("Running State could not be started.", ex);
+                Logger.LogError("Action_StartSecondaryRunningState: State could not be started.", ex);
                 Action_MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
             }
         }
@@ -1446,18 +1534,33 @@ namespace MirrorLib
 
         private void Action_StartPrimaryRunningState()
         {
-            Logger.LogDebug("StartRunningState starting");
+            Logger.LogDebug("Action_StartPrimaryRunningState starting");
             try
             {
+                if(Information_OldServerState.State == ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE ||
+                   Information_OldServerState.State == ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE)
+                {
+                    Logger.LogInfo(string.Format("Action_StartPrimaryRunningState: Resume mirroring if not active"));
+                    if (Action_ResumeMirroringForAllDatabases())
+                    {
+                        Logger.LogInfo(string.Format("Action_StartPrimaryRunningState: Mirroring resumed on databases needed"));
+                    }
+                    else
+                    {
+                        Logger.LogWarning(string.Format("Action_StartPrimaryRunningState could not resume on databases. Switching to old state."));
+                        Action_MakeServerStateChange(Information_OldServerState.State);
+                    }
+                }
+
                 if (!(Information_ServerRole == ServerRole.Primary))
                 {
                     Action_MakeServerStateChange(ServerStateEnum.PRIMARY_MANUAL_FAILOVER_STATE);
                 }
-                Logger.LogDebug("StartRunningState ended.");
+                Logger.LogDebug("Action_StartPrimaryRunningState ended.");
             }
             catch (Exception ex)
             {
-                Logger.LogError("Running State could not be started.", ex);
+                Logger.LogError("Action_StartPrimaryRunningState: State could not be started.", ex);
                 Action_MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
             }
         }
@@ -1510,15 +1613,28 @@ namespace MirrorLib
 
         private void Action_StartPrimaryMaintenanceState()
         {
-            Logger.LogDebug("StartMaintenanceState starting");
+            Logger.LogDebug("Action_StartPrimaryMaintenanceState starting");
             try
             {
-                /* Does not do something special */
-                Logger.LogDebug("StartMaintenanceState starting");
+                if (Information_OldServerState.State == ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE ||
+                   Information_OldServerState.State == ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE)
+                {
+                    Logger.LogInfo(string.Format("Action_StartPrimaryMaintenanceState: Resume mirroring if not active"));
+                    if (Action_ResumeMirroringForAllDatabases())
+                    {
+                        Logger.LogInfo(string.Format("Action_StartPrimaryMaintenanceState: Mirroring resumed on databases needed"));
+                    }
+                    else
+                    {
+                        Logger.LogWarning(string.Format("Action_StartPrimaryMaintenanceState could not resume on databases."));
+                    }
+                }
+
+                Logger.LogDebug("Action_StartPrimaryMaintenanceState ended");
             }
             catch (Exception ex)
             {
-                Logger.LogError("Start Shutting down State could not be started.", ex);
+                Logger.LogError("Action_StartPrimaryMaintenanceState could not be started.", ex);
                 Action_MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
             }
         }
@@ -2111,12 +2227,6 @@ namespace MirrorLib
                     throw new SqlServerMirroringException(string.Format("Action_AddDatabaseToMirroring: Could not set database {0} to Full Recovery", database.Name), ex);
                 }
             }
-            if (!database.BrokerEnabled)
-            {
-                database.BrokerEnabled = true;
-                database.Alter(TerminationClause.RollbackTransactionsImmediately);
-                Logger.LogDebug(string.Format("Action_AddDatabaseToMirroring: Database {0} has enabled service broker", database.Name));
-            }
             if (Action_BackupDatabaseForMirrorServer(configuredDatabase, true))
             {
                 Logger.LogInfo("Action_AddDatabaseToMirroring: Backup created and moved to remote share");
@@ -2308,17 +2418,6 @@ namespace MirrorLib
             catch (Exception ex)
             {
                 throw new SqlServerMirroringException(string.Format("Removing mirroring failed for {0}", mirrorState.DatabaseName), ex);
-            }
-
-            // TODO remove step for non-witness systems
-            try
-            {
-                database.BrokerEnabled = false;
-                database.Alter(TerminationClause.RollbackTransactionsImmediately);
-            }
-            catch (Exception ex)
-            {
-                throw new SqlServerMirroringException(string.Format("Disabling service broker on {0} failed.", mirrorState.DatabaseName.ToString()), ex);
             }
         }
 
