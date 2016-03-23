@@ -441,7 +441,6 @@ namespace MirrorLib
             Action_StartInitialServerState();
             Information_CheckDatabaseMirrorStates();
             Information_ServerRole = ServerRole.Primary;
-            Action_SwitchOverAllMirrorDatabasesIfPossible(false);
 
             if (Information_IsValidServerStateChange(ServerStateEnum.PRIMARY_STARTUP_STATE))
             {
@@ -456,7 +455,6 @@ namespace MirrorLib
             Action_StartInitialServerState();
             Information_CheckDatabaseMirrorStates();
             Information_ServerRole = ServerRole.Secondary;
-            Action_SwitchOverAllPrincipalDatabasesIfPossible(false);
 
             if (Information_IsValidServerStateChange(ServerStateEnum.SECONDARY_STARTUP_STATE))
             {
@@ -544,38 +542,52 @@ namespace MirrorLib
             Logger.LogDebug("Action_CheckServerState started");
 
             Information_CheckDatabaseMirrorStates();
+            Action_RecheckServerRole();
             if (!Information_ServerState.IgnoreMirrorStateCheck)
             {
+                #region SwitchOver Check
+
+                Action_SwitchOverCheck();
+
+                #endregion
+
+                #region DatabaseErrorState
+
                 bool databaseErrorState = false;
-                foreach (MirrorDatabase mirrorDatabase in Information_MirrorDatabases.Where(s => s.IsMirroringEnabled))
+                foreach (DatabaseMirrorState databaseMirrorState in Information_DatabaseMirrorStates.Values.Where(s => s.MirroringState != MirroringState.NotMirrored))
                 {
-                    if (Information_ServerRole == ServerRole.Primary || mirrorDatabase.)
+                    if (Information_ServerRole == ServerRole.Primary)
                     {
-                        if (mirrorDatabase.Status != DatabaseStatus.Normal)
+                        if (databaseMirrorState.DatabaseState != DatabaseState.ONLINE)
                         {
                             databaseErrorState = true;
-                            Logger.LogError(string.Format("Action_CheckServerState: Database {0} has error status {1}.", mirrorDatabase.DatabaseName, mirrorDatabase.Status));
+                            Logger.LogError(string.Format("Action_CheckServerState: Server Role {0}: Database {1} has error status {2}."
+                                , Information_ServerRole, databaseMirrorState.DatabaseName, databaseMirrorState.DatabaseState));
                         }
                         else
                         {
-                            Logger.LogDebug(string.Format("Action_CheckServerState: Database {0} has status {1}.", mirrorDatabase.DatabaseName, mirrorDatabase.Status));
+                            Logger.LogDebug(string.Format("Action_CheckServerState: Server Role {0}: Database {1} has status {2}."
+                                , Information_ServerRole, databaseMirrorState.DatabaseName, databaseMirrorState.DatabaseState));
                         }
                     }
                     else if (Information_ServerRole == ServerRole.Secondary)
                     {
-                        if (mirrorDatabase.Status != DatabaseStatus.Restoring)
+                        if (!databaseMirrorState.DatabaseIsInStandby)
                         {
                             databaseErrorState = true;
-                            Logger.LogError(string.Format("Action_CheckServerState: Database {0} has error status {1}.", mirrorDatabase.DatabaseName, mirrorDatabase.Status));
+                            Logger.LogError(string.Format("Action_CheckServerState: Server Role {0}: Database {1} has error status {2}."
+                                , Information_ServerRole, databaseMirrorState.DatabaseName, databaseMirrorState.DatabaseState));
                         }
                         else
                         {
-                            Logger.LogDebug(string.Format("Action_CheckServerState: Database {0} has status {1}.", mirrorDatabase.DatabaseName, mirrorDatabase.Status));
+                            Logger.LogDebug(string.Format("Action_CheckServerState: Server Role {0}: Database {1} has status {2}."
+                                , Information_ServerRole, databaseMirrorState.DatabaseName, databaseMirrorState.DatabaseState));
                         }
                     }
                     else
                     {
-                        Logger.LogWarning()
+                        databaseErrorState = true;
+                        Logger.LogError(string.Format("Action_CheckServerState: Server Role {0}", Information_ServerRole));
                     }
                 }
                 if (databaseErrorState)
@@ -587,13 +599,19 @@ namespace MirrorLib
                     }
                     else
                     {
-                        Logger.LogDebug(string.Format("Action_CheckServerState: Found Server Role {0}, Server State {1} and will shut down after {2} checks.", Information_ServerRole, Information_ServerState, ConfigurationForInstance.ShutDownAfterNumberOfChecksForDatabaseState));
+                        Logger.LogDebug(string.Format("Action_CheckServerState: Found Server Role {0}, Server State {1} and will shut down after {2} checks."
+                            , Information_ServerRole, Information_ServerState, ConfigurationForInstance.ShutDownAfterNumberOfChecksForDatabaseState));
                     }
                 }
                 else
                 {
                     Action_ResetLastDatabaseStateErrorAndCount();
                 }
+
+                #endregion
+
+                #region StateChange
+
 
                 /* Check remote server access */
                 if (Information_HasAccessToRemoteServer())
@@ -636,14 +654,46 @@ namespace MirrorLib
                             Action_MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
                         }
                     }
-
                 }
+                #endregion
             }
             else
             {
                 Logger.LogDebug(string.Format("Action_CheckServerState: Ignores Action_CheckMirrorState because server state is {0}.", Information_ServerState));
             }
             Logger.LogDebug("Action_CheckServerState ended");
+        }
+
+        private void Action_SwitchOverCheck()
+        {
+            if (Information_ServerState.IsPrimaryRole)
+            {
+                if (Information_ServerRole == ServerRole.MainlyPrimary || Information_ServerRole == ServerRole.MainlySecondary)
+                {
+                    Logger.LogError(string.Format("Server Role {0} but Server State {1}. Switching over all principal databases. Shutting down to signal shift.", Information_ServerRole, Information_ServerState));
+                    Action_SwitchOverAllPrincipalDatabasesIfPossible(false);
+                    Action_ForceShutDownMirroringService();
+                }
+                else if (Information_ServerRole == ServerRole.Secondary)
+                {
+                    Logger.LogError(string.Format("Server Role {0} but Server State {1}. Shutting down to signal shift.", Information_ServerRole, Information_ServerState));
+                    Action_ForceShutDownMirroringService();
+                }
+            }
+            else
+            {
+                if (Information_ServerRole == ServerRole.MainlyPrimary || Information_ServerRole == ServerRole.MainlySecondary)
+                {
+                    Logger.LogError(string.Format("Server Role {0} but Server State {1}. Switching over all mirror databases. Shutting down to signal shift.", Information_ServerRole, Information_ServerState));
+                    Action_SwitchOverAllMirrorDatabasesIfPossible(false);
+                    Action_ForceShutDownMirroringService();
+                }
+                else if (Information_ServerRole == ServerRole.Primary)
+                {
+                    Logger.LogError(string.Format("Server Role {0} but Server State {1}. Shutting down to signal shift.", Information_ServerRole, Information_ServerState));
+                    Action_ForceShutDownMirroringService();
+                }
+            }
         }
 
         public bool Action_ResumeMirroringForAllDatabases()
@@ -1115,14 +1165,14 @@ namespace MirrorLib
                     {
                         MirroringRole databaseRole = Information_GetDatabaseMirroringRole(database.Name);
                         
-                        if (databaseRole.Equals(failoverRole))
+                        if (databaseRole == failoverRole)
                         {
                             Logger.LogDebug(string.Format("Trying to switch {0} as it in {1}.", database.Name, databaseRole));
                             database.ChangeMirroringState(MirroringOption.Failover);
                             database.Alter(TerminationClause.RollbackTransactionsImmediately);
                             Logger.LogDebug(string.Format("Database {0} switched from {1} to {2}.", database.Name, databaseRole, failoverRole));
                         }
-                        else if (databaseRole.Equals(ignoreRole))
+                        else if (databaseRole == ignoreRole)
                         {
                             Logger.LogDebug(string.Format("Did not switch {0} as it is already in {1}.", database.Name, databaseRole));
                         }
@@ -1592,7 +1642,8 @@ namespace MirrorLib
                     Action_SetupInstanceForMirroring();
                 }
                 Action_StartUpMirrorCheck(ConfigurationForDatabases, false);
-                //Action_SwitchOverAllPrincipalDatabasesIfPossible(false);
+                Action_RecheckServerRole();
+                Action_SwitchOverCheck();
                 Logger.LogDebug("StartStartupState ended");
                 if (Information_HasAccessToRemoteServer())
                 {
@@ -1634,7 +1685,9 @@ namespace MirrorLib
                     Action_SetupInstanceForMirroring();
                 }
                 Action_StartUpMirrorCheck(ConfigurationForDatabases, true);
-                //Action_SwitchOverAllMirrorDatabasesIfPossible(true);
+                Action_RecheckServerRole();
+                Action_SwitchOverCheck();
+
                 Action_BackupForAllConfiguredDatabases();
 
                 Logger.LogDebug("StartStartupState ended");

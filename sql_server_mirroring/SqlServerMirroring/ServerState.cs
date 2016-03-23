@@ -10,11 +10,20 @@ namespace MirrorLib
         private ServerStateEnum _state;
         private bool _isDegradedState;
         private bool _ignoreMirrorStateCheck;
+        private bool _isPrimaryRole;
         private List<ServerStateEnum> _validNewStates;
 
         public ServerState(ServerStateEnum state, bool isDegradedState, bool ignoreMirrorStateCheck, List<ServerStateEnum> validNewStates)
         {
             _state = state;
+            if(state.ToString().StartsWith("PRIMARY"))
+            {
+                _isPrimaryRole = true;
+            }
+            else
+            {
+                _isPrimaryRole = false;
+            }
             _isDegradedState = isDegradedState;
             _ignoreMirrorStateCheck = ignoreMirrorStateCheck;
             _validNewStates = validNewStates;
@@ -32,6 +41,14 @@ namespace MirrorLib
             get
             {
                 return _state;
+            }
+        }
+
+        public bool IsPrimaryRole
+        {
+            get
+            {
+                return _isPrimaryRole;
             }
         }
 

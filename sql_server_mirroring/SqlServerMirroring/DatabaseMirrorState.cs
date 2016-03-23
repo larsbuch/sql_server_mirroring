@@ -23,17 +23,17 @@ namespace MirrorLib
         public override string ToString()
         {
             StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.AppendLine(string.Format("Database Name: {0}", _databaseName));
-            stringBuilder.AppendLine(string.Format("Database Id: {0}", _databaseId));
-            stringBuilder.AppendLine(string.Format("Database State: {0}", _databaseState));
-            stringBuilder.AppendLine(string.Format("Database Compatability Level: {0}", _compatibilityLevel));
-            stringBuilder.AppendLine(string.Format("Database Recovery Model: {0}", _databaseRecoveryModel));
-            stringBuilder.AppendLine(string.Format("Database User Access: {0}", _databaseUserAccess));
-            stringBuilder.AppendLine(string.Format("Database is in Standby: {0}", _databaseIsInStandby?"Yes":"No"));
-            stringBuilder.AppendLine(string.Format("Mirror State: {0}", _mirroringState));
-            stringBuilder.AppendLine(string.Format("Mirror Role: {0}", _mirroringRole));
-            stringBuilder.AppendLine(string.Format("Mirroring Instance Partner: {0}", _mirroringInstancePartner));
-            stringBuilder.AppendLine(string.Format("Mirroring Safety Level: {0}", _mirroringSafetyLevel));
+            stringBuilder.AppendLine(string.Format("Database Name: {0} | ", _databaseName));
+            stringBuilder.AppendLine(string.Format("Database Id: {0} | ", _databaseId));
+            stringBuilder.AppendLine(string.Format("Database State: {0} | ", _databaseState));
+            stringBuilder.AppendLine(string.Format("Database Compatability Level: {0} | ", _compatibilityLevel));
+            stringBuilder.AppendLine(string.Format("Database Recovery Model: {0} | ", _databaseRecoveryModel));
+            stringBuilder.AppendLine(string.Format("Database User Access: {0} | ", _databaseUserAccess));
+            stringBuilder.AppendLine(string.Format("Database is in Standby: {0} | ", _databaseIsInStandby?"Yes":"No"));
+            stringBuilder.AppendLine(string.Format("Mirror State: {0} | ", _mirroringState));
+            stringBuilder.AppendLine(string.Format("Mirror Role: {0} | ", _mirroringRole));
+            stringBuilder.AppendLine(string.Format("Mirroring Instance Partner: {0} | ", _mirroringInstancePartner));
+            stringBuilder.AppendLine(string.Format("Mirroring Safety Level: {0} | ", _mirroringSafetyLevel));
             stringBuilder.AppendLine(string.Format("Mirroring Guid: {0}", _mirroringGuid.ToString()));
             return stringBuilder.ToString();
         }
