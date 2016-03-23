@@ -34,6 +34,7 @@ namespace MirrorLib
         private ConfigurationForInstance _configurationForInstance;
         private Dictionary<string, ConfigurationForDatabase> _configurationForDatabases;
         private ServerRole _activeServerRole = ServerRole.NotSet;
+        private Dictionary<string,DatabaseMirrorState> _databaseMirrorStates;
 
         public SqlServerInstance(ILogger logger, string connectionString)
         {
@@ -126,19 +127,6 @@ namespace MirrorLib
             set
             {
                 _configurationForInstance = value;
-            }
-        }
-
-        /* Lists the current MirrorStates of the databases on the instance */
-        public IEnumerable<MirrorDatabase> Information_MirrorDatabases
-        {
-            get
-            {
-                foreach (Database database in Information_UserDatabases)
-                {
-                    string mirrorRoleDesc = Information_GetDatabaseMirringRole(new DatabaseName(database.Name));
-                    yield return new MirrorDatabase(database, mirrorRoleDesc);
-                }
             }
         }
 
@@ -282,6 +270,18 @@ namespace MirrorLib
                 {
                     yield return service;
                 }
+            }
+        }
+
+        private Dictionary<string,DatabaseMirrorState> Information_DatabaseMirrorStates
+        {
+            get
+            {
+                return _databaseMirrorStates;
+            }
+            set
+            {
+                _databaseMirrorStates = value;
             }
         }
 
@@ -439,8 +439,10 @@ namespace MirrorLib
         {
             Logger.LogDebug("Action_StartPrimary started");
             Action_StartInitialServerState();
+            Information_CheckDatabaseMirrorStates();
             Information_ServerRole = ServerRole.Primary;
             Action_SwitchOverAllMirrorDatabasesIfPossible(false);
+
             if (Information_IsValidServerStateChange(ServerStateEnum.PRIMARY_STARTUP_STATE))
             {
                 Action_MakeServerStateChange(ServerStateEnum.PRIMARY_STARTUP_STATE);
@@ -452,6 +454,7 @@ namespace MirrorLib
         {
             Logger.LogDebug("Action_StartSecondary started");
             Action_StartInitialServerState();
+            Information_CheckDatabaseMirrorStates();
             Information_ServerRole = ServerRole.Secondary;
             Action_SwitchOverAllPrincipalDatabasesIfPossible(false);
 
@@ -540,17 +543,13 @@ namespace MirrorLib
         {
             Logger.LogDebug("Action_CheckServerState started");
 
+            Information_CheckDatabaseMirrorStates();
             if (!Information_ServerState.IgnoreMirrorStateCheck)
             {
-                if (!Information_CheckLocalMasterServerStateTable())
-                {
-                    Action_CreateMasterServerStateTable();
-                }
-
                 bool databaseErrorState = false;
                 foreach (MirrorDatabase mirrorDatabase in Information_MirrorDatabases.Where(s => s.IsMirroringEnabled))
                 {
-                    if (Information_ServerRole == ServerRole.Primary)
+                    if (Information_ServerRole == ServerRole.Primary || mirrorDatabase.)
                     {
                         if (mirrorDatabase.Status != DatabaseStatus.Normal)
                         {
@@ -573,6 +572,10 @@ namespace MirrorLib
                         {
                             Logger.LogDebug(string.Format("Action_CheckServerState: Database {0} has status {1}.", mirrorDatabase.DatabaseName, mirrorDatabase.Status));
                         }
+                    }
+                    else
+                    {
+                        Logger.LogWarning()
                     }
                 }
                 if (databaseErrorState)
@@ -896,24 +899,24 @@ namespace MirrorLib
         private void Action_StartUpMirrorCheck(Dictionary<string, ConfigurationForDatabase> configuredMirrorDatabases, bool serverPrimary)
         {
             Logger.LogDebug(string.Format("Action_StartUpMirrorCheck check if databases mirrored but not configured"));
-            foreach (MirrorDatabase mirrorState in Information_MirrorDatabases)
+            foreach (DatabaseMirrorState databaseMirrorState in Information_DatabaseMirrorStates.Values)
             {
-                Logger.LogDebug(string.Format("Checking database {0}", mirrorState.DatabaseName));
-                if (mirrorState.IsMirroringEnabled)
+                Logger.LogDebug(string.Format("Checking database {0}", databaseMirrorState.DatabaseName));
+                if (databaseMirrorState.MirroringRole != MirroringRole.NotMirrored)
                 {
-                    if (!configuredMirrorDatabases.ContainsKey(mirrorState.DatabaseName.ToString()))
+                    if (!configuredMirrorDatabases.ContainsKey(databaseMirrorState.DatabaseName))
                     {
-                        Logger.LogWarning(string.Format("Database {0} was set up for mirroring but is not in configuration", mirrorState.DatabaseName));
-                        Action_RemoveDatabaseFromMirroring(mirrorState, serverPrimary);
+                        Logger.LogWarning(string.Format("Database {0} was set up for mirroring but is not in configuration", databaseMirrorState.DatabaseName));
+                        Action_RemoveDatabaseFromMirroring(databaseMirrorState, serverPrimary);
                     }
                     else
                     {
-                        Logger.LogDebug(string.Format("Database {0} was setup for mirroring and enabled.", mirrorState.DatabaseName));
+                        Logger.LogDebug(string.Format("Database {0} was setup for mirroring and enabled.", databaseMirrorState.DatabaseName));
                     }
                 }
                 else
                 {
-                    Logger.LogDebug(string.Format("Database {0} was not setup for mirroring and not configured for it.", mirrorState.DatabaseName));
+                    Logger.LogDebug(string.Format("Database {0} was not setup for mirroring and not configured for it.", databaseMirrorState.DatabaseName));
                 }
 
             }
@@ -922,37 +925,44 @@ namespace MirrorLib
             foreach (ConfigurationForDatabase configurationDatabase in ConfigurationForDatabases.Values)
             {
                 Logger.LogDebug(string.Format("Checking database {0}", configurationDatabase.DatabaseName));
-                MirrorDatabase mirrorDatabase = Information_MirrorDatabases.Where(s => s.DatabaseName.ToString().Equals(configurationDatabase.DatabaseName.ToString())).FirstOrDefault();
-                if(mirrorDatabase == null || !mirrorDatabase.IsMirroringEnabled)
+                DatabaseMirrorState databaseMirrorState;
+                if(Information_DatabaseMirrorStates.TryGetValue(configurationDatabase.DatabaseName.ToString(), out databaseMirrorState))
                 {
-                    Logger.LogWarning(string.Format("Database {0} is not set up for mirroring but is in configuration", configurationDatabase.DatabaseName));
-                    if (serverPrimary)
+                    if (databaseMirrorState == null || databaseMirrorState.MirroringRole == MirroringRole.NotMirrored)
                     {
-                        Action_AddDatabaseToMirroring(configurationDatabase);
+                        Logger.LogWarning(string.Format("Database {0} is not set up for mirroring but is in configuration", configurationDatabase.DatabaseName));
+                        if (serverPrimary)
+                        {
+                            Action_AddDatabaseToMirroring(configurationDatabase);
+                        }
+                        else
+                        {
+                            if (Action_RestoreDatabase(configurationDatabase))
+                            {
+                                Logger.LogInfo("Action_StartUpMirrorCheck: Restored backup");
+                            }
+                            else
+                            {
+                                Logger.LogInfo("Action_StartUpMirrorCheck: Moved database from remote share and restored Backup");
+                            }
+                            if (Action_RestoreDatabaseLog(configurationDatabase))
+                            {
+                                Logger.LogInfo("Action_StartUpMirrorCheck: Restored log backup");
+                            }
+                            else
+                            {
+                                Logger.LogInfo("Action_StartUpMirrorCheck: Moved database from remote share and restored log Backup");
+                            }
+                        }
                     }
                     else
                     {
-                        if (Action_RestoreDatabase(configurationDatabase))
-                        {
-                            Logger.LogInfo("Action_StartUpMirrorCheck: Restored backup");
-                        }
-                        else
-                        {
-                            Logger.LogInfo("Action_StartUpMirrorCheck: Moved database from remote share and restored Backup");
-                        }
-                        if (Action_RestoreDatabaseLog(configurationDatabase))
-                        {
-                            Logger.LogInfo("Action_StartUpMirrorCheck: Restored log backup");
-                        }
-                        else
-                        {
-                            Logger.LogInfo("Action_StartUpMirrorCheck: Moved database from remote share and restored log Backup");
-                        }
+                        Logger.LogDebug(string.Format("Database {0} is set up for mirroring and is in configuration", configurationDatabase.DatabaseName));
                     }
                 }
                 else
                 {
-                    Logger.LogDebug(string.Format("Database {0} is set up for mirroring and is in configuration", configurationDatabase.DatabaseName));
+                    Logger.LogWarning(string.Format("Database {0} is in configuration but does not exist on database", configurationDatabase.DatabaseName));
                 }
             }
             Logger.LogDebug(string.Format("Action_StartUpMirrorCheck ended"));
@@ -1034,13 +1044,13 @@ namespace MirrorLib
         {
             int isPrincipal = 0;
             int isMirror = 0;
-            foreach (MirrorDatabase mirrorState in Information_MirrorDatabases.Where(s => s.IsMirroringEnabled))
+            foreach (DatabaseMirrorState databaseMirrorState in Information_DatabaseMirrorStates.Values)
             {
-                if (mirrorState.IsPrincipal)
+                if (databaseMirrorState.MirroringRole == MirroringRole.Principal)
                 {
                     isPrincipal += 1;
                 }
-                if (mirrorState.IsMirror)
+                if (databaseMirrorState.MirroringRole == MirroringRole.Mirror)
                 {
                     isMirror += 1;
                 }
@@ -1077,17 +1087,17 @@ namespace MirrorLib
 
         private void Action_SwitchOverAllDatabasesIfPossible(bool failoverPrincipal, bool failIfNotSwitchingOver)
         {
-            string failoverRole;
-            string ignoreRole;
+            MirroringRole failoverRole;
+            MirroringRole ignoreRole;
             if(failoverPrincipal)
             {
-                failoverRole = DATABASE_ROLE_PRINCIPAL;
-                ignoreRole = DATABASE_ROLE_MIRROR;
+                failoverRole = MirroringRole.Principal;
+                ignoreRole = MirroringRole.Mirror;
             }
             else
             {
-                failoverRole = DATABASE_ROLE_MIRROR;
-                ignoreRole = DATABASE_ROLE_PRINCIPAL;
+                failoverRole = MirroringRole.Mirror;
+                ignoreRole = MirroringRole.Principal;
             }
             foreach (ConfigurationForDatabase configuredDatabase in ConfigurationForDatabases.Values)
             {
@@ -1103,7 +1113,8 @@ namespace MirrorLib
                     }
                     else
                     {
-                        string databaseRole = Information_GetDatabaseMirringRole(new DatabaseName(database.Name));
+                        MirroringRole databaseRole = Information_GetDatabaseMirroringRole(database.Name);
+                        
                         if (databaseRole.Equals(failoverRole))
                         {
                             Logger.LogDebug(string.Format("Trying to switch {0} as it in {1}.", database.Name, databaseRole));
@@ -1137,6 +1148,117 @@ namespace MirrorLib
                 }
             }
             Action_RecheckServerRole();
+        }
+
+        private void Information_CheckDatabaseMirrorStates()
+        {
+            try
+            {
+                Dictionary<string,DatabaseMirrorState> databaseMirrorStates = new Dictionary<string,DatabaseMirrorState>();
+
+                Logger.LogDebug("Information_CheckDatabaseMirrorStates started");
+
+                string sqlQuery = "SELECT databases.name database_name ";
+                sqlQuery += "   , databases.database_id ";
+                sqlQuery += "	, databases.compatibility_level ";
+                sqlQuery += "	, databases.state database_state ";
+                sqlQuery += "   , databases.recovery_model ";
+                sqlQuery += "	, databases.user_access ";
+                sqlQuery += "	, databases.is_in_standby ";
+                sqlQuery += "	, mirroring_guid ";
+                sqlQuery += "	, mirroring_state ";
+                sqlQuery += "	, mirroring_role ";
+                sqlQuery += "	, mirroring_safety_level ";
+                sqlQuery += "	, mirroring_partner_instance ";
+                sqlQuery += "FROM sys.database_mirroring ";
+                sqlQuery += "    INNER JOIN sys.databases ";
+                sqlQuery += "        ON database_mirroring.database_id = databases.database_id ";
+                sqlQuery += "WHERE databases.database_id > 4 ";
+
+                DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
+                if (dataSet == null || dataSet.Tables.Count == 0)
+                {
+                    Logger.LogWarning("Information_CheckDatabaseMirrorStates found no rows returning NoDatabase as it might not be an error");
+                }
+                else
+                {
+                    DataTable table = dataSet.Tables[0];
+                    foreach (DataRow row in table.Rows)
+                    {
+                        DatabaseMirrorState databaseMirrorState = new DatabaseMirrorState();
+                        foreach (DataColumn column in row.Table.Columns)
+                        {
+                            switch(column.ColumnName)
+                            {
+                                case "database_name":
+                                    if (row[column] is DBNull)
+                                    {
+                                        databaseMirrorState.SetDatabaseName("NotSet");
+                                    }
+                                    else
+                                    {
+                                        databaseMirrorState.SetDatabaseName((string)row[column]);
+                                    }
+                                    break; // NVARCHAR(128)
+                                case "database_id":
+                                        databaseMirrorState.SetDatabaseId((int?)row[column]);
+                                    break; // INT
+                                case "database_state":
+                                    databaseMirrorState.SetDatabaseState((byte?)row[column]);
+                                    break; // TINYINT
+                                case "compatibility_level":
+                                    databaseMirrorState.SetCompatibilityLevel((byte?)row[column]);
+                                    break; // TINYINT
+                                case "recovery_model":
+                                    databaseMirrorState.SetDatabaseRecoveryModel((byte?)row[column]);
+                                    break; // TINYINT
+                                case "user_access":
+                                    databaseMirrorState.SetDatabaseUserAccess((byte?)row[column]);
+                                    break; // TINYINT
+                                case "is_in_standby":
+                                    databaseMirrorState.SetDatabaseIsInStandby((bool?)row[column]);
+                                    break; // BIT
+                                case "mirroring_guid":
+                                    if (row[column] is DBNull)
+                                    {
+                                        databaseMirrorState.SetMirroringGuid(Guid.Empty);
+                                    }
+                                    else
+                                    {
+                                        databaseMirrorState.SetMirroringGuid((Guid)row[column]);
+                                    }
+                                    break; // UNIQUEIDENTIFIER
+                                case "mirroring_state":
+                                    databaseMirrorState.SetMirroringState((byte?)row[column]);
+                                    break; // TINYINT
+                                case "mirroring_role":
+                                    databaseMirrorState.SetMirroringRole((byte?)row[column]);
+                                    break; // TINYINT
+                                case "mirroring_safety_level":
+                                    databaseMirrorState.SetMirroringSafetyLevel((byte?)row[column]);
+                                    break; // TINYINT
+                                case "mirroring_partner_instance":
+                                    if (row[column] is DBNull)
+                                    {
+                                        databaseMirrorState.SetMirroringParnerInstance("NotSet");
+                                    }
+                                    else
+                                    {
+                                        databaseMirrorState.SetMirroringParnerInstance((string)row[column]);
+                                    }
+                                    break; // NVARCHAR(128)
+                            }
+                        }
+                        databaseMirrorStates.Add(databaseMirrorState.DatabaseName, databaseMirrorState);
+                    }
+                }
+                Information_DatabaseMirrorStates = databaseMirrorStates;
+                Logger.LogDebug("Information_CheckDatabaseMirrorStates ended.");
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException("Information_CheckDatabaseMirrorStates failed", ex);
+            }
         }
 
         private void Action_SwitchOverAllPrincipalDatabasesIfPossible(bool failIfNotSwitchingOver)
@@ -1470,7 +1592,7 @@ namespace MirrorLib
                     Action_SetupInstanceForMirroring();
                 }
                 Action_StartUpMirrorCheck(ConfigurationForDatabases, false);
-                Action_SwitchOverAllPrincipalDatabasesIfPossible(false);
+                //Action_SwitchOverAllPrincipalDatabasesIfPossible(false);
                 Logger.LogDebug("StartStartupState ended");
                 if (Information_HasAccessToRemoteServer())
                 {
@@ -1512,7 +1634,7 @@ namespace MirrorLib
                     Action_SetupInstanceForMirroring();
                 }
                 Action_StartUpMirrorCheck(ConfigurationForDatabases, true);
-                Action_SwitchOverAllMirrorDatabasesIfPossible(true);
+                //Action_SwitchOverAllMirrorDatabasesIfPossible(true);
                 Action_BackupForAllConfiguredDatabases();
 
                 Logger.LogDebug("StartStartupState ended");
@@ -2030,51 +2152,21 @@ namespace MirrorLib
             }
         }
 
-        private string Information_GetDatabaseMirringRole(DatabaseName databaseName)
+        private MirroringRole Information_GetDatabaseMirroringRole(string databaseName)
         {
-            try
+            Logger.LogDebug("Information_GetDatabaseMirroringRole started");
+            DatabaseMirrorState databaseMirrorState;
+            if (Information_DatabaseMirrorStates.TryGetValue(databaseName, out databaseMirrorState))
             {
-                Logger.LogDebug("Information_GetDatabaseMirringRole started");
-                string sqlQuery = "SELECT TOP (1) mirroring_role_desc FROM sys.database_mirroring WHERE database_id = DB_ID('" + databaseName + "')";
-
-                DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
-                if (dataSet == null || dataSet.Tables.Count == 0)
-                {
-                    Logger.LogWarning("Information_GetDatabaseMirringRole found no rows returning NoDatabase as it might not be an error");
-                    return "NoDatabase";
-                }
-                else
-                {
-                    foreach (DataTable table in dataSet.Tables)
-                    {
-                        foreach (DataRow row in table.Rows)
-                        {
-                            foreach (DataColumn column in row.Table.Columns)
-                            {
-                                if (column.DataType == typeof(string))
-                                {
-                                    Logger.LogDebug(string.Format("Information_GetDatabaseMirringRole ended with value {0}", (row[column] is DBNull) ? "DBNull" : row[column].ToString()));
-                                    if (row[column] is DBNull)
-                                    {
-                                        return "NotSet";
-                                    }
-                                    else
-                                    {
-                                        return (string)row[column];
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                throw new SqlServerMirroringException("Information_GetDatabaseMirringRole could not find a value in table sys.database_mirroring for " + databaseName);
+                Logger.LogDebug(string.Format("Information_GetDatabaseMirroringRole found {0}", databaseMirrorState.MirroringRole));
+                return databaseMirrorState.MirroringRole;
             }
-            catch (Exception ex)
+            else
             {
-                throw new SqlServerMirroringException("Information_GetDatabaseMirringRole failed", ex);
+                throw new SqlServerMirroringException("Information_GetDatabaseMirroringRole failed");
             }
         }
-
+        
         private void Action_ResetLastDatabaseStateErrorAndCount()
         {
             Logger.LogDebug("Action_ResetLastDatabaseStateErrorAndCount started.");
@@ -2402,12 +2494,12 @@ namespace MirrorLib
             }
         }
 
-        private void Action_RemoveDatabaseFromMirroring(MirrorDatabase mirrorState, bool serverPrimary)
+        private void Action_RemoveDatabaseFromMirroring(DatabaseMirrorState databaseMirrorState, bool serverPrimary)
         {
-            Database database = Information_UserDatabases.Where(s => s.Name.Equals(mirrorState.DatabaseName.ToString())).FirstOrDefault();
+            Database database = Information_UserDatabases.Where(s => s.Name.Equals(databaseMirrorState.DatabaseName)).FirstOrDefault();
             if (database == null)
             {
-                throw new SqlServerMirroringException(string.Format("Action_RemoveDatabaseFromMirroring: Could not find database {0}", mirrorState.DatabaseName));
+                throw new SqlServerMirroringException(string.Format("Action_RemoveDatabaseFromMirroring: Could not find database {0}", databaseMirrorState.DatabaseName));
             }
 
             try
@@ -2417,10 +2509,9 @@ namespace MirrorLib
             }
             catch (Exception ex)
             {
-                throw new SqlServerMirroringException(string.Format("Removing mirroring failed for {0}", mirrorState.DatabaseName), ex);
+                throw new SqlServerMirroringException(string.Format("Removing mirroring failed for {0}", databaseMirrorState.DatabaseName), ex);
             }
         }
-
 
         private bool Information_CheckMasterServerStateTable(Database databaseToCheck)
         {
