@@ -1279,13 +1279,34 @@ namespace MirrorLib
                                     }
                                     break; // UNIQUEIDENTIFIER
                                 case "mirroring_state":
-                                    databaseMirrorState.SetMirroringState((byte?)row[column]);
+                                    if (row[column] is DBNull)
+                                    {
+                                        databaseMirrorState.SetMirroringState(null);
+                                    }
+                                    else
+                                    {
+                                        databaseMirrorState.SetMirroringState((byte)row[column]);
+                                    }
                                     break; // TINYINT
                                 case "mirroring_role":
-                                    databaseMirrorState.SetMirroringRole((byte?)row[column]);
+                                    if (row[column] is DBNull)
+                                    {
+                                        databaseMirrorState.SetMirroringRole(null);
+                                    }
+                                    else
+                                    {
+                                        databaseMirrorState.SetMirroringRole((byte)row[column]);
+                                    }
                                     break; // TINYINT
                                 case "mirroring_safety_level":
-                                    databaseMirrorState.SetMirroringSafetyLevel((byte?)row[column]);
+                                    if (row[column] is DBNull)
+                                    {
+                                        databaseMirrorState.SetMirroringSafetyLevel(null);
+                                    }
+                                    else
+                                    {
+                                        databaseMirrorState.SetMirroringSafetyLevel((byte)row[column]);
+                                    }
                                     break; // TINYINT
                                 case "mirroring_partner_instance":
                                     if (row[column] is DBNull)
@@ -1375,7 +1396,7 @@ namespace MirrorLib
             /* TODO: Check that it is the correct instance sql agent */
             foreach (Service service in Information_SqlServerServicesInstalled.Where(s => s.Type == ManagedServiceType.SqlAgent))
             {
-                Logger.LogDebug(string.Format("Checking Sql Agent {0}({1}) in state {2}", service.Name, service.DisplayName, service.ServiceState));
+                Logger.LogDebug(string.Format("Action_StartSqlAgent: Sql Agent {0}({1}) in state {2}", service.Name, service.DisplayName, service.ServiceState));
                 if (service.ServiceState != ServiceState.Running)
                 {
                     int timeoutCounter = 0;
@@ -1384,12 +1405,12 @@ namespace MirrorLib
                     {
                         timeoutCounter += Information_ServiceStartTimeoutStep;
                         System.Threading.Thread.Sleep(Information_ServiceStartTimeoutStep);
-                        Console.WriteLine(string.Format("Waited {0} seconds for Sql Agent {1}({2}) starting: {3}", (timeoutCounter / 1000), service.Name, service.DisplayName, service.ServiceState));
+                        Console.WriteLine(string.Format("Action_StartSqlAgent: Waited {0} seconds for Sql Agent {1}({2}) starting: {3}", (timeoutCounter / 1000), service.Name, service.DisplayName, service.ServiceState));
                         service.Refresh();
                     }
                     if (timeoutCounter > Information_ServiceStartTimeout)
                     {
-                        throw new SqlServerMirroringException(string.Format("Timed out waiting for Sql Agent {1}({2}) starting", service.Name, service.DisplayName));
+                        throw new SqlServerMirroringException(string.Format("Action_StartSqlAgent: Timed out waiting for Sql Agent {1}({2}) starting", service.Name, service.DisplayName));
                     }
                 }
             }
@@ -1400,7 +1421,7 @@ namespace MirrorLib
             /* TODO: Check that it is the correct instance sql agent */
             foreach (Service service in Information_SqlServerServicesInstalled.Where(s => s.Type == ManagedServiceType.SqlAgent))
             {
-                Logger.LogDebug(string.Format("Checking Sql Agent {0}({1}) in state {2}", service.Name, service.DisplayName, service.ServiceState));
+                Logger.LogDebug(string.Format("Action_StopSqlAgent: Sql Agent {0}({1}) in state {2}", service.Name, service.DisplayName, service.ServiceState));
                 if (service.ServiceState != ServiceState.Stopped)
                 {
                     int timeoutCounter = 0;
@@ -1409,12 +1430,12 @@ namespace MirrorLib
                     {
                         timeoutCounter += Information_ServiceStartTimeoutStep;
                         System.Threading.Thread.Sleep(Information_ServiceStartTimeoutStep);
-                        Console.WriteLine(string.Format("Waited {0} seconds for Sql Agent {1}({2}) stopping: {3}", (timeoutCounter / 1000), service.Name, service.DisplayName, service.ServiceState));
+                        Console.WriteLine(string.Format("Action_StopSqlAgent: Waited {0} seconds for Sql Agent {1}({2}) stopping: {3}", (timeoutCounter / 1000), service.Name, service.DisplayName, service.ServiceState));
                         service.Refresh();
                     }
                     if (timeoutCounter > Information_ServiceStartTimeout)
                     {
-                        throw new SqlServerMirroringException(string.Format("Timed out waiting for Sql Agent {1}({2}) stopping", service.Name, service.DisplayName));
+                        throw new SqlServerMirroringException(string.Format("Action_StopSqlAgent: Timed out waiting for Sql Agent {1}({2}) stopping", service.Name, service.DisplayName));
                     }
                 }
             }
@@ -2425,7 +2446,7 @@ namespace MirrorLib
             bool found = false;
             foreach (Endpoint endpoint in DatabaseServerInstance.Endpoints)
             {
-                if (endpoint.Name == endpoint_Name)
+                if (endpoint.Name.Equals(endpoint_Name))
                 {
                     found = true;
                     break;
