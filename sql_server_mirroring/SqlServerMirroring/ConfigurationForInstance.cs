@@ -21,6 +21,10 @@ namespace MirrorLib
         private int _mirrorMonitoringUpdateMinutes;
         private int _remoteServerAccessTimeoutSeconds;
         private string _endpoint_Name;
+        private int _serviceStartTimeout;
+        private int _checkMirroringStateSecondInterval;
+        private int _primaryStartupWaitNumberOfChecksForMirroringTimeout;
+        private int _secondaryStartupWaitNumberOfChecksForMirroringTimeout;
 
         public ConfigurationForInstance(
             RemoteServer remoteServer,
@@ -35,7 +39,11 @@ namespace MirrorLib
             int shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState,
             int mirrorMonitoringUpdateMinutes,
             int remoteServerAccessTimeoutSeconds,
-            string endpoint_Name
+            string endpoint_Name,
+            int serviceStartTimeoutSec,
+            int checkMirroringStateSecondInterval,
+            int primaryStartupWaitNumberOfChecksForMirroringTimeout,
+            int secondaryStartupWaitNumberOfChecksForMirroringTimeout
             )
         {
             _remoteServer = remoteServer;
@@ -51,6 +59,10 @@ namespace MirrorLib
             MirrorMonitoringUpdateMinutes = mirrorMonitoringUpdateMinutes;
             _remoteServerAccessTimeoutSeconds = remoteServerAccessTimeoutSeconds;
             _endpoint_Name = endpoint_Name;
+            ServiceStartTimeout = serviceStartTimeoutSec *1000;
+            CheckMirroringStateSecondInterval = checkMirroringStateSecondInterval;
+            PrimaryStartupWaitNumberOfChecksForMirroringTimeout = primaryStartupWaitNumberOfChecksForMirroringTimeout;
+            SecondaryStartupWaitNumberOfChecksForMirroringTimeout = secondaryStartupWaitNumberOfChecksForMirroringTimeout;
         }
         public RemoteServer RemoteServer
         {
@@ -196,6 +208,90 @@ namespace MirrorLib
             get
             {
                 return "log";
+            }
+        }
+
+        public int ServiceStartTimeout
+        {
+            get
+            {
+                return _serviceStartTimeout;
+            }
+            private set
+            {
+                if (value > 0)
+                {
+                    _mirrorMonitoringUpdateMinutes = value;
+                }
+                else
+                {
+                    throw new SqlServerMirroringException(string.Format("Could not set Service Start Timeout update to {0} seconds as it is surposed to be 1 or above.", value));
+                }
+            }
+        }
+
+        public int ServiceStartTimeoutStep
+        {
+            get
+            {
+                return ServiceStartTimeout / 20;
+            }
+        }
+
+        public int CheckMirroringStateSecondInterval
+        {
+            get
+            {
+                return _checkMirroringStateSecondInterval;
+            }
+            private set
+            {
+                if (value > 0)
+                {
+                    _checkMirroringStateSecondInterval = value;
+                }
+                else
+                {
+                    throw new SqlServerMirroringException(string.Format("Could not set Check Mirroring State Interval to every {0} seconds as it is surposed to be 1 or above.", value));
+                }
+            }
+        }
+
+        public int PrimaryStartupWaitNumberOfChecksForMirroringTimeout
+        {
+            get
+            {
+                return _primaryStartupWaitNumberOfChecksForMirroringTimeout;
+            }
+            private set
+            {
+                if (value > 0)
+                {
+                    _primaryStartupWaitNumberOfChecksForMirroringTimeout = value;
+                }
+                else
+                {
+                    throw new SqlServerMirroringException(string.Format("Could not set Primary Startup Wait to {0} checks as it is surposed to be 1 or above.", value));
+                }
+            }
+        }
+
+        public int SecondaryStartupWaitNumberOfChecksForMirroringTimeout
+        {
+            get
+            {
+                return _secondaryStartupWaitNumberOfChecksForMirroringTimeout;
+            }
+            private set
+            {
+                if (value > 0)
+                {
+                    _secondaryStartupWaitNumberOfChecksForMirroringTimeout = value;
+                }
+                else
+                {
+                    throw new SqlServerMirroringException(string.Format("Could not set Secondary Startup Wait to {0} checks as it is surposed to be 1 or above.", value));
+                }
             }
         }
     }

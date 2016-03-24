@@ -7,17 +7,17 @@ namespace MirrorLib
 {
     public class DatabaseMirrorState
     {
-        private MirroringSafetyLevel _mirroringSafetyLevel;
-        private MirroringRole _mirroringRole;
-        private MirroringState _mirroringState;
+        private MirroringSafetyLevelEnum _mirroringSafetyLevel;
+        private MirroringRoleEnum _mirroringRole;
+        private MirroringStateEnum _mirroringState;
         private string _mirroringInstancePartner;
         private string _databaseName;
         private int _databaseId;
         private Guid _mirroringGuid;
         private byte _compatibilityLevel;
-        private DatabaseState _databaseState;
-        private DatabaseRecoveryModel _databaseRecoveryModel;
-        private DatabaseUserAccess _databaseUserAccess;
+        private DatabaseStateEnum _databaseState;
+        private DatabaseRecoveryModelEnum _databaseRecoveryModel;
+        private DatabaseUserAccessEnum _databaseUserAccess;
         private bool _databaseIsInStandby;
 
         public override string ToString()
@@ -69,11 +69,11 @@ namespace MirrorLib
         {
             if(mirroringSafetyLevel.HasValue)
             {
-                _mirroringSafetyLevel = (MirroringSafetyLevel)mirroringSafetyLevel;
+                _mirroringSafetyLevel = (MirroringSafetyLevelEnum)mirroringSafetyLevel;
             }
             else
             {
-                _mirroringSafetyLevel = MirroringSafetyLevel.NotMirrored;
+                _mirroringSafetyLevel = MirroringSafetyLevelEnum.NotMirrored;
             }
         }
 
@@ -81,11 +81,11 @@ namespace MirrorLib
         {
             if (mirroringRole.HasValue)
             {
-                _mirroringRole = (MirroringRole)mirroringRole;
+                _mirroringRole = (MirroringRoleEnum)mirroringRole;
             }
             else
             {
-                _mirroringRole = MirroringRole.NotMirrored;
+                _mirroringRole = MirroringRoleEnum.NotMirrored;
             }
         }
 
@@ -93,15 +93,15 @@ namespace MirrorLib
         {
             if (mirroringState.HasValue)
             {
-                _mirroringState = (MirroringState)mirroringState;
+                _mirroringState = (MirroringStateEnum)mirroringState;
             }
             else
             {
-                _mirroringState = MirroringState.NotMirrored;
+                _mirroringState = MirroringStateEnum.NotMirrored;
             }
         }
 
-        public MirroringSafetyLevel MirroringSafetyLevel
+        public MirroringSafetyLevelEnum MirroringSafetyLevel
         {
             get
             {
@@ -109,7 +109,7 @@ namespace MirrorLib
             }
         }
 
-        public MirroringRole MirroringRole
+        public MirroringRoleEnum MirroringRole
         {
             get
             {
@@ -117,7 +117,7 @@ namespace MirrorLib
             }
         }
 
-        public MirroringState MirroringState
+        public MirroringStateEnum MirroringState
         {
             get
             {
@@ -181,15 +181,15 @@ namespace MirrorLib
         {
             if(databaseState.HasValue)
             {
-                _databaseState = (DatabaseState)databaseState;
+                _databaseState = (DatabaseStateEnum)databaseState;
             }
             else
             {
-                _databaseState = DatabaseState.UNKNOWN;
+                _databaseState = DatabaseStateEnum.UNKNOWN;
             }
         }
 
-        public DatabaseState DatabaseState
+        public DatabaseStateEnum DatabaseState
         {
             get
             {
@@ -201,15 +201,15 @@ namespace MirrorLib
         {
             if(databaseRecoveryModel.HasValue)
             {
-                _databaseRecoveryModel = (DatabaseRecoveryModel)databaseRecoveryModel;
+                _databaseRecoveryModel = (DatabaseRecoveryModelEnum)databaseRecoveryModel;
             }
             else
             {
-                _databaseRecoveryModel = DatabaseRecoveryModel.UNKNOWN;
+                _databaseRecoveryModel = DatabaseRecoveryModelEnum.UNKNOWN;
             }
         }
 
-        public DatabaseRecoveryModel DatabaseRecoveryModel
+        public DatabaseRecoveryModelEnum DatabaseRecoveryModel
         {
             get
             {
@@ -221,15 +221,15 @@ namespace MirrorLib
         {
             if(databaseUserAccess.HasValue)
             {
-                _databaseUserAccess = (DatabaseUserAccess) databaseUserAccess.Value;
+                _databaseUserAccess = (DatabaseUserAccessEnum) databaseUserAccess.Value;
             }
             else
             {
-                _databaseUserAccess = DatabaseUserAccess.UNKNOWN;
+                _databaseUserAccess = DatabaseUserAccessEnum.UNKNOWN;
             }
         }
 
-        public DatabaseUserAccess DatabaseUserAccess
+        public DatabaseUserAccessEnum DatabaseUserAccess
         {
             get
             {
@@ -258,60 +258,4 @@ namespace MirrorLib
         }
     }
 
-    public enum DatabaseUserAccess
-    {
-        UNKNOWN = -1,
-        MULTI_USER = 0,
-        SINGLE_USER = 1,
-        RESTICTED_USER = 2
-    }
-
-    public enum DatabaseRecoveryModel
-    {
-        UNKNOWN = 0,
-        FULL = 1,
-        BULK_LOGGED = 2,
-        SIMPLE = 3
-    }
-
-    public enum DatabaseState
-    {
-        UNKNOWN = -1,
-        ONLINE = 0,
-        RESTORING = 1,
-        RECOVERING = 2,
-        RECOVERY_PENDING = 3, 
-        SUSPECT = 4,
-        EMERGENCY = 5,
-        OFFLINE = 6,
-        COPYING = 7,
-        OFFLINE_SECONDARY = 10
-    }
-
-    public enum MirroringSafetyLevel
-    {
-        NotMirrored = -1,
-        UnknownState = 0,
-        Off_Asynchonous = 1,
-        Full_Synchronous = 2
-    }
-
-    public enum MirroringRole
-    {
-        NotMirrored = 0,
-        Principal = 1,
-        Mirror = 2
-    }
-
-    public enum MirroringState
-    {
-        NotMirrored = -1,
-        Suspended = 0,
-        DisconnectedFromOtherPartner = 1,
-        Synchronizing = 2,
-        PendingFailover = 3,
-        Synchonized = 4,
-        PartnerNotSynchronized = 5,
-        PartnerSynchronized = 6
-    }
 }

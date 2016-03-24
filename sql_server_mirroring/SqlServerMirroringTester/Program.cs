@@ -55,7 +55,7 @@ namespace MirrorLibTester
 
         private static void Test_Information_InstanceStatus()
         {
-            Console.WriteLine(string.Format("Instance Status: {0}", SqlServer.Information_InstanceStatus()));
+            Console.WriteLine(string.Format("Instance Status: {0}", SqlServer.Information_Instance_Status()));
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
@@ -84,35 +84,35 @@ namespace MirrorLibTester
 
         private static void Test_Information_WindowsAuthentificationActive()
         {
-            Console.WriteLine(string.Format("Instance Windows Authentification active: {0}", SqlServer.Information_WindowsAuthentificationActive() ? "Yes" : "No"));
+            Console.WriteLine(string.Format("Instance Windows Authentification active: {0}", SqlServer.Information_Instance_WindowsAuthentificationActive() ? "Yes" : "No"));
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Information_SqlServerAuthentificationActive()
         {
-            Console.WriteLine(string.Format("Instance Sql server Authentification active: {0}", SqlServer.Information_SqlServerAuthentificationActive() ? "Yes" : "No"));
+            Console.WriteLine(string.Format("Instance Sql server Authentification active: {0}", SqlServer.Information_Instance_SqlServerAuthentificationActive() ? "Yes" : "No"));
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Information_CheckInstanceForMirroring()
         {
-            Console.WriteLine(string.Format("Instance Ready for mirroring: {0}", SqlServer.Information_CheckInstanceForMirroring() ? "Yes" : "No"));
+            Console.WriteLine(string.Format("Instance Ready for mirroring: {0}", SqlServer.Information_Instance_CheckForMirroring() ? "Yes" : "No"));
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Information_HasAccessToRemoteServer()
         {
-            Console.WriteLine(string.Format("Instance Ready for mirroring: {0}", SqlServer.Information_HasAccessToRemoteServer() ? "Yes" : "No"));
+            Console.WriteLine(string.Format("Instance Ready for mirroring: {0}", SqlServer.Information_RemoteServer_HasAccess() ? "Yes" : "No"));
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Information_RemoteServer_InstanceStatus()
         {
-            Console.WriteLine(string.Format("Remote Instance Status: {0}", SqlServer.Information_RemoteServer_InstanceStatus()));
+            Console.WriteLine(string.Format("Remote Instance Status: {0}", SqlServer.Information_RemoteServer_Status()));
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
@@ -124,7 +124,7 @@ namespace MirrorLibTester
         private static void Test_Action_StartPrimary()
         {
 
-            SqlServer.Action_StartPrimary();
+            SqlServer.Action_Instance_StartPrimary();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
@@ -132,77 +132,77 @@ namespace MirrorLibTester
         private static void Test_Action_StartSecondary()
         {
 
-            SqlServer.Action_StartSecondary();
+            SqlServer.Action_Instance_StartSecondary();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Action_SetupMonitoring()
         {
-            SqlServer.Action_SetupMonitoring();
+            SqlServer.Action_Instance_SetupMonitoring();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Action_CheckServerState()
         {
-            SqlServer.Action_CheckServerState();
+            SqlServer.Action_ServerState_TimedCheck();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Action_ResumeMirroringForAllDatabases()
         {
-            SqlServer.Action_ResumeMirroringForAllDatabases();
+            SqlServer.Action_Instance_ResumeMirroringForAllDatabases();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Action_SuspendMirroringForAllMirrorDatabases()
         {
-            SqlServer.Action_SuspendMirroringForAllMirrorDatabases();
+            SqlServer.Action_Instance_SuspendMirroringForAllMirrorDatabases();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Action_ForceFailoverWithDataLossForAllMirrorDatabases()
         {
-            SqlServer.Action_ForceFailoverWithDataLossForAllMirrorDatabases();
+            SqlServer.Action_Instance_ForceFailoverWithDataLossForAllMirrorDatabases();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Action_FailoverForAllMirrorDatabases()
         {
-            SqlServer.Action_FailoverForAllMirrorDatabases();
+            SqlServer.Action_Instance_FailoverForAllMirrorDatabases();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Action_BackupForAllConfiguredDatabases()
         {
-            SqlServer.Action_BackupForAllConfiguredDatabases();
+            SqlServer.Action_Instance_BackupForAllConfiguredDatabases();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Action_RestoreForAllConfiguredDatabases()
         {
-            SqlServer.Action_RestoreForAllConfiguredDatabases();
+            SqlServer.Action_Instance_RestoreForAllConfiguredDatabases();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Action_ShutDownMirroringService()
         {
-            SqlServer.Action_ShutDownMirroringService();
+            SqlServer.Action_Instance_ShutDown();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
         private static void Test_Action_ForceShutDownMirroringService()
         {
-            SqlServer.Action_ForceShutDownMirroringService();
+            SqlServer.Action_Instance_ForceShutDownMirroringService();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
@@ -259,8 +259,8 @@ namespace MirrorLibTester
                 if (_sqlServerInstance == null)
                 {
                     _sqlServerInstance = new SqlServerInstance(Logger, GetConfiguration(CONNECTION_STRING));
-                    _sqlServerInstance.ConfigurationForDatabases = BuildDatabaseConfiguration();
-                    _sqlServerInstance.ConfigurationForInstance = BuildInstanceConfiguration();
+                    _sqlServerInstance.Databases_Configuration = BuildDatabaseConfiguration();
+                    _sqlServerInstance.Instance_Configuration = BuildInstanceConfiguration();
                 }
                 return _sqlServerInstance;
             }
@@ -276,12 +276,16 @@ namespace MirrorLibTester
                 new ShareName(GetConfiguration(LOCALSHARENAME)),
                 int.Parse(GetConfiguration(ENDPOINT_LISTENERPORT)),
                 7,
-                60,
-                60,
-                60,
+                12,
+                12,
+                12,
                 1,
                 int.Parse(GetConfiguration(REMOTESERVERCOMMUNICATIONTIMEOUT)),
-                GetConfiguration(ENDPOINT_NAME)
+                GetConfiguration(ENDPOINT_NAME),
+                120,
+                5,
+                30,
+                30
                 );
 
         }

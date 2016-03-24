@@ -45,11 +45,11 @@ namespace MirrorLib
             _remoteDeliverySubDirectory = remoteDeliverySubDirectory;
         }
 
-        public DatabaseName DatabaseName
+        public string DatabaseName
         {
             get
             {
-                return _databaseName;
+                return _databaseName.ToString();
             }
         }
 

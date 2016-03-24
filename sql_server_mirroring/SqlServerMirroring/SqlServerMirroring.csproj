@@ -54,7 +54,8 @@
     <Compile Include="ConfigurationForDatabase.cs" />
     <Compile Include="ConfigurationForInstance.cs" />
     <Compile Include="DatabaseMirrorState.cs" />
-    <Compile Include="ServerRole.cs" />
+    <Compile Include="DatabaseState.cs" />
+    <Compile Include="Enum.cs" />
     <Compile Include="ServerState.cs" />
     <Compile Include="SqlServerInstance.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
