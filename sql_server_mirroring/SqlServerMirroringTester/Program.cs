@@ -181,7 +181,7 @@ namespace MirrorLibTester
 
         private static void Test_Action_BackupForAllConfiguredDatabases()
         {
-            SqlServer.Action_Instance_BackupForAllConfiguredDatabases();
+            SqlServer.Action_Instance_BackupForAllConfiguredDatabasesForMirrorServer();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }

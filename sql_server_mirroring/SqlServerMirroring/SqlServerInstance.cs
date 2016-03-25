@@ -717,73 +717,6 @@ namespace MirrorLib
             Logger.LogDebug("Action_ServerState_TimedCheck ended");
         }
 
-        private bool Action_ServerState_UpdatePrimaryStartupCount_ShiftState()
-        {
-            throw new NotImplementedException();
-            int errro;
-        }
-
-        private bool Action_ServerState_UpdateSecondaryStartupCount_ShiftState()
-        {
-            throw new NotImplementedException();
-            int error;
-        }
-
-        private bool Information_Instance_AllConfiguredDatabasesMirrored()
-        {
-            bool allConfigured = true;
-            foreach(ConfigurationForDatabase configuration in Databases_Configuration.Values)
-            {
-                DatabaseMirrorState databaseMirrorState;
-                if (Information_DatabaseMirrorStates.TryGetValue(configuration.DatabaseName, out databaseMirrorState))
-                {
-                    if(databaseMirrorState.MirroringRole == MirroringRoleEnum.NotMirrored)
-                    {
-                        allConfigured = false;
-                        break;
-                    }
-                }
-                else
-                {
-                    allConfigured = false;
-                    break;
-                }
-            }
-            return allConfigured;
-        }
-
-        private void Action_Instance_SwitchOverCheck()
-        {
-            if (Information_ServerState.IsPrimaryRole)
-            {
-                if (Information_Instance_ServerRole == ServerRoleEnum.MainlyPrimary || Information_Instance_ServerRole == ServerRoleEnum.MainlySecondary)
-                {
-                    Logger.LogError(string.Format("Server Role {0} but Server State {1}. Switching over all principal databases. Shutting down to signal shift.", Information_Instance_ServerRole, Information_ServerState));
-                    Action_Instance_SwitchOverAllPrincipalDatabasesIfPossible(false);
-                    Action_Instance_ForceShutDownMirroringService();
-                }
-                else if (Information_Instance_ServerRole == ServerRoleEnum.Secondary)
-                {
-                    Logger.LogError(string.Format("Server Role {0} but Server State {1}. Shutting down to signal shift.", Information_Instance_ServerRole, Information_ServerState));
-                    Action_Instance_ForceShutDownMirroringService();
-                }
-            }
-            else
-            {
-                if (Information_Instance_ServerRole == ServerRoleEnum.MainlyPrimary || Information_Instance_ServerRole == ServerRoleEnum.MainlySecondary)
-                {
-                    Logger.LogError(string.Format("Server Role {0} but Server State {1}. Switching over all mirror databases. Shutting down to signal shift.", Information_Instance_ServerRole, Information_ServerState));
-                    Action_Instance_SwitchOverAllMirrorDatabasesIfPossible(false);
-                    Action_Instance_ForceShutDownMirroringService();
-                }
-                else if (Information_Instance_ServerRole == ServerRoleEnum.Primary)
-                {
-                    Logger.LogError(string.Format("Server Role {0} but Server State {1}. Shutting down to signal shift.", Information_Instance_ServerRole, Information_ServerState));
-                    Action_Instance_ForceShutDownMirroringService();
-                }
-            }
-        }
-
         public bool Action_Instance_ResumeMirroringForAllDatabases()
         {
             Logger.LogDebug("Action_ResumeMirroringForAllDatabases started");
@@ -931,13 +864,14 @@ namespace MirrorLib
             return true;
         }
 
-        public bool Action_Instance_BackupForAllConfiguredDatabases()
+        public bool Action_Instance_BackupForAllConfiguredDatabasesForMirrorServer()
         {
             Logger.LogDebug("Action_BackupForAllPrincipalDatabases started");
             foreach (ConfigurationForDatabase configuredDatabase in Databases_Configuration.Values)
             {
                 try
                 {
+                    Action_IO_DeleteOldFiles(configuredDatabase.LocalBackupDirectoryWithSubDirectory);
                     Action_Databases_BackupDatabaseForMirrorServer(configuredDatabase, true);
                     Action_Databases_BackupDatabaseForMirrorServer(configuredDatabase, false);
                 }
@@ -950,22 +884,46 @@ namespace MirrorLib
             return true;
         }
 
+        public bool Action_Instance_BackupForAllConfiguredDatabases()
+        {
+            Logger.LogDebug("Action_BackupForAllPrincipalDatabases started");
+            foreach (ConfigurationForDatabase configuredDatabase in Databases_Configuration.Values)
+            {
+                try
+                {
+                    Action_IO_DeleteOldFiles(configuredDatabase.LocalBackupDirectoryWithSubDirectory);
+                    Action_Databases_BackupDatabase(configuredDatabase);
+                    Action_Databases_BackupDatabaseLog(configuredDatabase);
+                }
+                catch (Exception ex)
+                {
+                    throw new SqlServerMirroringException(string.Format("Action_BackupForAllPrincipalDatabases: Backup failed for {0}", configuredDatabase.DatabaseName), ex);
+                }
+            }
+            Logger.LogDebug("Action_BackupForAllPrincipalDatabases ended");
+            return true;
+        }
+
         public bool Action_Instance_RestoreForAllConfiguredDatabases()
         {
-            Logger.LogDebug("Action_RestoreForAllMirrorDatabases started");
+            Logger.LogDebug("Action_Instance_RestoreForAllConfiguredDatabases started");
             foreach (ConfigurationForDatabase configuredDatabase in Databases_Configuration.Values)
             {
                 try
                 {
                     Action_Databases_RestoreDatabase(configuredDatabase);
                     Action_Databases_RestoreDatabaseLog(configuredDatabase);
+                    Action_DatabaseState_Update(configuredDatabase.DatabaseName, DatabaseStateEnum.READY_FOR_MIRRORING
+                        , Information_Instance_ServerRole, false, 0);
+                    Logger.LogInfo(string.Format("Action_Instance_RestoreForAllConfiguredDatabases: Database {0} is ready for mirroring."
+                        , configuredDatabase.DatabaseName));
                 }
                 catch (Exception ex)
                 {
-                    throw new SqlServerMirroringException(string.Format("Action_RestoreForAllMirrorDatabases: Restore failed for {0}", configuredDatabase.DatabaseName), ex);
+                    throw new SqlServerMirroringException(string.Format("Action_Instance_RestoreForAllConfiguredDatabases: Restore failed for {0}", configuredDatabase.DatabaseName), ex);
                 }
             }
-            Logger.LogDebug("Action_RestoreForAllMirrorDatabases ended");
+            Logger.LogDebug("Action_Instance_RestoreForAllConfiguredDatabases ended");
             return true;
         }
 
@@ -1021,6 +979,129 @@ namespace MirrorLib
 
         #region Private Instance Methods
 
+        private void Action_IO_DeleteOldFiles(DirectoryPath localBackupDirectoryWithSubDirectory)
+        {
+            Logger.LogDebug(string.Format("Action_IO_DeleteOldFiles: Start deleting {0} days old files from {1}."
+                , Instance_Configuration.BackupExpiresAfterDays, localBackupDirectoryWithSubDirectory.PathString));
+            if (Directory.Exists(localBackupDirectoryWithSubDirectory.PathString))
+            {
+                DirectoryInfo directory = new DirectoryInfo(localBackupDirectoryWithSubDirectory.PathString);
+                List<FileInfo> oldFilesListList = directory.GetFiles()
+                    .Where(x => x.CreationTime.Date < DateTime.Today.AddDays(-Instance_Configuration.BackupExpiresAfterDays))
+                    .ToList();
+                oldFilesListList.ForEach(x => { try { x.Delete(); Logger.LogDebug(string.Format("Action_IO_DeleteOldFiles deleted file {0}.", x)); } catch { } });
+            }
+            Logger.LogDebug(string.Format("Action_IO_DeleteOldFiles: Finished deleting {0} days old files from {1}."
+                , Instance_Configuration.BackupExpiresAfterDays, localBackupDirectoryWithSubDirectory.PathString));
+        }
+
+        private bool Action_ServerState_UpdatePrimaryStartupCount_ShiftState()
+        {
+            Logger.LogDebug("Action_ServerState_UpdatePrimaryStartupCount_ShiftState started.");
+            int checksToShiftState = Instance_Configuration.PrimaryStartupWaitNumberOfChecksForMirroringTimeout;
+            Action_ServerState_Update(LocalMasterDatabase, true, true, false, Information_Instance_ServerRole, Information_ServerState, 1);
+
+            int countOfChecks = Information_ServerState_GetPrimaryStartupStateCount();
+            if (countOfChecks > checksToShiftState)
+            {
+                Logger.LogWarning(string.Format("Action_ServerState_UpdatePrimaryStartupCount_ShiftState: Will shift from state {0} because of Server State is not allowed for longer as count {1} is above {2}."
+                    , Information_ServerState, countOfChecks, checksToShiftState));
+                return true;
+            }
+            else
+            {
+                Logger.LogDebug(string.Format("Action_ServerState_UpdatePrimaryStartupCount_ShiftState: Should not shift state because of Server State Error is allowed as count {0} is not above {1}."
+                    , countOfChecks, checksToShiftState));
+                return false;
+            }
+        }
+
+        private int Information_ServerState_GetPrimaryStartupStateCount()
+        {
+            return Information_ServerState_GetCount(ServerStateEnum.PRIMARY_STARTUP_STATE);
+        }
+
+        private bool Action_ServerState_UpdateSecondaryStartupCount_ShiftState()
+        {
+            Logger.LogDebug("Action_ServerState_UpdateSecondaryStartupCount_ShiftState started.");
+            int checksToShiftState = Instance_Configuration.SecondaryStartupWaitNumberOfChecksForMirroringTimeout;
+            Action_ServerState_Update(LocalMasterDatabase, true, true, false, Information_Instance_ServerRole, Information_ServerState, 1);
+
+            int countOfChecks = Information_ServerState_GetSecondaryStartupStateCount();
+            if (countOfChecks > checksToShiftState)
+            {
+                Logger.LogWarning(string.Format("Action_ServerState_UpdateSecondaryStartupCount_ShiftState: Will shift from state {0} because of Server State is not allowed for longer as count {1} is above {2}."
+                    , Information_ServerState, countOfChecks, checksToShiftState));
+                return true;
+            }
+            else
+            {
+                Logger.LogDebug(string.Format("Action_ServerState_UpdateSecondaryStartupCount_ShiftState: Should not shift state because of Server State Error is allowed as count {0} is not above {1}."
+                    , countOfChecks, checksToShiftState));
+                return false;
+            }
+        }
+
+        private int Information_ServerState_GetSecondaryStartupStateCount()
+        {
+            return Information_ServerState_GetCount(ServerStateEnum.SECONDARY_STARTUP_STATE);
+        }
+
+        private bool Information_Instance_AllConfiguredDatabasesMirrored()
+        {
+            bool allConfigured = true;
+            foreach (ConfigurationForDatabase configuration in Databases_Configuration.Values)
+            {
+                DatabaseMirrorState databaseMirrorState;
+                if (Information_DatabaseMirrorStates.TryGetValue(configuration.DatabaseName, out databaseMirrorState))
+                {
+                    if (databaseMirrorState.MirroringRole == MirroringRoleEnum.NotMirrored)
+                    {
+                        allConfigured = false;
+                        break;
+                    }
+                }
+                else
+                {
+                    allConfigured = false;
+                    break;
+                }
+            }
+            return allConfigured;
+        }
+
+        private void Action_Instance_SwitchOverCheck()
+        {
+            if (Information_ServerState.IsPrimaryRole)
+            {
+                if (Information_Instance_ServerRole == ServerRoleEnum.MainlyPrimary || Information_Instance_ServerRole == ServerRoleEnum.MainlySecondary)
+                {
+                    Logger.LogError(string.Format("Server Role {0} but Server State {1}. Switching over all principal databases. Shutting down to signal shift.", Information_Instance_ServerRole, Information_ServerState));
+                    Action_Instance_SwitchOverAllPrincipalDatabasesIfPossible(false);
+                    Action_Instance_ForceShutDownMirroringService();
+                }
+                else if (Information_Instance_ServerRole == ServerRoleEnum.Secondary)
+                {
+                    Logger.LogError(string.Format("Server Role {0} but Server State {1}. Trying to switch all mirror databases.", Information_Instance_ServerRole, Information_ServerState));
+                    Action_Instance_SwitchOverAllMirrorDatabasesForcedIfNeeded();
+                }
+            }
+            else
+            {
+                if (Information_Instance_ServerRole == ServerRoleEnum.MainlyPrimary || Information_Instance_ServerRole == ServerRoleEnum.MainlySecondary)
+                {
+                    Logger.LogError(string.Format("Server Role {0} but Server State {1}. Switching over all mirror databases. Shutting down to signal shift.", Information_Instance_ServerRole, Information_ServerState));
+                    Action_Instance_SwitchOverAllMirrorDatabasesIfPossible(false);
+                    Action_Instance_ForceShutDownMirroringService();
+                }
+                else if (Information_Instance_ServerRole == ServerRoleEnum.Primary)
+                {
+                    Logger.LogError(string.Format("Server Role {0} but Server State {1}. Shutting down to signal shift.", Information_Instance_ServerRole, Information_ServerState));
+                    Action_Instance_ForceShutDownMirroringService();
+                }
+            }
+        }
+
         private bool Action_IO_TestReadWriteAccessToDirectory(DirectoryPath directoryPath)
         {
             try
@@ -1036,39 +1117,48 @@ namespace MirrorLib
 
         private void Action_Databases_StartUpMirrorCheck(Dictionary<string, ConfigurationForDatabase> configuredMirrorDatabases, bool serverPrimary)
         {
-            Logger.LogDebug(string.Format("Action_StartUpMirrorCheck check if databases mirrored but not configured"));
+            Logger.LogDebug(string.Format("Action_Databases_StartUpMirrorCheck: Check if databases mirrored but not configured"));
             foreach (DatabaseMirrorState databaseMirrorState in Information_DatabaseMirrorStates.Values)
             {
-                Logger.LogDebug(string.Format("Checking database {0}", databaseMirrorState.DatabaseName));
+                Logger.LogDebug(string.Format("Action_Databases_StartUpMirrorCheck: Checking database {0}", databaseMirrorState.DatabaseName));
                 if (databaseMirrorState.MirroringRole != MirroringRoleEnum.NotMirrored)
                 {
                     if (!configuredMirrorDatabases.ContainsKey(databaseMirrorState.DatabaseName))
                     {
-                        Logger.LogWarning(string.Format("Database {0} was set up for mirroring but is not in configuration", databaseMirrorState.DatabaseName));
+                        Logger.LogWarning(string.Format(
+                            "Action_Databases_StartUpMirrorCheck: Database {0} was set up for mirroring but is not in configuration"
+                            , databaseMirrorState.DatabaseName));
                         Action_Databases_RemoveDatabaseFromMirroring(databaseMirrorState, serverPrimary);
                     }
                     else
                     {
-                        Logger.LogDebug(string.Format("Database {0} was setup for mirroring and enabled.", databaseMirrorState.DatabaseName));
+                        Logger.LogDebug(string.Format(
+                            "Action_Databases_StartUpMirrorCheck: Database {0} was setup for mirroring and enabled."
+                            , databaseMirrorState.DatabaseName));
                     }
                 }
                 else
                 {
-                    Logger.LogDebug(string.Format("Database {0} was not setup for mirroring and not configured for it.", databaseMirrorState.DatabaseName));
+                    Logger.LogDebug(string.Format(
+                        "Action_Databases_StartUpMirrorCheck: Database {0} was not setup for mirroring and not configured for it."
+                        , databaseMirrorState.DatabaseName));
                 }
 
             }
-            Logger.LogDebug(string.Format("Action_StartUpMirrorCheck check if databases needs to be set up"));
+            Logger.LogDebug(string.Format("Action_Databases_StartUpMirrorCheck check if databases needs to be set up"));
             /* Check databases setup */
             foreach (ConfigurationForDatabase configurationDatabase in Databases_Configuration.Values)
             {
-                Logger.LogDebug(string.Format("Checking database {0}", configurationDatabase.DatabaseName));
+                Logger.LogDebug(string.Format(
+                    "Action_Databases_StartUpMirrorCheck: Checking database {0}", configurationDatabase.DatabaseName));
                 DatabaseMirrorState databaseMirrorState;
                 if(Information_DatabaseMirrorStates.TryGetValue(configurationDatabase.DatabaseName.ToString(), out databaseMirrorState))
                 {
                     if (databaseMirrorState == null || databaseMirrorState.MirroringRole == MirroringRoleEnum.NotMirrored)
                     {
-                        Logger.LogWarning(string.Format("Database {0} is not set up for mirroring but is in configuration", configurationDatabase.DatabaseName));
+                        Logger.LogWarning(string.Format(
+                            "Action_Databases_StartUpMirrorCheck: Database {0} is not set up for mirroring but is in configuration"
+                            , configurationDatabase.DatabaseName));
                         if (serverPrimary)
                         {
                             Action_Databases_AddDatabaseToMirroring(configurationDatabase);
@@ -1077,34 +1167,41 @@ namespace MirrorLib
                         {
                             if (Action_Databases_RestoreDatabase(configurationDatabase))
                             {
-                                Logger.LogInfo("Action_StartUpMirrorCheck: Restored backup");
+                                Logger.LogInfo("Action_Databases_StartUpMirrorCheck: Restored backup");
                             }
                             else
                             {
-                                Logger.LogInfo("Action_StartUpMirrorCheck: Moved database from remote share and restored Backup");
+                                Logger.LogInfo("Action_Databases_StartUpMirrorCheck: Moved database from remote share and restored Backup");
                             }
                             if (Action_Databases_RestoreDatabaseLog(configurationDatabase))
                             {
-                                Logger.LogInfo("Action_StartUpMirrorCheck: Restored log backup");
+                                Logger.LogInfo("Action_Databases_StartUpMirrorCheck: Restored log backup");
                             }
                             else
                             {
-                                Logger.LogInfo("Action_StartUpMirrorCheck: Moved database from remote share and restored log Backup");
+                                Logger.LogInfo("Action_Databases_StartUpMirrorCheck: Moved database from remote share and restored log Backup");
                             }
-                            Action_DatabaseState_Update(configurationDatabase.DatabaseName.ToString(), DatabaseStateEnum.READY_FOR_MIRRORING, Information_Instance_ServerRole, false, 0);
+                            Action_DatabaseState_Update(
+                                configurationDatabase.DatabaseName.ToString()
+                                , DatabaseStateEnum.READY_FOR_MIRRORING
+                                , Information_Instance_ServerRole, false, 0);
                         }
                     }
                     else
                     {
-                        Logger.LogDebug(string.Format("Database {0} is set up for mirroring and is in configuration", configurationDatabase.DatabaseName));
+                        Logger.LogDebug(string.Format(
+                            "Action_Databases_StartUpMirrorCheck: Database {0} is set up for mirroring and is in configuration"
+                            , configurationDatabase.DatabaseName));
                     }
                 }
                 else
                 {
-                    Logger.LogWarning(string.Format("Database {0} is in configuration but does not exist on database", configurationDatabase.DatabaseName));
+                    Logger.LogWarning(string.Format(
+                        "Action_Databases_StartUpMirrorCheck: Database {0} is in configuration but does not exist on database"
+                        , configurationDatabase.DatabaseName));
                 }
             }
-            Logger.LogDebug(string.Format("Action_StartUpMirrorCheck ended"));
+            Logger.LogDebug(string.Format("Action_Databases_StartUpMirrorCheck ended"));
         }
 
         private bool Information_ServerState_IsValidChange(ServerStateEnum newState)
@@ -1247,7 +1344,9 @@ namespace MirrorLib
                     {
                         if (failIfNotSwitchingOver)
                         {
-                            throw new SqlServerMirroringException(string.Format("Did not switch database {0} as it is unknown.", configuredDatabase.DatabaseName));
+                            throw new SqlServerMirroringException(string.Format(
+                                "Action_Instance_SwitchOverAllDatabasesIfPossible: Did not switch database {0} as it is unknown."
+                                , configuredDatabase.DatabaseName));
                         }
                     }
                     else
@@ -1256,24 +1355,34 @@ namespace MirrorLib
                         
                         if (databaseRole == failoverRole)
                         {
-                            Logger.LogDebug(string.Format("Trying to switch {0} as it in {1}.", database.Name, databaseRole));
+                            Logger.LogDebug(string.Format(
+                                "Action_Instance_SwitchOverAllDatabasesIfPossible: Trying to switch {0} as it in {1}."
+                                , database.Name, databaseRole));
                             database.ChangeMirroringState(MirroringOption.Failover);
                             database.Alter(TerminationClause.RollbackTransactionsImmediately);
-                            Logger.LogDebug(string.Format("Database {0} switched from {1} to {2}.", database.Name, databaseRole, failoverRole));
+                            Logger.LogDebug(string.Format(
+                                "Action_Instance_SwitchOverAllDatabasesIfPossible: Database {0} switched from {1} to {2}."
+                                , database.Name, databaseRole, failoverRole));
                         }
                         else if (databaseRole == ignoreRole)
                         {
-                            Logger.LogDebug(string.Format("Did not switch {0} as it is already in {1}.", database.Name, databaseRole));
+                            Logger.LogDebug(string.Format(
+                                "Action_Instance_SwitchOverAllDatabasesIfPossible: Did not switch {0} as it is already in {1}."
+                                , database.Name, databaseRole));
                         }
                         else
                         {
                             if (failIfNotSwitchingOver)
                             {
-                                throw new SqlServerMirroringException(string.Format("Did not switch {0} as role {1} is unknown.", database.Name, databaseRole));
+                                throw new SqlServerMirroringException(string.Format(
+                                    "Action_Instance_SwitchOverAllDatabasesIfPossible: Did not switch {0} as role {1} is unknown."
+                                    , database.Name, databaseRole));
                             }
                             else
                             {
-                                Logger.LogWarning(string.Format("Did not switch {0} as role {1} is unknown.", database.Name, databaseRole));
+                                Logger.LogWarning(string.Format(
+                                    "Action_Instance_SwitchOverAllDatabasesIfPossible: Did not switch {0} as role {1} is unknown."
+                                    , database.Name, databaseRole));
                             }
                         }
                     }
@@ -1282,8 +1391,86 @@ namespace MirrorLib
                 {
                     if (failIfNotSwitchingOver)
                     {
-                        throw new SqlServerMirroringException(string.Format("Failover failed for {0}", configuredDatabase.DatabaseName), ex);
+                        throw new SqlServerMirroringException(string.Format(
+                            "Action_Instance_SwitchOverAllDatabasesIfPossible;Failover failed for {0}"
+                            , configuredDatabase.DatabaseName), ex);
                     }
+                }
+            }
+            Action_ServerRole_Recheck();
+        }
+
+        private void Action_Instance_SwitchOverAllDatabasesForcedIfNeeded(bool failoverPrincipal)
+        {
+            MirroringRoleEnum failoverRole;
+            MirroringRoleEnum ignoreRole;
+            if (failoverPrincipal)
+            {
+                failoverRole = MirroringRoleEnum.Principal;
+                ignoreRole = MirroringRoleEnum.Mirror;
+            }
+            else
+            {
+                failoverRole = MirroringRoleEnum.Mirror;
+                ignoreRole = MirroringRoleEnum.Principal;
+            }
+            foreach (ConfigurationForDatabase configuredDatabase in Databases_Configuration.Values)
+            {
+                try
+                {
+                    Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
+                    if (database == null)
+                    {
+                        throw new SqlServerMirroringException(string.Format(
+                            "Action_Instance_SwitchOverAllDatabasesForcedIfNeeded: Did not switch database {0} as it is unknown."
+                            , configuredDatabase.DatabaseName));
+                    }
+                    else
+                    {
+                        MirroringRoleEnum databaseRole = Information_Databases_GetDatabaseMirroringRole(database.Name);
+
+                        if (databaseRole == failoverRole)
+                        {
+                            try
+                            {
+                                Logger.LogDebug(string.Format(
+                                    "Action_Instance_SwitchOverAllDatabasesForcedIfNeeded: Trying to switch {0} as it in {1}."
+                                    , database.Name, databaseRole));
+                                database.ChangeMirroringState(MirroringOption.Failover);
+                                database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                                Logger.LogDebug(string.Format(
+                                    "Action_Instance_SwitchOverAllDatabasesForcedIfNeeded:Database {0} switched from {1} to {2}."
+                                    , database.Name, databaseRole, failoverRole));
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.LogError("Action_Instance_SwitchOverAllDatabasesForcedIfNeeded: Switch without dataloss failed", ex);
+                                Logger.LogDebug(string.Format(
+                                    "Action_Instance_SwitchOverAllDatabasesForcedIfNeeded: Force Failover with dataloss switch {0} as it in {1}."
+                                    , database.Name, databaseRole));
+                                database.ChangeMirroringState(MirroringOption.ForceFailoverAndAllowDataLoss);
+                                database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                                Logger.LogDebug(string.Format(
+                                    "Action_Instance_SwitchOverAllDatabasesForcedIfNeeded: Database {0} switched with dataloss from {1} to {2}."
+                                    , database.Name, databaseRole, failoverRole));
+                            }
+                        }
+                        else if (databaseRole == ignoreRole)
+                        {
+                            Logger.LogDebug(string.Format("Did not switch {0} as it is already in {1}.", database.Name, databaseRole));
+                        }
+                        else
+                        {
+                            throw new SqlServerMirroringException(string.Format(
+                                "Action_Instance_SwitchOverAllDatabasesForcedIfNeeded: Did not switch {0} as role {1} is unknown."
+                                , database.Name, databaseRole));
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new SqlServerMirroringException(string.Format(
+                        "Action_Instance_SwitchOverAllDatabasesForcedIfNeeded: Failover failed for {0}", configuredDatabase.DatabaseName), ex);
                 }
             }
             Action_ServerRole_Recheck();
@@ -1429,6 +1616,15 @@ namespace MirrorLib
         private void Action_Instance_SwitchOverAllMirrorDatabasesIfPossible(bool failIfNotSwitchingOver)
         {
             Action_Instance_SwitchOverAllDatabasesIfPossible(false, failIfNotSwitchingOver);
+        }
+
+        private void Action_Instance_SwitchOverAllPrincipalDatabasesForcedIfNeeded()
+        {
+            Action_Instance_SwitchOverAllDatabasesForcedIfNeeded(true);
+        }
+        private void Action_Instance_SwitchOverAllMirrorDatabasesForcedIfNeeded()
+        {
+            Action_Instance_SwitchOverAllDatabasesForcedIfNeeded(false);
         }
 
         private void Action_ServerState_MakeChange(ServerStateEnum newState)
@@ -1954,7 +2150,7 @@ namespace MirrorLib
 
             /* Add Primary Role server states */
             _serverStates.Add(ServerStateEnum.PRIMARY_STARTUP_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_STARTUP_STATE, true, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_STARTUP_STATE, true, false, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_RUNNING_STATE, ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_RUNNING_STATE
@@ -1991,7 +2187,7 @@ namespace MirrorLib
 
             /* Add Secondary Role server states */
             _serverStates.Add(ServerStateEnum.SECONDARY_STARTUP_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_STARTUP_STATE, true, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_STARTUP_STATE, true, false, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_RUNNING_STATE, ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE}));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_RUNNING_STATE
@@ -2057,6 +2253,11 @@ namespace MirrorLib
             Action_Instance_CheckDatabaseMirrorStates();
             Action_ServerRole_Recheck();
             Action_Instance_CheckDatabaseStates();
+
+            if(false)
+            {
+                int error;// Startup Mirror check timing
+            }
 
             Logger.LogDebug("Action_StartInitialServerState ended.");
         }
@@ -2964,6 +3165,7 @@ namespace MirrorLib
             try
             {
                 ShareHelper.CreateLocalShareDirectoryIfNotExistingAndGiveAuthenticatedUsersAccess(Logger, localLocalTransferDirectoryWithSubDirectory, localShareName);
+                Action_IO_DeleteOldFiles(localBackupDirectoryWithSubDirectory);
                 Action_IO_CopyFileLocal(fileName, localBackupDirectoryWithSubDirectory, localLocalTransferDirectoryWithSubDirectory);
             }
             catch (Exception e)
