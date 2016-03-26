@@ -564,6 +564,7 @@ namespace MirrorLib
             if (!Information_ServerState.IgnoreMirrorStateCheck)
             {
                 #region Start Mirroring Check
+                Logger.LogDebug("Action_ServerState_TimedCheck: Start Mirroring Check started");
 
                 if (Information_ServerState.State == ServerStateEnum.PRIMARY_STARTUP_STATE)
                 {
@@ -615,6 +616,8 @@ namespace MirrorLib
                         }
                     }
                 }
+
+                Logger.LogDebug("Action_ServerState_TimedCheck: Start Mirroring Check ended");
 
                 #endregion
 
@@ -1339,6 +1342,7 @@ namespace MirrorLib
 
         private void Action_ServerRole_Recheck()
         {
+            Logger.LogDebug("Action_ServerRole_Recheck started");
             int isPrincipal = 0;
             int isMirror = 0;
             foreach (DatabaseMirrorState databaseMirrorState in Information_DatabaseMirrorStates.Values)
@@ -1365,21 +1369,22 @@ namespace MirrorLib
             else if (isPrincipal > isMirror)
             {
                 /* Mainly primary */
-                Logger.LogWarning("Server is mainly in primary role but has mirror databases. Make switchover to bring to correct state.");
+                Logger.LogWarning("Action_ServerRole_Recheck: Server is mainly in primary role but has mirror databases. Make switchover to bring to correct state.");
                 _activeServerRole = ServerRoleEnum.MainlyPrimary;
             }
             else if (isMirror < isPrincipal)
             {
                 /* Mainly secondary */
-                Logger.LogWarning("Server is mainly in secondary role but has principal databases. Make switchover to bring to correct state.");
+                Logger.LogWarning("Action_ServerRole_Recheck: Server is mainly in secondary role but has principal databases. Make switchover to bring to correct state.");
                 _activeServerRole = ServerRoleEnum.MainlySecondary;
             }
             else
             {
                 /* Neither */
-                Logger.LogWarning("Server has no principal or mirror database. Investigate what went wrong.");
+                Logger.LogWarning("Action_ServerRole_Recheck: Server has no principal or mirror database. Investigate what went wrong.");
                 _activeServerRole = ServerRoleEnum.Neither;
             }
+            Logger.LogDebug("Action_ServerRole_Recheck ended");
         }
 
         private void Action_Instance_SwitchOverAllDatabasesIfPossible(bool failoverPrincipal, bool failIfNotSwitchingOver)
@@ -1543,7 +1548,7 @@ namespace MirrorLib
             {
                 Dictionary<string,DatabaseMirrorState> databaseMirrorStates = new Dictionary<string,DatabaseMirrorState>();
 
-                Logger.LogDebug("Information_CheckDatabaseMirrorStates started");
+                Logger.LogDebug("Action_Instance_CheckDatabaseMirrorStates started");
 
                 string sqlQuery = "SELECT databases.name database_name ";
                 sqlQuery += "   , databases.database_id ";
@@ -1562,10 +1567,11 @@ namespace MirrorLib
                 sqlQuery += "        ON database_mirroring.database_id = databases.database_id ";
                 sqlQuery += "WHERE databases.database_id > 4 ";
 
+                Logger.LogDebug(string.Format("Action_Instance_CheckDatabaseMirrorStates sqlQuery {0}", sqlQuery));
                 DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
                 if (dataSet == null || dataSet.Tables.Count == 0)
                 {
-                    Logger.LogWarning("Information_CheckDatabaseMirrorStates found no rows returning NoDatabase as it might not be an error");
+                    Logger.LogWarning("Action_Instance_CheckDatabaseMirrorStates found no rows returning NoDatabase as it might not be an error");
                 }
                 else
                 {
@@ -1661,11 +1667,11 @@ namespace MirrorLib
                     }
                 }
                 Information_DatabaseMirrorStates = databaseMirrorStates;
-                Logger.LogDebug("Information_CheckDatabaseMirrorStates ended.");
+                Logger.LogDebug("Action_Instance_CheckDatabaseMirrorStates ended.");
             }
             catch (Exception ex)
             {
-                throw new SqlServerMirroringException("Information_CheckDatabaseMirrorStates failed", ex);
+                throw new SqlServerMirroringException("Action_Instance_CheckDatabaseMirrorStates failed", ex);
             }
         }
 
@@ -2535,6 +2541,7 @@ namespace MirrorLib
                 sqlQuery += "INSERT(DatabaseName, DatabaseState, ServerRole, LastWriteDate, ErrorDatabaseState, ErrorCount) ";
                 sqlQuery += "VALUES(DatabaseName, DatabaseState, ServerRole, LastWriteDate, ErrorDatabaseState, ErrorCount); ";
 
+                Logger.LogDebug(string.Format("Action_DatabaseState_Update sqlQuery {0}",sqlQuery));
                 LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
                 Logger.LogDebug("Action_DatabaseState_Update ended.");
             }
@@ -2558,6 +2565,7 @@ namespace MirrorLib
                 Dictionary<string, DatabaseState> databaseStates = new Dictionary<string, DatabaseState>();
                 string sqlQuery = "SELECT DatabaseName, DatabaseState, ServerRole, LastWriteDate, ErrorDatabaseState, ErrorCount FROM DatabaseState";
 
+                Logger.LogDebug(string.Format("Information_DatabaseState_Check sqlQuery {0}", sqlQuery));
                 DataSet dataSet = databaseToCheck.ExecuteWithResults(sqlQuery);
                 if (dataSet == null || dataSet.Tables.Count == 0)
                 {
@@ -2691,6 +2699,7 @@ namespace MirrorLib
                 Logger.LogDebug(string.Format("Information_GetServerStateCount for {0} started",serverState));
                 string sqlQuery = "SELECT TOP (1) StateCount FROM ServerState WHERE LastState = " + serverState + " AND UpdaterLocal = 1 AND AboutLocal = 1 ";
 
+                Logger.LogDebug(string.Format("Information_ServerState_GetCount sqlQuery {0}", sqlQuery));
                 DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
                 foreach (DataTable table in dataSet.Tables)
                 {
@@ -2838,6 +2847,7 @@ namespace MirrorLib
                 sqlQuery += "(1,0,0,'NotSet','INITIAL_STATE',SYSDATETIME(),0),";
                 sqlQuery += "(0,1,0,'NotSet','INITIAL_STATE',SYSDATETIME(),0)";
 
+                Logger.LogDebug(string.Format("Action_InsertServerStateBaseState sqlQuery {0}", sqlQuery));
                 LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
                 Logger.LogDebug("Action_InsertServerStateBaseState ended.");
             }
@@ -2854,14 +2864,15 @@ namespace MirrorLib
                 Logger.LogDebug("Action_UpdateServerState started.");
 
                 string sqlQuery = "UPDATE ServerState (UpdaterLocal, AboutLocal, Connected, LastState, LastWriteDate, StateCount) ";
-                sqlQuery += "SET Connected = " + (connected ? "1 " : "0 ");
-                sqlQuery += ", LastRole = " + activeServerRole.ToString() + " ";
-                sqlQuery += ", LastState = " + activeServerState.ToString() + " ";
+                sqlQuery += string.Format("SET Connected = {0} ",connected ? "1" : "0");
+                sqlQuery += string.Format(", LastRole = {0} ",activeServerRole.ToString());
+                sqlQuery += string.Format(", LastState = {0} ", activeServerState.ToString());
                 sqlQuery += ", LastWriteDate = SYSDATETIME() ";
-                sqlQuery += ", StateCount = " + (increaseCount == 0 ? "0 " : "StateCount + " + increaseCount.ToString() + " ");
-                sqlQuery += "WHERE UpdaterLocal = " + (updaterLocal ? "1 " : "0 ");
-                sqlQuery += "AND AboutLocal = " + (aboutLocal ? "1 " : "0 ");
+                sqlQuery += string.Format(", StateCount = {0} ", increaseCount == 0 ? "0" : "StateCount + " + increaseCount.ToString());
+                sqlQuery += string.Format("WHERE UpdaterLocal = {0} ", updaterLocal ? "1" : "0");
+                sqlQuery += string.Format("AND AboutLocal = {0} ", aboutLocal ? "1" : "0");
 
+                Logger.LogDebug(string.Format("Action_UpdateServerState sqlQuery {0}.", sqlQuery));
                 databaseToUpdate.ExecuteNonQuery(sqlQuery);
                 Logger.LogDebug("Action_UpdateServerState ended.");
             }
@@ -3123,6 +3134,7 @@ namespace MirrorLib
                 sqlQuery += string.Format("AND endpoints.name = '{0}' ", endpointName);
                 sqlQuery += string.Format("AND GranteePrincipals.name = '{0}' ", runnerOfSqlServer);
 
+                Logger.LogDebug(string.Format("Information_Endpoint_HasConnectRights sqlQuery {0}", sqlQuery));
                 DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
                 if (dataSet.Tables.Count == 0)
                 {
@@ -3147,6 +3159,7 @@ namespace MirrorLib
             try
             {
                 string sqlQuery = string.Format("GRANT CONNECT ON ENDPOINT::{0} TO [{1}]", endpointName, runnerOfSqlServer);
+                Logger.LogDebug(string.Format("Action_Endpoint_GrantConnectRights sqlQuery {0}", sqlQuery));
                 LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
                 Logger.LogDebug(string.Format("Action_Endpoint_GrantConnectRights {0} failed for {1}", endpointName, runnerOfSqlServer));
             }
