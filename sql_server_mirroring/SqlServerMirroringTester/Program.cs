@@ -285,7 +285,11 @@ namespace MirrorLibTester
                 120,
                 5,
                 30,
-                30
+                30,
+                24,
+                true,
+                new BackupTime(03,00),
+                5
                 );
 
         }

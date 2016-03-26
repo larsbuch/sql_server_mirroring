@@ -13,6 +13,7 @@ using System.ServiceProcess;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Data;
+using System.Timers;
 
 namespace MirrorLib
 {
@@ -33,6 +34,10 @@ namespace MirrorLib
         private ServerRoleEnum _activeServerRole = ServerRoleEnum.NotSet;
         private Dictionary<string,DatabaseMirrorState> _databaseMirrorStates;
         private Dictionary<string, DatabaseState> _databaseStates;
+        private Timer _timedCheckTimer;
+        private Timer _backupTimer;
+        private SqlServerInstanceSynchronizeInvoke _synchronizeInvoke;
+
 
         public SqlServerInstance(ILogger logger, string connectionString)
         {
@@ -42,6 +47,7 @@ namespace MirrorLib
             _databases_Configuration = new Dictionary<string, ConfigurationForDatabase>();
             _managedComputer = new ManagedComputer("(local)");
             Action_ServerState_BuildServerStates();
+            _synchronizeInvoke = new SqlServerInstanceSynchronizeInvoke();
         }
 
         #region Public Properties
@@ -166,6 +172,22 @@ namespace MirrorLib
         #endregion
 
         #region Private Properties
+
+        private Timer Information_ServerState_TimedCheckTimer
+        {
+            get
+            {
+                return _timedCheckTimer;
+            }
+        }
+
+        private Timer Information_ServerState_BackupTimer
+        {
+            get
+            {
+                return _backupTimer;
+            }
+        }
 
         private Server DatabaseServerInstance
         {
@@ -432,6 +454,7 @@ namespace MirrorLib
             Logger.LogDebug("Action_StartPrimary started");
             Action_ServerState_StartInitial();
             Action_Databases_StartUpMirrorCheck(Databases_Configuration, true);
+            Action_Instance_StartBackupTimer();
 
             if (Information_ServerState_IsValidChange(ServerStateEnum.PRIMARY_STARTUP_STATE))
             {
@@ -530,6 +553,9 @@ namespace MirrorLib
         public void Action_ServerState_TimedCheck()
         {
             Logger.LogDebug("Action_ServerState_TimedCheck started");
+
+            Information_ServerState_TimedCheckTimer.Stop();
+            Logger.LogDebug("Action_ServerState_TimedCheck: TimedCheckTimer stopped");
 
             Action_Instance_CheckDatabaseMirrorStates();
             Action_Instance_CheckDatabaseStates();
@@ -714,6 +740,8 @@ namespace MirrorLib
             {
                 Logger.LogDebug(string.Format("Action_ServerState_TimedCheck: Ignores Action_ServerState_TimedCheck because Server State is {0}.", Information_ServerState));
             }
+            Information_ServerState_TimedCheckTimer.Start();
+            Logger.LogDebug("Action_ServerState_TimedCheck: TimedCheckTimer restarted");
             Logger.LogDebug("Action_ServerState_TimedCheck ended");
         }
 
@@ -989,10 +1017,43 @@ namespace MirrorLib
                 List<FileInfo> oldFilesListList = directory.GetFiles()
                     .Where(x => x.CreationTime.Date < DateTime.Today.AddDays(-Instance_Configuration.BackupExpiresAfterDays))
                     .ToList();
-                oldFilesListList.ForEach(x => { try { x.Delete(); Logger.LogDebug(string.Format("Action_IO_DeleteOldFiles deleted file {0}.", x)); } catch { } });
+                oldFilesListList.ForEach(x => 
+                {
+                    try
+                    {
+                        x.Delete();
+                        Logger.LogDebug(string.Format("Action_IO_DeleteOldFiles deleted file {0}.", x));
+                    }
+                    catch
+                    { }
+                });
             }
             Logger.LogDebug(string.Format("Action_IO_DeleteOldFiles: Finished deleting {0} days old files from {1}."
                 , Instance_Configuration.BackupExpiresAfterDays, localBackupDirectoryWithSubDirectory.PathString));
+        }
+
+        private void Action_IO_DeleteOldRemoteFiles(UncPath remoteDirectoryWithSubDirectory)
+        {
+            Logger.LogDebug(string.Format("Action_IO_DeleteOldRemoteFiles: Start deleting {0} days old files from {1}."
+                , Instance_Configuration.BackupExpiresAfterDays, remoteDirectoryWithSubDirectory.BuildUncPath()));
+            if (Directory.Exists(remoteDirectoryWithSubDirectory.BuildUncPath()))
+            {
+                DirectoryInfo directory = new DirectoryInfo(remoteDirectoryWithSubDirectory.BuildUncPath());
+                List<FileInfo> oldFilesListList = directory.GetFiles()
+                    .Where(x => x.CreationTime.Date < DateTime.Today.AddDays(-Instance_Configuration.BackupExpiresAfterDays))
+                    .ToList();
+                oldFilesListList.ForEach(x => 
+                {
+                    try {
+                        x.Delete();
+                        Logger.LogDebug(string.Format("Action_IO_DeleteOldRemoteFiles deleted file {0}.", x));
+                    }
+                    catch
+                    { }
+                });
+            }
+            Logger.LogDebug(string.Format("Action_IO_DeleteOldRemoteFiles: Finished deleting {0} days old files from {1}."
+                , Instance_Configuration.BackupExpiresAfterDays, remoteDirectoryWithSubDirectory.BuildUncPath()));
         }
 
         private bool Action_ServerState_UpdatePrimaryStartupCount_ShiftState()
@@ -2023,7 +2084,8 @@ namespace MirrorLib
             Logger.LogDebug("StartForcedRunningState starting");
             try
             {
-                /* Does not do something special */
+                Action_Instance_StartEmergencyBackupTimer();
+
                 Logger.LogDebug("StartForcedRunningState starting");
             }
             catch (Exception ex)
@@ -2254,12 +2316,83 @@ namespace MirrorLib
             Action_ServerRole_Recheck();
             Action_Instance_CheckDatabaseStates();
 
-            if(false)
-            {
-                int error;// Startup Mirror check timing
-            }
+            Action_ServerState_StartTimedCheckTimer();
 
             Logger.LogDebug("Action_StartInitialServerState ended.");
+        }
+
+        private void Action_ServerState_StartTimedCheckTimer()
+        {
+            _timedCheckTimer = new System.Timers.Timer();
+            _timedCheckTimer.Interval = 1000 * Instance_Configuration.CheckMirroringStateSecondInterval;
+            _timedCheckTimer.SynchronizingObject = _synchronizeInvoke;
+            _timedCheckTimer.Elapsed += new ElapsedEventHandler(OnTimedCheckEvent);
+            _timedCheckTimer.AutoReset = true;
+            _timedCheckTimer.Enabled = true;
+            _timedCheckTimer.Start();
+        }
+
+        /* This runs as a main thread task */
+        private void OnTimedCheckEvent(object source, ElapsedEventArgs e)
+        {
+            /* Disables timer to avoid two running at the same time */
+            Action_ServerState_TimedCheck();
+        }
+
+        private void Action_Instance_StartDelayedBackupTimer()
+        {
+            Timer delayedBackupTimer = new System.Timers.Timer();
+            delayedBackupTimer.Interval = Instance_Configuration.BackupTime.CalculateIntervalUntil;
+            delayedBackupTimer.Elapsed += new ElapsedEventHandler(OnStartBackupEvent);
+            delayedBackupTimer.SynchronizingObject = _synchronizeInvoke;
+            delayedBackupTimer.AutoReset = false;
+            delayedBackupTimer.Enabled = true;
+            delayedBackupTimer.Start();
+        }
+
+        /* This runs as a main thread task */
+        private void OnStartBackupEvent(object sender, ElapsedEventArgs e)
+        {
+            Action_Instance_StartBackupTimer();
+        }
+
+        private void Action_Instance_StartBackupTimer()
+        {
+            _backupTimer = new System.Timers.Timer();
+            _backupTimer.Interval = 1000 * 60 * 60 * Instance_Configuration.BackupHourInterval;
+            _backupTimer.Elapsed += new ElapsedEventHandler(OnBackupEvent);
+            _backupTimer.AutoReset = true;
+            _backupTimer.Enabled = true;
+            _backupTimer.Start();
+        }
+
+        /* This runs as a background task */
+        private void OnBackupEvent(object source, ElapsedEventArgs e)
+        {
+            if (Instance_Configuration.BackupToMirrorServer)
+            {
+                Action_Instance_BackupForAllConfiguredDatabasesForMirrorServer();
+            }
+            else
+            {
+                Action_Instance_BackupForAllConfiguredDatabases();
+            }
+        }
+
+        private void Action_Instance_StartEmergencyBackupTimer()
+        {
+            Timer emergencyBackupTimer = new System.Timers.Timer();
+            emergencyBackupTimer.Interval = 1000 * 60 * Instance_Configuration.BackupDelayEmergencyBackupMin;
+            emergencyBackupTimer.Elapsed += new ElapsedEventHandler(OnEmergencyBackupEvent);
+            emergencyBackupTimer.AutoReset = false;
+            emergencyBackupTimer.Enabled = true;
+            emergencyBackupTimer.Start();
+        }
+
+        /* This runs as a background task */
+        private void OnEmergencyBackupEvent(object source, ElapsedEventArgs e)
+        {
+            Action_Instance_BackupForAllConfiguredDatabasesForMirrorServer();
         }
 
         private void Action_IO_CreateDirectoryAndShare()
@@ -3178,7 +3311,9 @@ namespace MirrorLib
                 {
                     UncPath remoteRemoteTransferDirectoryWithSubDirectory = configuredDatabase.RemoteRemoteTransferDirectoryWithSubDirectory;
                     UncPath remoteRemoteDeliveryDirectoryWithSubDirectory = configuredDatabase.RemoteRemoteDeliveryDirectoryWithSubDirectory;
+                    Action_IO_DeleteOldRemoteFiles(remoteRemoteTransferDirectoryWithSubDirectory);
                     Action_IO_MoveFileLocalToRemote(fileName, localLocalTransferDirectoryWithSubDirectory, remoteRemoteTransferDirectoryWithSubDirectory);
+                    Action_IO_DeleteOldRemoteFiles(remoteRemoteDeliveryDirectoryWithSubDirectory);
                     Action_IO_MoveFileRemoteToRemote(fileName, remoteRemoteTransferDirectoryWithSubDirectory, remoteRemoteDeliveryDirectoryWithSubDirectory);
                     return true; // return true if moved to remote directory
                 }

@@ -25,6 +25,10 @@ namespace MirrorLib
         private int _checkMirroringStateSecondInterval;
         private int _primaryStartupWaitNumberOfChecksForMirroringTimeout;
         private int _secondaryStartupWaitNumberOfChecksForMirroringTimeout;
+        private int _backupHourInterval;
+        private bool _backupToMirrorServer;
+        private BackupTime _backupTime;
+        private int _backupDelayEmergencyBackupMin;
 
         public ConfigurationForInstance(
             RemoteServer remoteServer,
@@ -43,7 +47,11 @@ namespace MirrorLib
             int serviceStartTimeoutSec,
             int checkMirroringStateSecondInterval,
             int primaryStartupWaitNumberOfChecksForMirroringTimeout,
-            int secondaryStartupWaitNumberOfChecksForMirroringTimeout
+            int secondaryStartupWaitNumberOfChecksForMirroringTimeout,
+            int backupHourInterval,
+            bool backupToMirrorServer,
+            BackupTime backupTime,
+            int backupDelayEmergencyBackupMin
             )
         {
             _remoteServer = remoteServer;
@@ -59,10 +67,14 @@ namespace MirrorLib
             MirrorMonitoringUpdateMinutes = mirrorMonitoringUpdateMinutes;
             _remoteServerAccessTimeoutSeconds = remoteServerAccessTimeoutSeconds;
             _endpoint_Name = endpoint_Name;
-            ServiceStartTimeout = serviceStartTimeoutSec *1000;
+            ServiceStartTimeout = serviceStartTimeoutSec * 1000;
             CheckMirroringStateSecondInterval = checkMirroringStateSecondInterval;
             PrimaryStartupWaitNumberOfChecksForMirroringTimeout = primaryStartupWaitNumberOfChecksForMirroringTimeout;
             SecondaryStartupWaitNumberOfChecksForMirroringTimeout = secondaryStartupWaitNumberOfChecksForMirroringTimeout;
+            BackupHourInterval = backupHourInterval;
+            _backupToMirrorServer = backupToMirrorServer;
+            _backupTime = backupTime;
+            _backupDelayEmergencyBackupMin = backupDelayEmergencyBackupMin;
         }
         public RemoteServer RemoteServer
         {
@@ -221,7 +233,7 @@ namespace MirrorLib
             {
                 if (value > 0)
                 {
-                    _mirrorMonitoringUpdateMinutes = value;
+                    _serviceStartTimeout = value;
                 }
                 else
                 {
@@ -292,6 +304,48 @@ namespace MirrorLib
                 {
                     throw new SqlServerMirroringException(string.Format("Could not set Secondary Startup Wait to {0} checks as it is surposed to be 1 or above.", value));
                 }
+            }
+        }
+
+        public int BackupHourInterval
+        {
+            get
+            {
+                return _backupHourInterval;
+            }
+            private set
+            {
+                if (value > 0)
+                {
+                    _backupHourInterval = value;
+                }
+                else
+                {
+                    throw new SqlServerMirroringException(string.Format("Could not set Backup Hour Interval to {0} checks as it is surposed to be 1 or above.", value));
+                }
+            }
+        }
+        public bool BackupToMirrorServer
+        {
+            get
+            {
+                return _backupToMirrorServer;
+            }
+        }
+
+        public BackupTime BackupTime
+        {
+            get
+            {
+                return _backupTime;
+            }
+        }
+
+        public int BackupDelayEmergencyBackupMin
+        {
+            get
+            {
+                return _backupDelayEmergencyBackupMin;
             }
         }
     }
