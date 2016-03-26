@@ -43,7 +43,10 @@ namespace MirrorLib
         OFFLINE = 6,
         COPYING = 7,
         OFFLINE_SECONDARY = 10,
-        READY_FOR_MIRRORING = 200
+        READY_FOR_MIRRORING = 200,
+        READY_FOR_RESTORE = 201,
+        BACKUP_DELIVERED = 202,
+        BACKUP_REPORTED_DELIVERED = 203
     }
 
     public enum MirroringSafetyLevelEnum
