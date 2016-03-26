@@ -284,7 +284,7 @@ namespace MirrorLibTester
                 GetConfiguration(ENDPOINT_NAME),
                 120,
                 5,
-                30,
+                60,
                 30,
                 24,
                 true,

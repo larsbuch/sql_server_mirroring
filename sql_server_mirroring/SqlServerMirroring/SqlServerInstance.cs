@@ -2335,8 +2335,16 @@ namespace MirrorLib
         /* This runs as a main thread task */
         private void OnTimedCheckEvent(object source, ElapsedEventArgs e)
         {
-            /* Disables timer to avoid two running at the same time */
-            Action_ServerState_TimedCheck();
+            try
+            {
+                /* Disables timer to avoid two running at the same time */
+                Action_ServerState_TimedCheck();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("OnTimedCheckEvent: Action_ServerState_TimedCheck failed", ex);
+                throw new SqlServerMirroringException("OnTimedCheckEvent: Action_ServerState_TimedCheck failed", ex); // TODO Remove
+            }
         }
 
         private void Action_Instance_StartDelayedBackupTimer()
@@ -2353,7 +2361,15 @@ namespace MirrorLib
         /* This runs as a main thread task */
         private void OnStartBackupEvent(object sender, ElapsedEventArgs e)
         {
-            Action_Instance_StartBackupTimer();
+            try
+            {
+                Action_Instance_StartBackupTimer();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("OnStartBackupEvent: Action_Instance_StartBackupTimer failed", ex);
+                throw new SqlServerMirroringException("OnStartBackupEvent: Action_Instance_StartBackupTimer failed", ex); // TODO Remove
+            }
         }
 
         private void Action_Instance_StartBackupTimer()
@@ -2369,13 +2385,31 @@ namespace MirrorLib
         /* This runs as a background task */
         private void OnBackupEvent(object source, ElapsedEventArgs e)
         {
-            if (Instance_Configuration.BackupToMirrorServer)
+            try
             {
-                Action_Instance_BackupForAllConfiguredDatabasesForMirrorServer();
+                if (Instance_Configuration.BackupToMirrorServer)
+                {
+                    Action_Instance_BackupForAllConfiguredDatabasesForMirrorServer();
+                }
+                else
+                {
+                    Action_Instance_BackupForAllConfiguredDatabases();
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Action_Instance_BackupForAllConfiguredDatabases();
+                string error;
+                if(Instance_Configuration.BackupToMirrorServer)
+                {
+                    error = "OnBackupEvent: Action_Instance_BackupForAllConfiguredDatabasesForMirrorServer failed";
+                }
+                else
+                {
+                    error = "OnBackupEvent: Action_Instance_BackupForAllConfiguredDatabases failed";
+                }
+
+                Logger.LogError(error, ex);
+                throw new SqlServerMirroringException(error, ex); // TODO Remove
             }
         }
 
@@ -2392,7 +2426,15 @@ namespace MirrorLib
         /* This runs as a background task */
         private void OnEmergencyBackupEvent(object source, ElapsedEventArgs e)
         {
-            Action_Instance_BackupForAllConfiguredDatabasesForMirrorServer();
+            try
+            {
+                Action_Instance_BackupForAllConfiguredDatabasesForMirrorServer();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("OnEmergencyBackupEvent: Action_Instance_BackupForAllConfiguredDatabasesForMirrorServer failed", ex);
+                throw new SqlServerMirroringException("OnEmergencyBackupEvent: Action_Instance_BackupForAllConfiguredDatabasesForMirrorServer failed", ex); // TODO Remove
+            }
         }
 
         private void Action_IO_CreateDirectoryAndShare()
