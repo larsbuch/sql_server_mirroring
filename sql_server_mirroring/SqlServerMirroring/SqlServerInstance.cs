@@ -2697,7 +2697,7 @@ namespace MirrorLib
             try
             {
                 Logger.LogDebug(string.Format("Information_GetServerStateCount for {0} started",serverState));
-                string sqlQuery = "SELECT TOP (1) StateCount FROM ServerState WHERE LastState = " + serverState + " AND UpdaterLocal = 1 AND AboutLocal = 1 ";
+                string sqlQuery = string.Format("SELECT TOP (1) StateCount FROM ServerState WHERE LastState = '{0}' AND UpdaterLocal = 1 AND AboutLocal = 1 ", serverState);
 
                 Logger.LogDebug(string.Format("Information_ServerState_GetCount sqlQuery {0}", sqlQuery));
                 DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
