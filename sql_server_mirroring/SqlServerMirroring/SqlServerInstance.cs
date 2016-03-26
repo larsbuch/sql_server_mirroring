@@ -1106,6 +1106,7 @@ namespace MirrorLib
             {
                 Logger.LogWarning(string.Format("Action_ServerState_UpdateSecondaryStartupCount_ShiftState: Will shift from state {0} because of Server State is not allowed for longer as count {1} is above {2}."
                     , Information_ServerState, countOfChecks, checksToShiftState));
+                Action_ServerState_Update(LocalMasterDatabase, true, true, false, Information_Instance_ServerRole, Information_ServerState, 0);
                 return true;
             }
             else
@@ -2661,13 +2662,33 @@ namespace MirrorLib
             int countOfChecks = Information_DatabaseState_GetErrorCount();
             if (countOfChecks > checksToShutDown)
             {
-                Logger.LogWarning(string.Format("Action_DatabaseState_ShiftState: Will shut down from state {0} because of Database State Error as count {1} is above {2}.", Information_ServerState, countOfChecks, checksToShutDown));
+                Logger.LogWarning(string.Format("Action_DatabaseState_ShiftState: Will shut down from state {0} because of Database State Error as count {1} is above {2}."
+                    , Information_ServerState, countOfChecks, checksToShutDown));
+                Action_DatabaseState_ResetErrorStates();
                 return true;
             }
             else
             {
                 Logger.LogDebug(string.Format("Action_DatabaseState_ShiftState: Should not shut down because of Database State Error as count {0} is not above {1}.", countOfChecks, checksToShutDown));
                 return false;
+            }
+        }
+
+        private void Action_DatabaseState_ResetErrorStates()
+        {
+            try
+            {
+                Logger.LogDebug("Action_DatabaseState_ResetErrorStates started.");
+
+                string sqlQuery = "UPDATE DatabaseState SET ErrorCount = 0 ";
+
+                Logger.LogDebug(string.Format("Action_DatabaseState_ResetErrorStates sqlQuery {0}.", sqlQuery));
+                LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
+                Logger.LogDebug("Action_DatabaseState_ResetErrorStates ended.");
+            }
+            catch (Exception ex)
+            {
+                throw new SqlServerMirroringException("Action_DatabaseState_ResetErrorStates failed", ex);
             }
         }
 
@@ -2680,12 +2701,15 @@ namespace MirrorLib
             int countOfChecks = Information_ServerState_GetSecondaryRunningNoPrimaryStateCount();
             if (countOfChecks > checksToShutDown)
             {
-                Logger.LogWarning(string.Format("Will shut down from state {0} because of Server State is not allowed for longer as count {1} is above {2}.", Information_ServerState, countOfChecks, checksToShutDown));
+                Logger.LogWarning(string.Format("Will shut down from state {0} because of Server State is not allowed for longer as count {1} is above {2}."
+                    , Information_ServerState, countOfChecks, checksToShutDown));
+                Action_ServerState_Update(LocalMasterDatabase, true, true, false, Information_Instance_ServerRole, Information_ServerState, 0);
                 return true;
             }
             else
             {
-                Logger.LogDebug(string.Format("Should not shut down because of Server State Error is allowed as count {0} is not above {1}.", countOfChecks, checksToShutDown));
+                Logger.LogDebug(string.Format("Should not shut down because of Server State Error is allowed as count {0} is not above {1}."
+                    , countOfChecks, checksToShutDown));
                 return false;
             }
         }
