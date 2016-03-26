@@ -2863,10 +2863,10 @@ namespace MirrorLib
             {
                 Logger.LogDebug("Action_UpdateServerState started.");
 
-                string sqlQuery = "UPDATE ServerState (UpdaterLocal, AboutLocal, Connected, LastState, LastWriteDate, StateCount) ";
+                string sqlQuery = "UPDATE ServerState ";
                 sqlQuery += string.Format("SET Connected = {0} ",connected ? "1" : "0");
-                sqlQuery += string.Format(", LastRole = {0} ",activeServerRole.ToString());
-                sqlQuery += string.Format(", LastState = {0} ", activeServerState.ToString());
+                sqlQuery += string.Format(", LastRole = '{0}' ",activeServerRole.ToString());
+                sqlQuery += string.Format(", LastState = '{0}' ", activeServerState.ToString());
                 sqlQuery += ", LastWriteDate = SYSDATETIME() ";
                 sqlQuery += string.Format(", StateCount = {0} ", increaseCount == 0 ? "0" : "StateCount + " + increaseCount.ToString());
                 sqlQuery += string.Format("WHERE UpdaterLocal = {0} ", updaterLocal ? "1" : "0");
