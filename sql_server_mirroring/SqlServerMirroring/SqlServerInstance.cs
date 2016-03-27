@@ -60,7 +60,7 @@ namespace MirrorLib
         {
             try
             {
-                if (Information_RemoteServer_Status().Equals("Online"))
+                if (RemoteMasterDatabase.IsAccessible)
                 {
                     Logger.LogDebug("Information_RemoteServer_HasAccess: Access to remote server.");
                     return true;
@@ -1445,15 +1445,18 @@ namespace MirrorLib
         {
             MirroringRoleEnum failoverRole;
             MirroringRoleEnum ignoreRole;
+            Database databaseToUse;
             if(failoverPrincipal)
             {
                 failoverRole = MirroringRoleEnum.Principal;
                 ignoreRole = MirroringRoleEnum.Mirror;
+                databaseToUse = LocalMasterDatabase;
             }
             else
             {
                 failoverRole = MirroringRoleEnum.Mirror;
                 ignoreRole = MirroringRoleEnum.Principal;
+                databaseToUse = LocalMasterDatabase;
             }
             foreach (ConfigurationForDatabase configuredDatabase in Databases_Configuration.Values)
             {
@@ -1480,7 +1483,7 @@ namespace MirrorLib
                                 , database.Name, databaseRole));
 
                             string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER FAILOVER", database.Name);
-                            LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
+                            databaseToUse.ExecuteNonQuery(sqlQuery);
                             Logger.LogDebug(string.Format(
                                 "Action_Instance_SwitchOverAllDatabasesIfPossible: Database {0} switched from {1} to {2}."
                                 , database.Name, databaseRole, failoverRole));
@@ -1525,15 +1528,18 @@ namespace MirrorLib
         {
             MirroringRoleEnum failoverRole;
             MirroringRoleEnum ignoreRole;
+            Database databaseToUse;
             if (failoverPrincipal)
             {
                 failoverRole = MirroringRoleEnum.Principal;
                 ignoreRole = MirroringRoleEnum.Mirror;
+                databaseToUse = LocalMasterDatabase;
             }
             else
             {
                 failoverRole = MirroringRoleEnum.Mirror;
                 ignoreRole = MirroringRoleEnum.Principal;
+                databaseToUse = RemoteMasterDatabase;
             }
             foreach (ConfigurationForDatabase configuredDatabase in Databases_Configuration.Values)
             {
@@ -1558,7 +1564,7 @@ namespace MirrorLib
                                     "Action_Instance_SwitchOverAllDatabasesForcedIfNeeded: Trying to switch {0} as it in {1}."
                                     , database.Name, databaseRole));
                                 string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER FAILOVER", database.Name);
-                                LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
+                                databaseToUse.ExecuteNonQuery(sqlQuery);
                                 Logger.LogDebug(string.Format(
                                     "Action_Instance_SwitchOverAllDatabasesForcedIfNeeded:Database {0} switched from {1} to {2}."
                                     , database.Name, databaseRole, failoverRole));
@@ -2888,24 +2894,46 @@ namespace MirrorLib
         
         private void Action_ServerState_UpdateLocal_MissingRemoteServer()
         {
-            Logger.LogDebug("Action_UpdateRemoteServerState_ConnectedRemoteServer started.");
-            Action_ServerState_Update(LocalMasterDatabase, true, false, false, Information_Instance_ServerRole, Information_ServerState, 1);
-            Logger.LogDebug("Action_UpdateRemoteServerState_ConnectedRemoteServer ended.");
+            try
+            {
+                Logger.LogDebug("Action_ServerState_UpdateLocal_MissingRemoteServer started.");
+                Action_ServerState_Update(LocalMasterDatabase, true, false, false, Information_Instance_ServerRole, Information_ServerState, 1);
+                Logger.LogDebug("Action_ServerState_UpdateLocal_MissingRemoteServer ended.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Action_ServerState_UpdateLocal_MissingRemoteServer failed", ex);
+            }
         }
 
         private void Action_ServerState_UpdateRemote_ConnectedRemoteServer()
         {
-            Logger.LogDebug("Action_UpdateRemoteServerState_ConnectedRemoteServer started.");
-            Action_ServerState_Update(RemoteMasterDatabase, false, true, true, Information_Instance_ServerRole, Information_ServerState, 0);
-            Logger.LogDebug("Action_UpdateRemoteServerState_ConnectedRemoteServer ended.");
+            try
+            {
+                Logger.LogDebug("Action_ServerState_UpdateRemote_ConnectedRemoteServer started.");
+                Action_ServerState_Update(RemoteMasterDatabase, false, true, true, Information_Instance_ServerRole, Information_ServerState, 0);
+                Logger.LogDebug("Action_ServerState_UpdateRemote_ConnectedRemoteServer ended.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Action_ServerState_UpdateRemote_ConnectedRemoteServer failed", ex);
+            }
         }
 
         private void Action_ServerState_UpdateLocal_ConnectedRemoteServer()
         {
-            Logger.LogDebug("Action_UpdateLocalServerState_ConnectedRemoteServer started.");
-            Action_ServerState_Update(LocalMasterDatabase, true, false, true, Information_Instance_ServerRole, Information_ServerState, 0);
-            Logger.LogDebug("Action_UpdateLocalServerState_ConnectedRemoteServer ended.");
+            try
+            {
+                Logger.LogDebug("Action_ServerState_UpdateLocal_ConnectedRemoteServer started.");
+                Action_ServerState_Update(LocalMasterDatabase, true, false, true, Information_Instance_ServerRole, Information_ServerState, 0);
+                Logger.LogDebug("Action_ServerState_UpdateLocal_ConnectedRemoteServer ended.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Action_ServerState_UpdateLocal_ConnectedRemoteServer failed", ex);
+            }
         }
+
 
         private void Action_ServerState_CreateMasterTable()
         {
