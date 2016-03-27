@@ -614,7 +614,7 @@ namespace MirrorLib
                             if (Action_ServerState_UpdateSecondaryStartupCount_ShiftState())
                             {
                                 Logger.LogWarning(string.Format("Action_ServerState_TimedCheck: Server timed out waiting for mirroring state after {0} checks", Instance_Configuration.SecondaryStartupWaitNumberOfChecksForMirroringTimeout));
-                                Action_ServerState_MakeChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
+                                Action_ServerState_MakeChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
                             }
                         }
                     }
@@ -1073,13 +1073,14 @@ namespace MirrorLib
         {
             Logger.LogDebug("Action_ServerState_UpdatePrimaryStartupCount_ShiftState started.");
             int checksToShiftState = Instance_Configuration.PrimaryStartupWaitNumberOfChecksForMirroringTimeout;
-            Action_ServerState_Update(LocalMasterDatabase, true, true, false, Information_Instance_ServerRole, Information_ServerState, 1);
+            Action_ServerState_Update(LocalMasterDatabase, true, true, true, Information_Instance_ServerRole, Information_ServerState, 1);
 
             int countOfChecks = Information_ServerState_GetPrimaryStartupStateCount();
             if (countOfChecks > checksToShiftState)
             {
                 Logger.LogWarning(string.Format("Action_ServerState_UpdatePrimaryStartupCount_ShiftState: Will shift from state {0} because of Server State is not allowed for longer as count {1} is above {2}."
                     , Information_ServerState, countOfChecks, checksToShiftState));
+                Action_ServerState_Update(LocalMasterDatabase, true, true, true, Information_Instance_ServerRole, Information_ServerState, 0);
                 return true;
             }
             else
@@ -1099,14 +1100,14 @@ namespace MirrorLib
         {
             Logger.LogDebug("Action_ServerState_UpdateSecondaryStartupCount_ShiftState started.");
             int checksToShiftState = Instance_Configuration.SecondaryStartupWaitNumberOfChecksForMirroringTimeout;
-            Action_ServerState_Update(LocalMasterDatabase, true, true, false, Information_Instance_ServerRole, Information_ServerState, 1);
+            Action_ServerState_Update(LocalMasterDatabase, true, true, true, Information_Instance_ServerRole, Information_ServerState, 1);
 
             int countOfChecks = Information_ServerState_GetSecondaryStartupStateCount();
             if (countOfChecks > checksToShiftState)
             {
                 Logger.LogWarning(string.Format("Action_ServerState_UpdateSecondaryStartupCount_ShiftState: Will shift from state {0} because of Server State is not allowed for longer as count {1} is above {2}."
                     , Information_ServerState, countOfChecks, checksToShiftState));
-                Action_ServerState_Update(LocalMasterDatabase, true, true, false, Information_Instance_ServerRole, Information_ServerState, 0);
+                Action_ServerState_Update(LocalMasterDatabase, true, true, true, Information_Instance_ServerRole, Information_ServerState, 0);
                 return true;
             }
             else
@@ -1236,7 +1237,8 @@ namespace MirrorLib
                             , configurationDatabase.DatabaseName));
                         Action_Databases_AddDatabaseToMirroring(configurationDatabase);
                         Action_DatabaseState_Update(LocalMasterDatabase, configurationDatabase.DatabaseName, DatabaseStateEnum.BACKUP_DELIVERED, Information_Instance_ServerRole, false, 0);
-
+                        Action_RemoteServer_ReadyForRestore();
+                        Action_DatabaseState_Update(LocalMasterDatabase, configurationDatabase.DatabaseName, DatabaseStateEnum.BACKUP_REPORTED_DELIVERED, Information_Instance_ServerRole, false, 0);
                     }
                     else
                     {

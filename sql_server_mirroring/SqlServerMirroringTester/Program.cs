@@ -15,7 +15,7 @@ namespace MirrorLibTester
             Configuration.Add(CONNECTION_STRING, "Server=localhost;Trusted_Connection=True;");
             string localServer = ConsoleTest.GetNextInput("Local Server: ", Environment.MachineName);
             Configuration.Add(LOCALSERVER, localServer);
-            Configuration.Add(REMOTESERVER, ConsoleTest.GetNextInput("Remote Server: "));
+            Configuration.Add(REMOTESERVER, ConsoleTest.GetNextInput("Remote Server: ", Environment.MachineName.Substring(Environment.MachineName.Length -2, 2)));
             Configuration.Add(DIRECORYFORLOCALBACKUP, ConsoleTest.GetNextInput("Directory for local backup: ", "C:\\Test\\LocalBackup"));
             Configuration.Add(DIRECORYFORLOCALSHARE, ConsoleTest.GetNextInput("Directory for local share: ", "C:\\Test\\Share"));
             Configuration.Add(DIRECORYFORLOCALRESTORE, ConsoleTest.GetNextInput("Directory for local restore: ", "C:\\Test\\LocalRestore"));
@@ -23,7 +23,7 @@ namespace MirrorLibTester
             Configuration.Add(ENDPOINT_NAME, ConsoleTest.GetNextInput("Endpoint Name: ", "Mirroring_Endpoint"));
             Configuration.Add(ENDPOINT_LISTENERPORT, ConsoleTest.GetNextInput("Endpoint Listener Port: ", "7022"));
             Configuration.Add(REMOTESERVERCOMMUNICATIONTIMEOUT, ConsoleTest.GetNextInput("Remote Communication Timeout: ", 10.ToString()));
-            Configuration.Add(DATABASESFORMIRRORING, ConsoleTest.GetNextInput("Databases for mirroring (comma separates): "));
+            Configuration.Add(DATABASESFORMIRRORING, ConsoleTest.GetNextInput("Databases for mirroring (comma separates): ", "TestMirror1,TestMirror2"));
 
             ConsoleTest.AddTest("Information", "Get local instance status", () => Test_Information_InstanceStatus());
             ConsoleTest.AddTest("Information", "Get instance information", () => Test_Information_Instance());
