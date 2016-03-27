@@ -836,7 +836,7 @@ namespace MirrorLib
 
         public bool Action_Instance_ForceFailoverWithDataLossForAllMirrorDatabases()
         {
-            Logger.LogDebug("Action_ForceFailoverWithDataLossForAllMirrorDatabases started");
+            Logger.LogDebug("Action_Instance_ForceFailoverWithDataLossForAllMirrorDatabases started");
 
             if (Information_ServerState.State == ServerStateEnum.SECONDARY_RUNNING_STATE ||
             Information_ServerState.State == ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE ||
@@ -846,7 +846,7 @@ namespace MirrorLib
             }
             else
             {
-                Logger.LogWarning(string.Format("Server {0} triet to manually shut down but in invalid state {1} for doing so.", Information_Instance_ServerRole, Information_ServerState));
+                Logger.LogWarning(string.Format("Action_Instance_ForceFailoverWithDataLossForAllMirrorDatabases: Server {0} triet to manually shut down but in invalid state {1} for doing so.", Information_Instance_ServerRole, Information_ServerState));
                 return false;
             }
             /* TODO Only fail over the first as all others will join if on multi mirror server with witness */
@@ -857,28 +857,30 @@ namespace MirrorLib
                     Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
                     if (database == null)
                     {
-                        throw new SqlServerMirroringException(string.Format("Action_ForceFailoverWithDataLossForAllMirrorDatabases: Could not find database {0}", configuredDatabase.DatabaseName));
+                        throw new SqlServerMirroringException(string.Format("Action_Instance_ForceFailoverWithDataLossForAllMirrorDatabases: Could not find database {0}", configuredDatabase.DatabaseName));
                     }
+                    string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER FORCE_SERVICE_ALLOW_DATA_LOSS", database.Name);
 
-                    database.ChangeMirroringState(MirroringOption.ForceFailoverAndAllowDataLoss);
-                    database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                    LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
+                    Logger.LogWarning(string.Format("Action_Instance_ForceFailoverWithDataLossForAllMirrorDatabases: Database {0} has been switched over with data loss", database.Name));
+
                 }
                 catch (Exception ex)
                 {
-                    throw new SqlServerMirroringException(string.Format("Action_ForceFailoverWithDataLossForAllMirrorDatabases failed for {0}", configuredDatabase.DatabaseName), ex);
+                    throw new SqlServerMirroringException(string.Format("Action_Instance_ForceFailoverWithDataLossForAllMirrorDatabases failed for {0}", configuredDatabase.DatabaseName), ex);
                 }
             }
             if (Information_ServerState.State == ServerStateEnum.SECONDARY_FORCED_MANUAL_FAILOVER_STATE)
             {
                 Action_ServerState_MakeChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
             }
-            Logger.LogDebug("Action_ForceFailoverWithDataLossForAllMirrorDatabases ended");
+            Logger.LogDebug("Action_Instance_ForceFailoverWithDataLossForAllMirrorDatabases ended");
             return true;
         }
 
         public bool Action_Instance_FailoverForAllMirrorDatabases()
         {
-            Logger.LogDebug("Action_FailoverForAllMirrorDatabases started");
+            Logger.LogDebug("Action_Instance_FailoverForAllMirrorDatabases started");
             if (Information_ServerState.State == ServerStateEnum.PRIMARY_RUNNING_STATE ||
                 Information_ServerState.State == ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE ||
                 Information_ServerState.State == ServerStateEnum.PRIMARY_MAINTENANCE_STATE)
@@ -893,7 +895,7 @@ namespace MirrorLib
             }
             else
             {
-                Logger.LogWarning(string.Format("Action_FailoverForAllMirrorDatabases: Server {0} triet to manually shut down but in invalid state {1} for doing so.", Information_Instance_ServerRole, Information_ServerState));
+                Logger.LogWarning(string.Format("Action_Instance_FailoverForAllMirrorDatabases: Server {0} triet to manually shut down but in invalid state {1} for doing so.", Information_Instance_ServerRole, Information_ServerState));
                 return false;
             }
 
@@ -906,15 +908,17 @@ namespace MirrorLib
                     Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
                     if (database == null)
                     {
-                        throw new SqlServerMirroringException(string.Format("Action_FailoverForAllMirrorDatabases: Could not find database {0}", configuredDatabase.DatabaseName));
+                        throw new SqlServerMirroringException(string.Format("Action_FailoverAction_Instance_FailoverForAllMirrorDatabasesForAllMirrorDatabases: Could not find database {0}", configuredDatabase.DatabaseName));
                     }
 
-                    database.ChangeMirroringState(MirroringOption.Failover);
-                    database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                    string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER FAILOVER", database.Name);
+
+                    LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
+                    Logger.LogWarning(string.Format("Action_Instance_FailoverForAllMirrorDatabases: Database {0} has been switched over", database.Name));
                 }
                 catch (Exception ex)
                 {
-                    throw new SqlServerMirroringException(string.Format("Action_FailoverForAllMirrorDatabases: Failover failed for {0}", configuredDatabase.DatabaseName), ex);
+                    throw new SqlServerMirroringException(string.Format("Action_Instance_FailoverForAllMirrorDatabases: Failover failed for {0}", configuredDatabase.DatabaseName), ex);
                 }
             }
             if (Information_ServerState.State == ServerStateEnum.PRIMARY_MANUAL_FAILOVER_STATE)
@@ -925,7 +929,7 @@ namespace MirrorLib
             {
                 Action_ServerState_MakeChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
             }
-            Logger.LogDebug("Action_FailoverForAllMirrorDatabases ended");
+            Logger.LogDebug("Action_Instance_FailoverForAllMirrorDatabases ended");
 
             return true;
         }
@@ -1474,8 +1478,9 @@ namespace MirrorLib
                             Logger.LogDebug(string.Format(
                                 "Action_Instance_SwitchOverAllDatabasesIfPossible: Trying to switch {0} as it in {1}."
                                 , database.Name, databaseRole));
-                            database.ChangeMirroringState(MirroringOption.Failover);
-                            database.Alter(TerminationClause.RollbackTransactionsImmediately);
+
+                            string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER FAILOVER", database.Name);
+                            LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
                             Logger.LogDebug(string.Format(
                                 "Action_Instance_SwitchOverAllDatabasesIfPossible: Database {0} switched from {1} to {2}."
                                 , database.Name, databaseRole, failoverRole));
@@ -1552,8 +1557,8 @@ namespace MirrorLib
                                 Logger.LogDebug(string.Format(
                                     "Action_Instance_SwitchOverAllDatabasesForcedIfNeeded: Trying to switch {0} as it in {1}."
                                     , database.Name, databaseRole));
-                                database.ChangeMirroringState(MirroringOption.Failover);
-                                database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                                string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER FAILOVER", database.Name);
+                                LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
                                 Logger.LogDebug(string.Format(
                                     "Action_Instance_SwitchOverAllDatabasesForcedIfNeeded:Database {0} switched from {1} to {2}."
                                     , database.Name, databaseRole, failoverRole));
@@ -1564,8 +1569,8 @@ namespace MirrorLib
                                 Logger.LogDebug(string.Format(
                                     "Action_Instance_SwitchOverAllDatabasesForcedIfNeeded: Force Failover with dataloss switch {0} as it in {1}."
                                     , database.Name, databaseRole));
-                                database.ChangeMirroringState(MirroringOption.ForceFailoverAndAllowDataLoss);
-                                database.Alter(TerminationClause.RollbackTransactionsImmediately);
+                                string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER FORCE_SERVICE_ALLOW_DATA_LOSS", database.Name);
+                                LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
                                 Logger.LogDebug(string.Format(
                                     "Action_Instance_SwitchOverAllDatabasesForcedIfNeeded: Database {0} switched with dataloss from {1} to {2}."
                                     , database.Name, databaseRole, failoverRole));
