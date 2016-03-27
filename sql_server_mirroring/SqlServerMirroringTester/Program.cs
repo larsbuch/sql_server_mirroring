@@ -12,7 +12,6 @@ namespace MirrorLibTester
 
         static void Main(string[] args)
         {
-            Configuration.Add(CONNECTION_STRING, "Server=localhost;Trusted_Connection=True;");
             string localServer = ConsoleTest.GetNextInput("Local Server: ", Environment.MachineName);
             Configuration.Add(LOCALSERVER, localServer);
             Configuration.Add(REMOTESERVER, ConsoleTest.GetNextInput("Remote Server: ", Environment.MachineName.Substring(0, Environment.MachineName.Length -2)));
@@ -211,7 +210,6 @@ namespace MirrorLibTester
 
         #region Helper functions and constructs
 
-        private const string CONNECTION_STRING = "CONNECTION_STRING";
         private const string LOCALSERVER = "LOCALSERVER";
         private const string REMOTESERVER = "REMOTESERVER";
         private const string DIRECORYFORLOCALBACKUP = "DIRECORYFORLOCALBACKUP";
@@ -247,9 +245,8 @@ namespace MirrorLibTester
             }
             else
             {
-                throw new SqlServerMirroringTesterException(string.Format("Configuration value {0} is missing in Configuration.", CONNECTION_STRING));
+                throw new SqlServerMirroringTesterException(string.Format("Configuration value {0} is missing in Configuration.", key));
             }
-
         }
 
         private static SqlServerInstance SqlServer
@@ -258,7 +255,7 @@ namespace MirrorLibTester
             {
                 if (_sqlServerInstance == null)
                 {
-                    _sqlServerInstance = new SqlServerInstance(Logger, GetConfiguration(CONNECTION_STRING));
+                    _sqlServerInstance = new SqlServerInstance(Logger, GetConfiguration(LOCALSERVER));
                     _sqlServerInstance.Databases_Configuration = BuildDatabaseConfiguration();
                     _sqlServerInstance.Instance_Configuration = BuildInstanceConfiguration();
                 }
@@ -276,8 +273,8 @@ namespace MirrorLibTester
                 new ShareName(GetConfiguration(LOCALSHARENAME)),
                 int.Parse(GetConfiguration(ENDPOINT_LISTENERPORT)),
                 7,
-                12,
-                12,
+                60,
+                0,
                 12,
                 1,
                 int.Parse(GetConfiguration(REMOTESERVERCOMMUNICATIONTIMEOUT)),

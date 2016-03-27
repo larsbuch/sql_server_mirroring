@@ -61,9 +61,9 @@ namespace MirrorLib
             _localShareName = localShareName;
             _endpoint_ListenerPort = endpoint_ListenerPort;
             _backupExpiresAfterDays = backupExpiresAfterDays;
-            _shutDownAfterNumberOfChecksForDatabaseState = shutDownAfterNumberOfChecksForDatabaseState;
-            _switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState = switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState;
-            _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState = shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
+            ShutDownAfterNumberOfChecksForDatabaseState = shutDownAfterNumberOfChecksForDatabaseState;
+            SwitchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState = switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState;
+            ShutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState = shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
             MirrorMonitoringUpdateMinutes = mirrorMonitoringUpdateMinutes;
             _remoteServerAccessTimeoutSeconds = remoteServerAccessTimeoutSeconds;
             _endpoint_Name = endpoint_Name;
@@ -138,6 +138,17 @@ namespace MirrorLib
             {
                 return _shutDownAfterNumberOfChecksForDatabaseState;
             }
+            private set
+            {
+                if (value > -1)
+                {
+                    _shutDownAfterNumberOfChecksForDatabaseState = value;
+                }
+                else
+                {
+                    throw new SqlServerMirroringException(string.Format("Could not set Shut Down After NumberOfChecks For Database State to {0} minutes as it is surposed to be 0 or above with 0 meaning disabled.", value));
+                }
+            }
         }
 
         public int MirrorMonitoringUpdateMinutes
@@ -165,6 +176,17 @@ namespace MirrorLib
             {
                 return _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState;
             }
+            private set
+            {
+                if (value > -1)
+                {
+                    _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState = value;
+                }
+                else
+                {
+                    throw new SqlServerMirroringException(string.Format("Could not set Shut Down After NumberOfChecks In SECONDARY_RUNNING_NO_PRIMARY_STATE to {0} minutes as it is surposed to be 0 or above with 0 meaning disabled.", value));
+                }
+            }
         }
 
         public int SwitchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState
@@ -172,6 +194,17 @@ namespace MirrorLib
             get
             {
                 return _switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState;
+            }
+            private set
+            {
+                if (value > -1)
+                {
+                    _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState = value;
+                }
+                else
+                {
+                    throw new SqlServerMirroringException(string.Format("Could not set Swotch Over After NumberOfChecks In PRIMARY_RUNNING_NO_SECONDARY_STATE to {0} minutes as it is surposed to be 0 or above with 0 meaning disabled.", value));
+                }
             }
         }
 
