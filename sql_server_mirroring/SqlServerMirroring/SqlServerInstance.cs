@@ -1255,35 +1255,38 @@ namespace MirrorLib
             }
             Logger.LogDebug(string.Format("Action_Databases_StartUpMirrorCheck check if databases needs to be set up"));
             /* Check databases setup */
-            foreach (ConfigurationForDatabase configurationDatabase in Databases_Configuration.Values)
+            if (serverPrimary)
             {
-                Logger.LogDebug(string.Format(
-                    "Action_Databases_StartUpMirrorCheck: Checking database {0}", configurationDatabase.DatabaseName));
-                DatabaseMirrorState databaseMirrorState;
-                if (Information_DatabaseMirrorStates.TryGetValue(configurationDatabase.DatabaseName.ToString(), out databaseMirrorState))
+                foreach (ConfigurationForDatabase configurationDatabase in Databases_Configuration.Values)
                 {
-                    if (databaseMirrorState == null || databaseMirrorState.MirroringRole == MirroringRoleEnum.NotMirrored)
+                    Logger.LogDebug(string.Format(
+                        "Action_Databases_StartUpMirrorCheck: Checking database {0}", configurationDatabase.DatabaseName));
+                    DatabaseMirrorState databaseMirrorState;
+                    if (Information_DatabaseMirrorStates.TryGetValue(configurationDatabase.DatabaseName.ToString(), out databaseMirrorState))
                     {
-                        Logger.LogWarning(string.Format(
-                            "Action_Databases_StartUpMirrorCheck: Database {0} is not set up for mirroring but is in configuration"
-                            , configurationDatabase.DatabaseName));
-                        Action_Databases_AddDatabaseToMirroring(configurationDatabase);
-                        Action_DatabaseState_Update(LocalMasterDatabase, configurationDatabase.DatabaseName, DatabaseStateEnum.BACKUP_DELIVERED, Information_Instance_ServerRole, false, 0);
-                        Action_RemoteServer_ReadyForRestore();
-                        Action_DatabaseState_Update(LocalMasterDatabase, configurationDatabase.DatabaseName, DatabaseStateEnum.BACKUP_REPORTED_DELIVERED, Information_Instance_ServerRole, false, 0);
+                        if (databaseMirrorState == null || databaseMirrorState.MirroringRole == MirroringRoleEnum.NotMirrored)
+                        {
+                            Logger.LogWarning(string.Format(
+                                "Action_Databases_StartUpMirrorCheck: Database {0} is not set up for mirroring but is in configuration"
+                                , configurationDatabase.DatabaseName));
+                            Action_Databases_AddDatabaseToMirroring(configurationDatabase);
+                            Action_DatabaseState_Update(LocalMasterDatabase, configurationDatabase.DatabaseName, DatabaseStateEnum.BACKUP_DELIVERED, Information_Instance_ServerRole, false, 0);
+                            Action_RemoteServer_ReadyForRestore();
+                            Action_DatabaseState_Update(LocalMasterDatabase, configurationDatabase.DatabaseName, DatabaseStateEnum.BACKUP_REPORTED_DELIVERED, Information_Instance_ServerRole, false, 0);
+                        }
+                        else
+                        {
+                            Logger.LogDebug(string.Format(
+                                "Action_Databases_StartUpMirrorCheck: Database {0} is set up for mirroring and is in configuration"
+                                , configurationDatabase.DatabaseName));
+                        }
                     }
                     else
                     {
-                        Logger.LogDebug(string.Format(
-                            "Action_Databases_StartUpMirrorCheck: Database {0} is set up for mirroring and is in configuration"
+                        Logger.LogWarning(string.Format(
+                            "Action_Databases_StartUpMirrorCheck: Database {0} is in configuration but does not exist on database"
                             , configurationDatabase.DatabaseName));
                     }
-                }
-                else
-                {
-                    Logger.LogWarning(string.Format(
-                        "Action_Databases_StartUpMirrorCheck: Database {0} is in configuration but does not exist on database"
-                        , configurationDatabase.DatabaseName));
                 }
             }
             Logger.LogDebug(string.Format("Action_Databases_StartUpMirrorCheck ended"));
