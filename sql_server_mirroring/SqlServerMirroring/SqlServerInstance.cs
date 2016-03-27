@@ -3276,7 +3276,7 @@ namespace MirrorLib
                         Logger.LogDebug(string.Format("Action_Databases_StartMirroring: Getting ready to start mirroring {0} with partner endpoint on {1} port {2}"
                             , configuredDatabase.DatabaseName, Instance_Configuration.RemoteServer, Instance_Configuration.Endpoint_ListenerPort));
 
-                        string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER = 'TCP://{1}:{2}"
+                        string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER = 'TCP://{1}:{2}'"
                             , configuredDatabase.DatabaseName, Instance_Configuration.RemoteServer, Instance_Configuration.Endpoint_ListenerPort);
 
                         LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
