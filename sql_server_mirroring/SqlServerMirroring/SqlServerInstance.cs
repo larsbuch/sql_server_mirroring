@@ -652,7 +652,7 @@ namespace MirrorLib
                         }
                         else if (Information_Instance_ServerRole == ServerRoleEnum.Secondary)
                         {
-                            if (!databaseMirrorState.DatabaseIsInStandby)
+                            if (databaseMirrorState.DatabaseState != DatabaseStateEnum.RESTORING)
                             {
                                 databaseErrorState = true;
                                 Logger.LogError(string.Format("Action_ServerState_TimedCheck: Server Role {0}: Database {1} has error status {2}."
@@ -2998,7 +2998,7 @@ namespace MirrorLib
                 }
                 else
                 {
-                    Logger.LogInfo(string.Format("Action_Databases_StartMirroring: Remote server {0} not ready for mirroring.", Instance_Configuration.RemoteServer));
+                    Logger.LogInfo(string.Format("Action_Instance_CheckStartMirroring: Remote server {0} not ready for mirroring.", Instance_Configuration.RemoteServer));
                     return false;
                 }
             }
@@ -3012,6 +3012,7 @@ namespace MirrorLib
 
         private bool Information_RemoteServer_ReadyForMirroring()
         {
+            Logger.LogDebug("Information_RemoteServer_ReadyForMirroring started");
             bool remoteServerReady = true;
             Dictionary<string, DatabaseState> remoteDatabaseStates = Information_DatabaseState_Check(RemoteMasterDatabase);
             foreach (ConfigurationForDatabase configuration in Databases_Configuration.Values)

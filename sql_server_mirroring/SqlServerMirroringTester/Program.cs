@@ -15,7 +15,7 @@ namespace MirrorLibTester
             Configuration.Add(CONNECTION_STRING, "Server=localhost;Trusted_Connection=True;");
             string localServer = ConsoleTest.GetNextInput("Local Server: ", Environment.MachineName);
             Configuration.Add(LOCALSERVER, localServer);
-            Configuration.Add(REMOTESERVER, ConsoleTest.GetNextInput("Remote Server: ", Environment.MachineName.Substring(Environment.MachineName.Length -2, 2)));
+            Configuration.Add(REMOTESERVER, ConsoleTest.GetNextInput("Remote Server: ", Environment.MachineName.Substring(0, Environment.MachineName.Length -2)));
             Configuration.Add(DIRECORYFORLOCALBACKUP, ConsoleTest.GetNextInput("Directory for local backup: ", "C:\\Test\\LocalBackup"));
             Configuration.Add(DIRECORYFORLOCALSHARE, ConsoleTest.GetNextInput("Directory for local share: ", "C:\\Test\\Share"));
             Configuration.Add(DIRECORYFORLOCALRESTORE, ConsoleTest.GetNextInput("Directory for local restore: ", "C:\\Test\\LocalRestore"));
