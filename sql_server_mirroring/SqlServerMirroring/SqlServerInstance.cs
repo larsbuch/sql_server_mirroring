@@ -3319,7 +3319,11 @@ namespace MirrorLib
             }
             catch (Exception ex)
             {
-                throw new SqlServerMirroringException(string.Format("Action_CreateEndpoint: Creation of endpoint for {0} failed", Instance_Configuration.Endpoint_Name), ex);
+                if (!DatabaseServerInstance.Endpoints.Contains(Instance_Configuration.Endpoint_Name))
+                {
+
+                    throw new SqlServerMirroringException(string.Format("Action_CreateEndpoint: Creation of endpoint for {0} failed", Instance_Configuration.Endpoint_Name), ex);
+                }
             }
         }
 
