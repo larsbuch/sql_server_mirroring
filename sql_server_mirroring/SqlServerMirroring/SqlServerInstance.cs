@@ -460,7 +460,7 @@ namespace MirrorLib
         {
             Logger.LogDebug("Action_StartPrimary started");
             Action_ServerState_StartInitial();
-            Action_Databases_StartUpMirrorCheck(Databases_Configuration, true);
+            Action_Databases_StartUpMirrorCheck(true);
             Action_Instance_StartBackupTimer();
 
             if (Information_ServerState_IsValidChange(ServerStateEnum.PRIMARY_STARTUP_STATE))
@@ -474,7 +474,7 @@ namespace MirrorLib
         {
             Logger.LogDebug("Action_StartSecondary started");
             Action_ServerState_StartInitial();
-            Action_Databases_StartUpMirrorCheck(Databases_Configuration, false);
+            Action_Databases_StartUpMirrorCheck(false);
 
             if (Information_ServerState_IsValidChange(ServerStateEnum.SECONDARY_STARTUP_STATE))
             {
@@ -1223,7 +1223,7 @@ namespace MirrorLib
             }
         }
 
-        private void Action_Databases_StartUpMirrorCheck(Dictionary<string, ConfigurationForDatabase> configuredMirrorDatabases, bool serverPrimary)
+        private void Action_Databases_StartUpMirrorCheck(bool serverPrimary)
         {
             Logger.LogDebug(string.Format("Action_Databases_StartUpMirrorCheck: Check if databases mirrored but not configured"));
             foreach (DatabaseMirrorState databaseMirrorState in Information_DatabaseMirrorStates.Values)
@@ -1231,7 +1231,7 @@ namespace MirrorLib
                 Logger.LogDebug(string.Format("Action_Databases_StartUpMirrorCheck: Checking database {0}", databaseMirrorState.DatabaseName));
                 if (databaseMirrorState.MirroringRole != MirroringRoleEnum.NotMirrored)
                 {
-                    if (!configuredMirrorDatabases.ContainsKey(databaseMirrorState.DatabaseName))
+                    if (!Databases_Configuration.ContainsKey(databaseMirrorState.DatabaseName))
                     {
                         Logger.LogWarning(string.Format(
                             "Action_Databases_StartUpMirrorCheck: Database {0} was set up for mirroring but is not in configuration"
@@ -3177,15 +3177,11 @@ namespace MirrorLib
                     Dictionary<string, DatabaseMirrorState> remoteDatabaseStates = Information_Instance_CheckDatabaseMirrorStates(RemoteMasterDatabase);
                     foreach (ConfigurationForDatabase configuration in Databases_Configuration.Values)
                     {
-                        DatabaseMirrorState remoteDatabaseMirrorState;
-                        if (remoteDatabaseStates.TryGetValue(configuration.DatabaseName, out remoteDatabaseMirrorState))
+                        if (!remoteDatabaseStates.ContainsKey(configuration.DatabaseName))
                         {
-                            if (!remoteDatabaseStates.ContainsKey(configuration.DatabaseName))
-                            {
-                                Logger.LogDebug(string.Format("Action_RemoteServer_MarkReadyForRestoreNeeded: Database {0} does not exist on remote server", configuration.DatabaseName));
-                                Action_DatabaseState_Update(RemoteMasterDatabase, configuration.DatabaseName, DatabaseStateEnum.READY_FOR_RESTORE, ServerRoleEnum.Secondary, false, 0);
-                                Action_DatabaseState_Update(LocalMasterDatabase, configuration.DatabaseName, DatabaseStateEnum.BACKUP_REPORTED_DELIVERED, Information_Instance_ServerRole, false, 0);
-                            }
+                            Logger.LogDebug(string.Format("Action_RemoteServer_MarkReadyForRestoreNeeded: Database {0} does not exist on remote server", configuration.DatabaseName));
+                            Action_DatabaseState_Update(RemoteMasterDatabase, configuration.DatabaseName, DatabaseStateEnum.READY_FOR_RESTORE, ServerRoleEnum.Secondary, false, 0);
+                            Action_DatabaseState_Update(LocalMasterDatabase, configuration.DatabaseName, DatabaseStateEnum.BACKUP_REPORTED_DELIVERED, Information_Instance_ServerRole, false, 0);
                         }
                     }
                 }
