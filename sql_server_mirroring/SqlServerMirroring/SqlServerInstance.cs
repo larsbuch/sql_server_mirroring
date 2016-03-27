@@ -246,6 +246,7 @@ namespace MirrorLib
                 {
                     if(database.Name.Equals(MASTER_DATABASE))
                     {
+                        Logger.LogDebug("Accessing Remote Master database");
                         return database;
                     }
                 }
@@ -262,6 +263,7 @@ namespace MirrorLib
                 {
                     if (database.Name.Equals(MASTER_DATABASE))
                     {
+                        Logger.LogDebug("Accessing Local Master database");
                         return database;
                     }
                 }
@@ -699,10 +701,11 @@ namespace MirrorLib
 
                     #endregion
 
-                    #region Check if 
+                    #region Check if marking for READY_FOR_RESTORE is needeed on remote server
 
                     if(Information_ServerState.State == ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE
-                        || Information_ServerState.State == ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE)
+                        || Information_ServerState.State == ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE
+                        || Information_ServerState.State == ServerStateEnum.PRIMARY_STARTUP_STATE)
                     {
                         Action_RemoteServer_MarkReadyForRestoreNeeded();
                     }

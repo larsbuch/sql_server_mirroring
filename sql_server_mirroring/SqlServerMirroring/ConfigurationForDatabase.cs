@@ -145,7 +145,7 @@ namespace MirrorLib
         {
             get
             {
-                return new UncPath(RemoteServer, RemoteShareName, LocalTransferSubDircetory);
+                return new UncPath(RemoteServer, RemoteShareName, RemoteTransferSubDircetory);
             }
         }
 
@@ -153,7 +153,7 @@ namespace MirrorLib
         {
             get
             {
-                return new UncPath(RemoteServer, RemoteShareName, LocalTransferSubDircetory, new SubDirectory(DatabaseName.ToString()));
+                return new UncPath(RemoteServer, RemoteShareName, RemoteTransferSubDircetory, new SubDirectory(DatabaseName.ToString()));
             }
         }
 
