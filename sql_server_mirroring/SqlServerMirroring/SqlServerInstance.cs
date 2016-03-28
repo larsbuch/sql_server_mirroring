@@ -590,6 +590,7 @@ namespace MirrorLib
             Logger.LogDebug("Action_ServerState_TimedCheck: TimedCheckTimer stopped");
             try
             {
+                Action_ServerState_UpdateLocal_ServerState();
                 Action_RemoteServer_CheckAccess();
                 Action_Instance_CheckDatabaseMirrorStates();
                 Action_Instance_CheckDatabaseStates();
@@ -2967,6 +2968,19 @@ namespace MirrorLib
             }
         }
 
+        private void Action_ServerState_UpdateLocal_ServerState()
+        {
+            try
+            {
+                Logger.LogDebug("Action_ServerState_UpdateLocal_ConnectedRemoteServer started.");
+                Action_ServerState_Update(LocalMasterDatabase, true, true, true, Information_Instance_ServerRole, Information_ServerState, 0);
+                Logger.LogDebug("Action_ServerState_UpdateLocal_ConnectedRemoteServer ended.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Action_ServerState_UpdateLocal_ConnectedRemoteServer failed", ex);
+            }
+        }
 
         private void Action_ServerState_CreateMasterTable()
         {

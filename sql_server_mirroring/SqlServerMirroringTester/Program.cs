@@ -274,7 +274,7 @@ namespace MirrorLibTester
                 new ShareName(GetConfiguration(LOCALSHARENAME)),
                 int.Parse(GetConfiguration(ENDPOINT_LISTENERPORT)),
                 7,
-                60,
+                12,
                 0,
                 12,
                 1,
@@ -289,7 +289,6 @@ namespace MirrorLibTester
                 new BackupTime(03,00),
                 5
                 );
-
         }
 
         private static Dictionary<string, ConfigurationForDatabase> BuildDatabaseConfiguration()
