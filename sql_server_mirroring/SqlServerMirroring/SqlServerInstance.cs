@@ -37,6 +37,7 @@ namespace MirrorLib
         private Timer _timedCheckTimer;
         private Timer _backupTimer;
         private SqlServerInstanceSynchronizeInvoke _synchronizeInvoke;
+        private bool _remoteServer_HasAccess;
 
 
         public SqlServerInstance(ILogger logger, string serverName)
@@ -58,23 +59,29 @@ namespace MirrorLib
 
         public bool Information_RemoteServer_HasAccess()
         {
+            return _remoteServer_HasAccess;
+        }
+
+        private void Action_RemoteServer_CheckAccess()
+        {
             try
             {
-                if (RemoteMasterDatabase.IsAccessible)
-                {
-                    Logger.LogDebug("Information_RemoteServer_HasAccess: Access to remote server.");
-                    return true;
-                }
-                else
-                {
-                    Logger.LogInfo("Information_RemoteServer_HasAccess: No access to remote server.");
-                    return false;
-                }
+                SqlConnectionStringBuilder connectionBuilder = new SqlConnectionStringBuilder();
+                connectionBuilder.DataSource = Instance_Configuration.RemoteServer.ToString();
+                connectionBuilder.MultipleActiveResultSets = true;
+                connectionBuilder.IntegratedSecurity = true;
+                connectionBuilder.ConnectTimeout = 1;
+
+                SqlConnection sqlConnection = new SqlConnection(connectionBuilder.ToString());
+
+                sqlConnection.Open();
+                Logger.LogDebug("Information_RemoteServer_HasAccess: Access to remote server.");
+                _remoteServer_HasAccess = true;
             }
             catch (Exception)
             {
                 Logger.LogInfo("Information_RemoteServer_HasAccess: No access to remote server.");
-                return false;
+                _remoteServer_HasAccess = false;
             }
         }
 
@@ -217,6 +224,10 @@ namespace MirrorLib
                     connectionBuilder.IntegratedSecurity = true;
                     _remoteServer = new Server(new ServerConnection(new SqlConnection(connectionBuilder.ToString())));
                 }
+                if(!Information_RemoteServer_HasAccess())
+                {
+                    Logger.LogWarning("RemoteDatabaseServerInstance: Trying to access without ability to connect.");
+                }
                 return _remoteServer;
             }
         }
@@ -241,14 +252,21 @@ namespace MirrorLib
         {
             get
             {
-                // TODO Caching
-                foreach( Database database in RemoteDatabaseServerInstance.Databases)
+                if(Information_RemoteServer_HasAccess())
                 {
-                    if(database.Name.Equals(MASTER_DATABASE))
+                    // TODO Caching
+                    foreach ( Database database in RemoteDatabaseServerInstance.Databases)
                     {
-                        Logger.LogDebug("Accessing Remote Master database");
-                        return database;
+                        if(database.Name.Equals(MASTER_DATABASE))
+                        {
+                            Logger.LogDebug("Accessing Remote Master database");
+                            return database;
+                        }
                     }
+                }
+                else
+                {
+                    Logger.LogError("RemoteMasterDatabase: Trying to access without ability to connect to server");
                 }
                 return null;
             }
@@ -572,6 +590,7 @@ namespace MirrorLib
             Logger.LogDebug("Action_ServerState_TimedCheck: TimedCheckTimer stopped");
             try
             {
+                Action_RemoteServer_CheckAccess();
                 Action_Instance_CheckDatabaseMirrorStates();
                 Action_Instance_CheckDatabaseStates();
                 Action_ServerRole_Recheck();
@@ -2405,6 +2424,7 @@ namespace MirrorLib
             {
                 Action_Instance_SetupForMirroring();
             }
+            Action_RemoteServer_CheckAccess();
             Action_Instance_CheckDatabaseMirrorStates();
             Action_ServerRole_Recheck();
             Action_Instance_CheckDatabaseStates();
