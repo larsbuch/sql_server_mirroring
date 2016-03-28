@@ -8,7 +8,8 @@ namespace MirrorLib
 {
     public class ConfigurationForInstance
     {
-        private RemoteServer _remoteServer;
+        private ServerName _localServer;
+        private ServerName _remoteServer;
         private DirectoryPath _localBackupDirectory;
         private DirectoryPath _localShareDirectory;
         private DirectoryPath _localRestoreDircetory;
@@ -31,7 +32,8 @@ namespace MirrorLib
         private int _backupDelayEmergencyBackupMin;
 
         public ConfigurationForInstance(
-            RemoteServer remoteServer,
+            ServerName localServer,
+            ServerName remoteServer,
             DirectoryPath localDirectoryForBackup,
             DirectoryPath localDirectoryForShare,
             DirectoryPath localDircetoryForRestore,
@@ -54,6 +56,7 @@ namespace MirrorLib
             int backupDelayEmergencyBackupMin
             )
         {
+            _localServer = localServer;
             _remoteServer = remoteServer;
             _localBackupDirectory = localDirectoryForBackup;
             _localShareDirectory = localDirectoryForShare;
@@ -76,7 +79,15 @@ namespace MirrorLib
             _backupTime = backupTime;
             _backupDelayEmergencyBackupMin = backupDelayEmergencyBackupMin;
         }
-        public RemoteServer RemoteServer
+        public ServerName LocalServer
+        {
+            get
+            {
+                return _localServer;
+            }
+        }
+
+        public ServerName RemoteServer
         {
             get
             {
@@ -199,7 +210,7 @@ namespace MirrorLib
             {
                 if (value > -1)
                 {
-                    _shutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState = value;
+                    _switchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState = value;
                 }
                 else
                 {

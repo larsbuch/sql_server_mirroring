@@ -51,7 +51,7 @@ namespace HelperFunctions
                     ShareFolder(logger, directoryPath, shareName, shareDescription);
                     SharePermissions(logger, shareName, domain, user, WindowsShare.AccessMaskTypes.FullControl);
                 }
-                TestReadWriteAccessToShare(logger, new UncPath(new RemoteServer(Environment.MachineName), shareName));
+                TestReadWriteAccessToShare(logger, new UncPath(new ServerName(Environment.MachineName), shareName));
             }
             catch (Exception ex)
             {

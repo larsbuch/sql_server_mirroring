@@ -54,7 +54,7 @@
     <Compile Include="RegistryException.cs" />
     <Compile Include="RegistryHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RemoteServer.cs" />
+    <Compile Include="ServerName.cs" />
     <Compile Include="ShareException.cs" />
     <Compile Include="ShareHelper.cs" />
     <Compile Include="ShareName.cs" />

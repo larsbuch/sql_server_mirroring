@@ -112,7 +112,7 @@ namespace HelperFunctions
         {
             try
             {
-                RemoteServer remoteServer = new RemoteServer(Environment.MachineName);
+                ServerName remoteServer = new ServerName(Environment.MachineName);
                 Logger.LogDebug(string.Format("Server name {0} is valid", Environment.MachineName));
             }
             catch(Exception ex)
@@ -173,7 +173,7 @@ namespace HelperFunctions
             string serverName = ConsoleTest.GetNextInput("Enter server name to test. End with Enter: ", Environment.MachineName);
             string shareName = ConsoleTest.GetNextInput("Enter share name to test. End with Enter: ", "Test");
 
-            ShareHelper.TestReadWriteAccessToShare(Logger, new UncPath(new RemoteServer(serverName),new ShareName(shareName)));
+            ShareHelper.TestReadWriteAccessToShare(Logger, new UncPath(new ServerName(serverName),new ShareName(shareName)));
 
             ConsoleTest.GetNextInput("Press Enter to end test");
         }

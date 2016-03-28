@@ -14,7 +14,7 @@ namespace MirrorLib
         private DirectoryPath _localShareDirectory;
         private DirectoryPath _localRestoreDircetory;
         private ShareName _localShareName;
-        private RemoteServer _remoteServer;
+        private ServerName _remoteServer;
         private ShareName _remoteShareName;
         private SubDirectory _localTransferSubDircetory;
         private SubDirectory _remoteTransferSubDircetory;
@@ -26,7 +26,7 @@ namespace MirrorLib
             DirectoryPath localDirectoryForShare,
             DirectoryPath localDircetoryForRestore,
             ShareName localShareName,
-            RemoteServer remoteServer,
+            ServerName remoteServer,
             ShareName remoteShareName,
             SubDirectory localTransferSubDircetory,
             SubDirectory remoteTransferSubDircetory,
@@ -221,7 +221,7 @@ namespace MirrorLib
             }
         }
 
-        public RemoteServer RemoteServer
+        public ServerName RemoteServer
         {
             get
             {

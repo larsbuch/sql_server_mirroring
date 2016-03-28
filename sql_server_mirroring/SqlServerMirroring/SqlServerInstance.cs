@@ -3275,10 +3275,44 @@ namespace MirrorLib
                         Logger.LogDebug(string.Format("Action_Databases_StartMirroring: Getting ready to start mirroring {0} with partner endpoint on {1} port {2}"
                             , configuredDatabase.DatabaseName, Instance_Configuration.RemoteServer, Instance_Configuration.Endpoint_ListenerPort));
 
-                        string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER = 'TCP://{1}:{2}'"
-                            , configuredDatabase.DatabaseName, Instance_Configuration.RemoteServer, Instance_Configuration.Endpoint_ListenerPort);
+                        //string sqlQueryLogin = "CREATE LOGIN {0} FROM WINDOWS WITH DEFAULT_DATABASE = [master]";
+                        //string sqlQueryConnect = "GRANT CONNECT IN ENDPOINT::{0} TO {1}";
+                        string sqlQueryMirroring = "ALTER DATABASE {0} SET PARTNER = 'TCP://{1}:{2}'";
+                        //string serviceAccount = DatabaseServerInstance.ServiceAccount;
+                        
+                        #region RemoteMaster
 
+                        //string sqlQuery = string.Format(sqlQueryLogin, serviceAccount);
+                        //Logger.LogDebug(string.Format("Action_Databases_StartMirroring: Executing {0} on {1}.", sqlQuery, Instance_Configuration.RemoteServer));
+                        //RemoteMasterDatabase.ExecuteNonQuery(sqlQuery);
+                        
+                        //sqlQuery = string.Format(sqlQueryConnect, Instance_Configuration.Endpoint_Name, serviceAccount);
+                        //Logger.LogDebug(string.Format("Action_Databases_StartMirroring: Executing {0} on {1}.", sqlQuery, Instance_Configuration.RemoteServer));
+                        //RemoteMasterDatabase.ExecuteNonQuery(sqlQuery);
+                        
+                        string sqlQuery = string.Format(sqlQueryMirroring
+                            , configuredDatabase.DatabaseName, Instance_Configuration.RemoteServer, Instance_Configuration.Endpoint_ListenerPort);
+                        Logger.LogDebug(string.Format("Action_Databases_StartMirroring: Executing {0} on {1}.", sqlQuery, Instance_Configuration.RemoteServer));
+                        RemoteMasterDatabase.ExecuteNonQuery(sqlQuery);
+
+                        #endregion
+
+                        #region LocalMaster
+                        
+                        //string sqlQuery = string.Format(sqlQueryLogin, serviceAccount);
+                        //Logger.LogDebug(string.Format("Action_Databases_StartMirroring: Executing {0} on {1}.", sqlQuery, Instance_Configuration.LocalServer));
+                        //LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
+
+                        //sqlQuery = string.Format(sqlQueryConnect, Instance_Configuration.Endpoint_Name, serviceAccount);
+                        //Logger.LogDebug(string.Format("Action_Databases_StartMirroring: Executing {0} on {1}.", sqlQuery, Instance_Configuration.LocalServer));
+                        //LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
+                        
+                        sqlQuery = string.Format(sqlQueryMirroring
+                            , configuredDatabase.DatabaseName, Instance_Configuration.LocalServer, Instance_Configuration.Endpoint_ListenerPort);
+                        Logger.LogDebug(string.Format("Action_Databases_StartMirroring: Executing {0} on {1}.", sqlQuery, Instance_Configuration.LocalServer));
                         LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
+
+                        #endregion
 
                         Logger.LogDebug(string.Format("Action_Databases_StartMirroring: Mirroring started {0} with partner endpoint on {1} port {2}"
                             , configuredDatabase.DatabaseName, Instance_Configuration.RemoteServer, Instance_Configuration.Endpoint_ListenerPort));

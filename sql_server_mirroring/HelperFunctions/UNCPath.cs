@@ -7,7 +7,7 @@ namespace HelperFunctions
 {
     public class UncPath
     {
-        private RemoteServer _remoteServer;
+        private ServerName _remoteServer;
         private ShareName _shareName;
         private SubDirectory _subDirectory;
         private SubDirectory _subSubDirectory;
@@ -16,20 +16,20 @@ namespace HelperFunctions
         {
         }
 
-        public UncPath(RemoteServer remoteServer, ShareName shareName)
+        public UncPath(ServerName remoteServer, ShareName shareName)
         {
             _remoteServer = remoteServer;
             _shareName = shareName;
         }
 
-        public UncPath(RemoteServer remoteServer, ShareName shareName, SubDirectory subDirectory)
+        public UncPath(ServerName remoteServer, ShareName shareName, SubDirectory subDirectory)
         {
             _remoteServer = remoteServer;
             _shareName = shareName;
             _subDirectory = subDirectory;
         }
 
-        public UncPath(RemoteServer remoteServer, ShareName shareName, SubDirectory subDirectory, SubDirectory subSubDirectory)
+        public UncPath(ServerName remoteServer, ShareName shareName, SubDirectory subDirectory, SubDirectory subSubDirectory)
         {
             _remoteServer = remoteServer;
             _shareName = shareName;
@@ -67,7 +67,7 @@ namespace HelperFunctions
             return new UncPath(RemoteServer, ShareName, SubDirectory, SubSubDirectory);
         }
 
-        public RemoteServer RemoteServer
+        public ServerName RemoteServer
         {
             get
             {

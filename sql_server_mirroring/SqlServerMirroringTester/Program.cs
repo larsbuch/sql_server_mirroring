@@ -266,7 +266,8 @@ namespace MirrorLibTester
         private static ConfigurationForInstance BuildInstanceConfiguration()
         {
             return new ConfigurationForInstance(
-                new RemoteServer(GetConfiguration(REMOTESERVER)),
+                new ServerName(GetConfiguration(LOCALSERVER)),
+                new ServerName(GetConfiguration(REMOTESERVER)),
                 new DirectoryPath(GetConfiguration(DIRECORYFORLOCALBACKUP)),
                 new DirectoryPath(GetConfiguration(DIRECORYFORLOCALSHARE)),
                 new DirectoryPath(GetConfiguration(DIRECORYFORLOCALRESTORE)),
@@ -312,7 +313,7 @@ namespace MirrorLibTester
                     new DirectoryPath(directoryForLocalShare),
                     new DirectoryPath(directoryForLocalRestore),
                     new ShareName(localServer.Replace("-","_") + "Share"),
-                    new RemoteServer(remoteServer),
+                    new ServerName(remoteServer),
                     new ShareName(remoteServer.Replace("-", "_") + "Share"),
                     new SubDirectory("LocalTransfer"),
                     new SubDirectory("RemoteTransfer"),
