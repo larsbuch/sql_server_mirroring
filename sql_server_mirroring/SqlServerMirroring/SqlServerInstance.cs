@@ -485,13 +485,20 @@ namespace MirrorLib
 
         public void Action_Instance_SetupMonitoring()
         {
-            Logger.LogDebug("Action_SetupMonitoring started");
+            Logger.LogDebug("Action_Instance_SetupMonitoring started");
             try
             {
                 LocalMasterDatabase.ExecuteNonQuery(string.Format("EXEC sys.sp_dbmmonitoraddmonitoring {0}", Instance_Configuration.MirrorMonitoringUpdateMinutes));
-                Logger.LogDebug(string.Format("Mirroring monitoring every {0} minutes started with partner endpoint on {1} port {2}"
+                Logger.LogDebug(string.Format("Action_Instance_SetupMonitoring: Mirroring monitoring every {0} minutes started with partner endpoint on {1} port {2}"
                     , Instance_Configuration.MirrorMonitoringUpdateMinutes, Instance_Configuration.RemoteServer, Instance_Configuration.Endpoint_ListenerPort));
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Action_Instance_SetupMonitoring: Adding monitoring failed but it might be that is was just done before so it is ignored", ex);
+            }
 
+            try
+            {
                 foreach (Database database in Information_UserDatabases)
                 {
                     ConfigurationForDatabase configuredDatabase;
@@ -508,7 +515,7 @@ namespace MirrorLib
                         //--Event ID 32042
                         //EXEC sp_dbmmonitorchangealert DatabaseName, 1, 2, 1 ; --OLDEST UNSENT TRANSACTION (set to 2 minutes)
                         database.ExecuteNonQuery(string.Format("EXEC sys.sp_dbmmonitorchangealert {0}, 1, 2, 1", database.Name));
-                        Logger.LogDebug(string.Format("sp_dbmmonitorchangealert OLDEST UNSENT TRANSACTION used for {0}", database.Name));
+                        Logger.LogDebug(string.Format("Action_Instance_SetupMonitoring: sp_dbmmonitorchangealert OLDEST UNSENT TRANSACTION used for {0}", database.Name));
 
 
                         //2 Unsent log
@@ -520,7 +527,7 @@ namespace MirrorLib
                         //--Event ID 32043
                         //EXEC sp_dbmmonitorchangealert DatabaseName, 2, 10000, 1; --UNSENT LOG SIZE ON P(set to 10000K)
                         database.ExecuteNonQuery(string.Format("EXEC sys.sp_dbmmonitorchangealert {0}, 2, 10000, 1", database.Name));
-                        Logger.LogDebug(string.Format("sp_dbmmonitorchangealert UNSENT LOG SIZE ON PRINCIPAL used for {0}", database.Name));
+                        Logger.LogDebug(string.Format("Action_Instance_SetupMonitoring: sp_dbmmonitorchangealert UNSENT LOG SIZE ON PRINCIPAL used for {0}", database.Name));
 
                         //3 Unrestored log
                         //Specifies how many KB of unrestored log generate a warning on the mirror server instance.This warning helps measure
@@ -530,7 +537,7 @@ namespace MirrorLib
                         //--Event ID 32044
                         //EXEC sp_dbmmonitorchangealert DatabaseName, 3, 10000, 1; --UNRESTORED LOG ON M(set to 10000K)
                         database.ExecuteNonQuery(string.Format("EXEC sys.sp_dbmmonitorchangealert {0}, 3, 10000, 1", database.Name));
-                        Logger.LogDebug(string.Format("sp_dbmmonitorchangealert UNRESTORED LOG ON MIRROR used for {0}", database.Name));
+                        Logger.LogDebug(string.Format("Action_Instance_SetupMonitoring: sp_dbmmonitorchangealert UNRESTORED LOG ON MIRROR used for {0}", database.Name));
 
                         //4 Mirror commit overhead
                         //Specifies the number of milliseconds of average delay per transaction that are tolerated before a warning is generated
@@ -540,21 +547,21 @@ namespace MirrorLib
                         //-- Event ID 32045
                         //EXEC sp_dbmmonitorchangealert DatabaseName, 4, 1000, 1; --MIRRORING COMMIT OVERHEAD (milisecond delay for txn on P_
                         database.ExecuteNonQuery(string.Format("EXEC sys.sp_dbmmonitorchangealert {0}, 4, 1000, 1", database.Name));
-                        Logger.LogDebug(string.Format("sp_dbmmonitorchangealert MIRRORING COMMIT OVERHEAD used for {0}", database.Name));
+                        Logger.LogDebug(string.Format("Action_Instance_SetupMonitoring: sp_dbmmonitorchangealert MIRRORING COMMIT OVERHEAD used for {0}", database.Name));
 
                         //5 Retention period
                         //Metadata that controls how long rows in the database mirroring status table are preserved.
                         //EXEC sp_dbmmonitorchangealert DatabaseName, 5, 48, 1 ;
                         database.ExecuteNonQuery(string.Format("EXEC sys.sp_dbmmonitorchangealert {0}, 5, 48, 1", database.Name));
-                        Logger.LogDebug(string.Format("sp_dbmmonitorchangealert DATABASE MIRRORING STATUS RETENTION PERIOD used for {0}", database.Name));
+                        Logger.LogDebug(string.Format("Action_Instance_SetupMonitoring: sp_dbmmonitorchangealert DATABASE MIRRORING STATUS RETENTION PERIOD used for {0}", database.Name));
                     }
                 }
             }
             catch (Exception ex)
             {
-                throw new SqlServerMirroringException(string.Format("Action_SetupMonitoring failed"), ex);
+                throw new SqlServerMirroringException(string.Format("Action_Instance_SetupMonitoring failed"), ex);
             }
-            Logger.LogDebug("Action_SetupMonitoring ended");
+            Logger.LogDebug("Action_Instance_SetupMonitoring ended");
         }
 
         public void Action_ServerState_TimedCheck()
@@ -3291,7 +3298,7 @@ namespace MirrorLib
                         //RemoteMasterDatabase.ExecuteNonQuery(sqlQuery);
                         
                         string sqlQuery = string.Format(sqlQueryMirroring
-                            , configuredDatabase.DatabaseName, Instance_Configuration.RemoteServer, Instance_Configuration.Endpoint_ListenerPort);
+                            , configuredDatabase.DatabaseName, Instance_Configuration.LocalServer, Instance_Configuration.Endpoint_ListenerPort);
                         Logger.LogDebug(string.Format("Action_Databases_StartMirroring: Executing {0} on {1}.", sqlQuery, Instance_Configuration.RemoteServer));
                         RemoteMasterDatabase.ExecuteNonQuery(sqlQuery);
 
@@ -3308,7 +3315,7 @@ namespace MirrorLib
                         //LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
                         
                         sqlQuery = string.Format(sqlQueryMirroring
-                            , configuredDatabase.DatabaseName, Instance_Configuration.LocalServer, Instance_Configuration.Endpoint_ListenerPort);
+                            , configuredDatabase.DatabaseName, Instance_Configuration.RemoteServer, Instance_Configuration.Endpoint_ListenerPort);
                         Logger.LogDebug(string.Format("Action_Databases_StartMirroring: Executing {0} on {1}.", sqlQuery, Instance_Configuration.LocalServer));
                         LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
 
