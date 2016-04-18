@@ -16,9 +16,9 @@ namespace MirrorLibTester
             Configuration.Add(LOCALSERVER, localServer);
             Configuration.Add(REMOTESERVER, ConsoleTest.GetNextInput("Remote Server: ", Environment.MachineName.Substring(0, Environment.MachineName.Length -2)));
             Configuration.Add(DIRECORYFORLOCALBACKUP, ConsoleTest.GetNextInput("Directory for local backup: ", "C:\\Test\\LocalBackup"));
-            Configuration.Add(DIRECORYFORLOCALSHARE, ConsoleTest.GetNextInput("Directory for local share: ", "C:\\Test\\Share"));
+            Configuration.Add(DIRECORYFORLOCALSHARE, ConsoleTest.GetNextInput("Directory for local share: ", "C:\\Test\\LocalShare"));
             Configuration.Add(DIRECORYFORLOCALRESTORE, ConsoleTest.GetNextInput("Directory for local restore: ", "C:\\Test\\LocalRestore"));
-            Configuration.Add(LOCALSHARENAME, ConsoleTest.GetNextInput("Local share name: ", localServer.Replace("-", "_") + "Share"));
+            Configuration.Add(LOCALSHARENAME, ConsoleTest.GetNextInput("Local share name: ", "LocalShare"));
             Configuration.Add(ENDPOINT_NAME, ConsoleTest.GetNextInput("Endpoint Name: ", "Mirroring_Endpoint"));
             Configuration.Add(ENDPOINT_LISTENERPORT, ConsoleTest.GetNextInput("Endpoint Listener Port: ", "7022"));
             Configuration.Add(REMOTESERVERCOMMUNICATIONTIMEOUT, ConsoleTest.GetNextInput("Remote Communication Timeout: ", 10.ToString()));
@@ -311,9 +311,9 @@ namespace MirrorLibTester
                     new DirectoryPath(directoryForLocalBackup),
                     new DirectoryPath(directoryForLocalShare),
                     new DirectoryPath(directoryForLocalRestore),
-                    new ShareName(localServer.Replace("-","_") + "Share"),
+                    new ShareName(localShareName),
                     new ServerName(remoteServer),
-                    new ShareName(remoteServer.Replace("-", "_") + "Share"),
+                    new ShareName(localShareName),
                     new SubDirectory("LocalTransfer"),
                     new SubDirectory("RemoteTransfer"),
                     new SubDirectory("RemoteDelivery")
