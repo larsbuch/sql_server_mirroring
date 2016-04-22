@@ -9,11 +9,11 @@ namespace MirrorLib
     {
         private ServerStateEnum _state;
         private bool _isDegradedState;
-        private bool _ignoreMirrorStateCheck;
         private bool _isPrimaryRole;
         private List<ServerStateEnum> _validNewStates;
+        private int _serverStateCount;
 
-        public ServerState(ServerStateEnum state, bool isDegradedState, bool ignoreMirrorStateCheck, List<ServerStateEnum> validNewStates)
+        public ServerState(ServerStateEnum state, bool isDegradedState, List<ServerStateEnum> validNewStates)
         {
             _state = state;
             if(state.ToString().StartsWith("PRIMARY"))
@@ -25,8 +25,8 @@ namespace MirrorLib
                 _isPrimaryRole = false;
             }
             _isDegradedState = isDegradedState;
-            _ignoreMirrorStateCheck = ignoreMirrorStateCheck;
             _validNewStates = validNewStates;
+            _serverStateCount = 0;
         }
 
         #region Properties
@@ -60,19 +60,23 @@ namespace MirrorLib
             }
         }
 
-        public bool IgnoreMirrorStateCheck
-        {
-            get
-            {
-                return _ignoreMirrorStateCheck;
-            }
-        }
-
         public List<ServerStateEnum> ValidNewStates
         {
             get
             {
                 return _validNewStates;
+            }
+        }
+
+        public int ServerStateCount
+        {
+            get
+            {
+                return _serverStateCount;
+            }
+            set
+            {
+                _serverStateCount = value;
             }
         }
 
@@ -87,6 +91,7 @@ namespace MirrorLib
                 return false;
             }
         }
+
 
         #endregion
     }

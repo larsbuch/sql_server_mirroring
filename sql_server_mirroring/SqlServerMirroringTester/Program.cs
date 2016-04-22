@@ -12,17 +12,16 @@ namespace MirrorLibTester
 
         static void Main(string[] args)
         {
-            string localServer = ConsoleTest.GetNextInput("Local Server: ", Environment.MachineName);
-            Configuration.Add(LOCALSERVER, localServer);
-            Configuration.Add(REMOTESERVER, ConsoleTest.GetNextInput("Remote Server: ", Environment.MachineName.Substring(0, Environment.MachineName.Length -2)));
-            Configuration.Add(DIRECORYFORLOCALBACKUP, ConsoleTest.GetNextInput("Directory for local backup: ", "C:\\Test\\LocalBackup"));
-            Configuration.Add(DIRECORYFORLOCALSHARE, ConsoleTest.GetNextInput("Directory for local share: ", "C:\\Test\\LocalShare"));
-            Configuration.Add(DIRECORYFORLOCALRESTORE, ConsoleTest.GetNextInput("Directory for local restore: ", "C:\\Test\\LocalRestore"));
-            Configuration.Add(LOCALSHARENAME, ConsoleTest.GetNextInput("Local share name: ", "LocalShare"));
+            Configuration.Add(LOCALSERVER, ConsoleTest.GetNextInput("Local Server: ", "10.10.60.2"));
+            Configuration.Add(REMOTESERVER, ConsoleTest.GetNextInput("Remote Server: ", "10.10.60.2"));
+            Configuration.Add(DIRECORYFORLOCALBACKUP, ConsoleTest.GetNextInput("Directory for local backup: ", @"F:\BGSystems\5945-HKIA\dbmirror\backup"));
+            Configuration.Add(DIRECORYFORLOCALSHARE, ConsoleTest.GetNextInput("Directory for local share: ", @"F:\BGSystems\5945-HKIA\dbmirror\share"));
+            Configuration.Add(DIRECORYFORLOCALRESTORE, ConsoleTest.GetNextInput("Directory for local restore: ", @"F:\BGSystems\5945-HKIA\dbmirror\restore"));
+            Configuration.Add(LOCALSHARENAME, ConsoleTest.GetNextInput("Local share name: ", "MirrorShare"));
             Configuration.Add(ENDPOINT_NAME, ConsoleTest.GetNextInput("Endpoint Name: ", "Mirroring_Endpoint"));
             Configuration.Add(ENDPOINT_LISTENERPORT, ConsoleTest.GetNextInput("Endpoint Listener Port: ", "7022"));
             Configuration.Add(REMOTESERVERCOMMUNICATIONTIMEOUT, ConsoleTest.GetNextInput("Remote Communication Timeout: ", 10.ToString()));
-            Configuration.Add(DATABASESFORMIRRORING, ConsoleTest.GetNextInput("Databases for mirroring (comma separates): ", "TestMirror1,TestMirror2"));
+            Configuration.Add(DATABASESFORMIRRORING, ConsoleTest.GetNextInput("Databases for mirroring (comma separates): ", "5945-HKIAAlarmLinkDB,5945-HKIACWS,cis_dbStatistics"));
 
             ConsoleTest.AddTest("Information", "Get local instance status", () => Test_Information_InstanceStatus());
             ConsoleTest.AddTest("Information", "Get instance information", () => Test_Information_Instance());

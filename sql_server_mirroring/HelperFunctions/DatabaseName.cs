@@ -18,17 +18,17 @@ namespace HelperFunctions
 
         private void ValidateDatabaseName(string databaseName)
         {
-            Regex regex = new Regex(@"^[\w_][\w_\d]{0,127}$");
+            Regex regex = new Regex(@"^[\w-\d]{0,128}$");
             if (!regex.IsMatch(databaseName))
             {
                 throw new DirectoryException(string.Format("The database name {0} is not valid.", databaseName));
             }
         }
 
-        public string GenerateBackupFileName()
-        {
-            return _databaseName + "_" + DateTime.Now.ToFileTime() + ".bak";
-        }
+        //public string GenerateBackupFileName()
+        //{
+        //    return _databaseName + "_" + DateTime.Now.ToFileTime() + ".bak";
+        //}
 
         public override string ToString()
         {

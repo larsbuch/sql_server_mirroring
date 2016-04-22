@@ -263,7 +263,7 @@ namespace MirrorLib
         {
             get
             {
-                return "log";
+                return "trn";
             }
         }
 
