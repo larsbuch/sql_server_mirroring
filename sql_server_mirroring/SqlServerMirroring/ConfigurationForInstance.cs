@@ -30,6 +30,10 @@ namespace MirrorLib
         private bool _backupToMirrorServer;
         private BackupTime _backupTime;
         private int _backupDelayEmergencyBackupMin;
+        private int _primaryConfigurationWaitNumberOfChecksForSecondaryRestoreTimeout;
+        private int _primaryConfigurationWaitNumberOfChecksForMirroringStartTimeout;
+        private int _secondaryConfigurationWaitNumberOfChecksForPrimaryBackupTimeout;
+        private int _secondaryConfigurationWaitNumberOfChecksForMirroringTimeout;
 
         public ConfigurationForInstance(
             ServerName localServer,
@@ -53,7 +57,11 @@ namespace MirrorLib
             int backupHourInterval,
             bool backupToMirrorServer,
             BackupTime backupTime,
-            int backupDelayEmergencyBackupMin
+            int backupDelayEmergencyBackupMin,
+            int primaryConfigurationWaitNumberOfChecksForSecondaryRestoreTimeout,
+            int primaryConfigurationWaitNumberOfChecksForMirroringStartTimeout,
+            int secondaryConfigurationWaitNumberOfChecksForPrimaryBackupTimeout,
+            int secondaryConfigurationWaitNumberOfChecksForMirroringTimeout
             )
         {
             _localServer = localServer;
@@ -78,6 +86,10 @@ namespace MirrorLib
             _backupToMirrorServer = backupToMirrorServer;
             _backupTime = backupTime;
             _backupDelayEmergencyBackupMin = backupDelayEmergencyBackupMin;
+            _primaryConfigurationWaitNumberOfChecksForSecondaryRestoreTimeout = primaryConfigurationWaitNumberOfChecksForSecondaryRestoreTimeout;
+            _primaryConfigurationWaitNumberOfChecksForMirroringStartTimeout = primaryConfigurationWaitNumberOfChecksForMirroringStartTimeout;
+            _secondaryConfigurationWaitNumberOfChecksForPrimaryBackupTimeout = secondaryConfigurationWaitNumberOfChecksForPrimaryBackupTimeout;
+            _secondaryConfigurationWaitNumberOfChecksForMirroringTimeout = secondaryConfigurationWaitNumberOfChecksForMirroringTimeout;
         }
         public ServerName LocalServer
         {
@@ -390,6 +402,38 @@ namespace MirrorLib
             get
             {
                 return _backupDelayEmergencyBackupMin;
+            }
+        }
+
+        public int PrimaryConfigurationWaitNumberOfChecksForSecondaryRestoreTimeout
+        {
+            get
+            {
+                return _primaryConfigurationWaitNumberOfChecksForSecondaryRestoreTimeout;
+            }
+        }
+
+        public int PrimaryConfigurationWaitNumberOfChecksForMirroringStartTimeout
+        {
+            get
+            {
+                return _primaryConfigurationWaitNumberOfChecksForMirroringStartTimeout;
+            }
+        }
+
+        public int SecondaryConfigurationWaitNumberOfChecksForPrimaryBackupTimeout
+        {
+            get
+            {
+                return _secondaryConfigurationWaitNumberOfChecksForPrimaryBackupTimeout;
+            }
+        }
+
+        public int SecondaryConfigurationWaitNumberOfChecksForMirroringTimeout
+        {
+            get
+            {
+                return _secondaryConfigurationWaitNumberOfChecksForMirroringTimeout;
             }
         }
     }

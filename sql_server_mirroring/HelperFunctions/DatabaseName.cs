@@ -25,11 +25,6 @@ namespace HelperFunctions
             }
         }
 
-        //public string GenerateBackupFileName()
-        //{
-        //    return _databaseName + "_" + DateTime.Now.ToFileTime() + ".bak";
-        //}
-
         public override string ToString()
         {
             return _databaseName;

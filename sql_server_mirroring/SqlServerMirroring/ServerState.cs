@@ -8,12 +8,13 @@ namespace MirrorLib
     public class ServerState
     {
         private ServerStateEnum _state;
-        private bool _isDegradedState;
+        private MirrorState _mirrorState;
         private bool _isPrimaryRole;
         private List<ServerStateEnum> _validNewStates;
         private int _serverStateCount;
+        private CountStates _countStates;
 
-        public ServerState(ServerStateEnum state, bool isDegradedState, List<ServerStateEnum> validNewStates)
+        public ServerState(ServerStateEnum state, CountStates countStates, MirrorState mirrorState, List<ServerStateEnum> validNewStates)
         {
             _state = state;
             if(state.ToString().StartsWith("PRIMARY"))
@@ -24,8 +25,9 @@ namespace MirrorLib
             {
                 _isPrimaryRole = false;
             }
-            _isDegradedState = isDegradedState;
+            _mirrorState = mirrorState;
             _validNewStates = validNewStates;
+            _countStates = countStates;
             _serverStateCount = 0;
         }
 
@@ -52,11 +54,11 @@ namespace MirrorLib
             }
         }
 
-        public bool IsDegradedState
+        public MirrorState MirrorState
         {
             get
             {
-                return _isDegradedState;
+                return _mirrorState;
             }
         }
 
@@ -68,6 +70,14 @@ namespace MirrorLib
             }
         }
 
+        public CountStates CountStates
+        {
+            get
+            {
+                return _countStates;
+            }
+        }
+
         public int ServerStateCount
         {
             get
@@ -76,7 +86,10 @@ namespace MirrorLib
             }
             set
             {
-                _serverStateCount = value;
+                if (_countStates == CountStates.Yes)
+                {
+                    _serverStateCount = value;
+                }
             }
         }
 

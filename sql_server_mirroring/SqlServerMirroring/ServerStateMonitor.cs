@@ -25,129 +25,136 @@ namespace MirrorLib
 
             /* Add Initial State */
             _serverStates.Add(ServerStateEnum.NOT_SET
-                , new ServerState(ServerStateEnum.NOT_SET, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.NOT_SET, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_INITIAL_STATE, ServerStateEnum.SECONDARY_INITIAL_STATE}));
+
+            #region Primary Role States
 
             /* Add Primary Role server states */
             _serverStates.Add(ServerStateEnum.PRIMARY_INITIAL_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_INITIAL_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_INITIAL_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_CONFIGURATION_STATE, ServerStateEnum.PRIMARY_STARTUP_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_CONFIGURATION_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE, false, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_CONFIGURATION_BACKUP_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_CONFIGURATION_BACKUP_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_BACKUP_STATE, false, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_BACKUP_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_CONFIGURATION_WAITING_FOR_SECONDARY_RESTORE_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_CONFIGURATION_WAITING_FOR_SECONDARY_RESTORE_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_WAITING_FOR_SECONDARY_RESTORE_STATE, false, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_WAITING_FOR_SECONDARY_RESTORE_STATE, CountStates.Yes, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_CONFIGURATION_STARTING_MIRRORING_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_CONFIGURATION_STARTING_MIRRORING_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_STARTING_MIRRORING_STATE, false, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_STARTING_MIRRORING_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_STARTUP_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_STARTUP_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_STARTUP_STATE, false, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_STARTUP_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_RUNNING_STATE, ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_RUNNING_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_RUNNING_STATE, false, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_RUNNING_STATE, CountStates.No, MirrorState.Mirrored, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_MAINTENANCE_STATE, ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE
                 , ServerStateEnum.PRIMARY_MANUAL_FAILOVER_STATE, ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE }));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE, false, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 {ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_MAINTENANCE_STATE, ServerStateEnum.PRIMARY_RUNNING_STATE }));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_SHUTDOWN_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_SHUTDOWN_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_SHUTDOWN_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_SHUTDOWN_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { }));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_MAINTENANCE_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_MAINTENANCE_STATE, false, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_MAINTENANCE_STATE, CountStates.No, MirrorState.Mirrored, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_RUNNING_STATE, ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE
                 , ServerStateEnum.PRIMARY_MANUAL_FAILOVER_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_MANUAL_FAILOVER_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_MANUAL_FAILOVER_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_MANUAL_FAILOVER_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE, false, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_RUNNING_STATE, ServerStateEnum.PRIMARY_MAINTENANCE_STATE
                 , ServerStateEnum.PRIMARY_MANUAL_FAILOVER_STATE, ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE}));
 
+            #endregion
+
+            #region Secondary Role States
 
             /* Add Secondary Role server states */
             _serverStates.Add(ServerStateEnum.SECONDARY_INITIAL_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_INITIAL_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_INITIAL_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_CONFIGURATION_STATE, ServerStateEnum.SECONDARY_STARTUP_STATE}));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_CONFIGURATION_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE}));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_PRIMARY_BACKUP_FINISH_STATE}));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_PRIMARY_BACKUP_FINISH_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_PRIMARY_BACKUP_FINISH_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_PRIMARY_BACKUP_FINISH_STATE, CountStates.Yes, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE}));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_MIRRORING_STATE}));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_MIRRORING_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_MIRRORING_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_MIRRORING_STATE, CountStates.Yes, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_STARTUP_STATE}));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_STARTUP_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_STARTUP_STATE, false, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_STARTUP_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_RUNNING_STATE, ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE}));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_RUNNING_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_RUNNING_STATE, false, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_RUNNING_STATE, CountStates.No, MirrorState.Mirrored, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_MAINTENANCE_STATE, ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE
                 , ServerStateEnum.SECONDARY_MANUAL_FAILOVER_STATE, ServerStateEnum.SECONDARY_FORCED_MANUAL_FAILOVER_STATE }));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE, false, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 {ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_FORCED_MANUAL_FAILOVER_STATE
                 , ServerStateEnum.SECONDARY_MANUAL_FAILOVER_STATE, ServerStateEnum.SECONDARY_RUNNING_STATE }));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTDOWN_STATE}));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_SHUTDOWN_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_SHUTDOWN_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_SHUTDOWN_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { }));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_MAINTENANCE_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_MAINTENANCE_STATE, false, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_MAINTENANCE_STATE, CountStates.No, MirrorState.Mirrored, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_RUNNING_STATE
                 , ServerStateEnum.SECONDARY_MANUAL_FAILOVER_STATE, ServerStateEnum.SECONDARY_FORCED_MANUAL_FAILOVER_STATE}));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_MANUAL_FAILOVER_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_MANUAL_FAILOVER_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_MANUAL_FAILOVER_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE}));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_FORCED_MANUAL_FAILOVER_STATE
-                , new ServerState(ServerStateEnum.SECONDARY_FORCED_MANUAL_FAILOVER_STATE, true, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.SECONDARY_FORCED_MANUAL_FAILOVER_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE}));
+
+            #endregion
 
             /* Set default state */
             if (!_serverStates.TryGetValue(ServerStateEnum.NOT_SET, out _serverState_Active))
@@ -189,15 +196,27 @@ namespace MirrorLib
             }
         }
 
+        public int ServerState_ActiveCount
+        {
+            get
+            {
+                return ServerState_Active.ServerStateCount;
+            }
+            set
+            {
+                ServerState_Active.ServerStateCount = value;
+            }
+        }
+
         public bool IsInDegradedState
         {
             get
             {
-                return _serverState_Active.IsDegradedState;
+                return _serverState_Active.MirrorState == MirrorState.Degraded? true :false;
             }
         }
 
-        public HelperFunctions.ILogger Logger
+        public SqlServerLogger Logger
         {
             get
             {
@@ -211,7 +230,9 @@ namespace MirrorLib
 
         public void TimedCheck()
         {
-            SqlServerInstance.Action_ServerState_Update();
+            ServerState_ActiveCount += 1;
+            SqlServerInstance.Action_ServerState_Update(ServerState_Active);
+
             switch (ServerState_Active.State)
             {
                 case ServerStateEnum.PRIMARY_INITIAL_STATE:
@@ -305,18 +326,27 @@ namespace MirrorLib
 
         private void TimedCheck_PrimaryInitialState()
         {
-            if (SqlServerInstance.Information_Instance_ConfigurationComplete)
+            try
             {
-                throw new SqlServerMirroringException("Configuration not set before Initial server state");
-            }
+                if (SqlServerInstance.Information_Instance_ConfigurationComplete)
+                {
+                    Logger.LogError("Configuration not set before Initial server state");
+                    throw new SqlServerMirroringException("Configuration not set before Initial server state");
+                }
 
-            if (SqlServerInstance.Information_Instance_Configured())
-            {
-                MakeServerStateChange(ServerStateEnum.PRIMARY_STARTUP_STATE);
+                if (SqlServerInstance.Information_Instance_Configured())
+                {
+                    MakeServerStateChange(ServerStateEnum.PRIMARY_STARTUP_STATE);
+                }
+                else
+                {
+                    MakeServerStateChange(ServerStateEnum.PRIMARY_CONFIGURATION_STATE);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                MakeServerStateChange(ServerStateEnum.PRIMARY_CONFIGURATION_STATE);
+                Logger.LogError("State could not be started.", ex);
+                MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
             }
         }
 
@@ -324,7 +354,6 @@ namespace MirrorLib
         {
             try
             {
-                /* Create Master Database ServerState */
                 if (!SqlServerInstance.Information_ServerState_CheckLocalMasterTable())
                 {
                     SqlServerInstance.Action_ServerState_CreateMasterTable();
@@ -344,7 +373,7 @@ namespace MirrorLib
             }
             catch (Exception ex)
             {
-                Logger.LogError("TimedCheck_PrimaryConfigurationCreateDatabaseFoldersState failed", ex);
+                Logger.LogError("Failed", ex);
                 MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
             }
         }
@@ -358,7 +387,7 @@ namespace MirrorLib
             }
             catch (Exception ex)
             {
-                Logger.LogError("TimedCheck_PrimaryConfigurationCreateDatabaseFoldersState failed", ex);
+                Logger.LogError("Failed", ex);
                 MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
             }
         }
@@ -372,108 +401,122 @@ namespace MirrorLib
             }
             catch (Exception ex)
             {
-                Logger.LogError("TimedCheck_PrimaryConfigurationBackupState failed", ex);
+                Logger.LogError("Failed", ex);
                 MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
             }
         }
 
         private void TimedCheck_PrimaryConfigurationWaitingForSecondaryRestoreState()
         {
-            throw new NotImplementedException();
+            try
+            {
+                if(SqlServerInstance.Information_ServerState_SecondaryRestoreFinished())
+                {
+                    Logger.LogDebug("Restore on secondary finished");
+                    MakeServerStateChange(ServerStateEnum.PRIMARY_CONFIGURATION_STARTING_MIRRORING_STATE);
+                }
+
+                CheckTimeout(SqlServerInstance.Instance_Configuration.PrimaryConfigurationWaitNumberOfChecksForSecondaryRestoreTimeout, ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed", ex);
+                MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
+            }
         }
 
         private void TimedCheck_PrimaryConfigurationStartingMirroringState()
         {
-            throw new NotImplementedException();
+            try
+            {
+                if(SqlServerInstance.Action_Instance_CheckStartMirroring())
+                {
+                    Logger.LogInfo("Mirroring started");
+                    MakeServerStateChange(ServerStateEnum.PRIMARY_STARTUP_STATE);
+                }
+                else
+                {
+                    CheckTimeout(SqlServerInstance.Instance_Configuration.PrimaryConfigurationWaitNumberOfChecksForMirroringStartTimeout, ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed", ex);
+                MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
+            }
         }
 
         private void TimedCheck_PrimaryStartupState()
         {
-            Action_RemoteServer_CheckAccess();
-            Action_Instance_CheckDatabaseMirrorStates();
-            Action_ServerRole_Recheck();
-            Action_Instance_CheckDatabaseStates();
-
-            Action_ServerState_StartTimedCheckTimer();
-            Action_Databases_StartUpMirrorCheck(true);
-            Action_Instance_StartBackupTimer();
-
-
-            if (SqlServerInstance.Information_Instance_AllConfiguredDatabasesMirrored())
+            Logger.LogDebug("Starting");
+            try
             {
-                if (SqlServerInstance.Information_RemoteServer_HasAccess())
+                SqlServerInstance.Action_Instance_StartBackupTimer();
+
+                if (SqlServerInstance.Information_Instance_AllConfiguredDatabasesMirrored())
                 {
-                    MakeServerStateChange(ServerStateEnum.PRIMARY_RUNNING_STATE);
+                    if (SqlServerInstance.Information_RemoteServer_HasAccess())
+                    {
+                        MakeServerStateChange(ServerStateEnum.PRIMARY_RUNNING_STATE);
+                    }
+                    else
+                    {
+                        Logger.LogWarning(string.Format("No access to remote server"));
+                        MakeServerStateChange(ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE);
+                    }
                 }
                 else
                 {
-                    Logger.LogWarning(string.Format("Action_ServerState_TimedCheck: No access to remote server"));
-                    MakeServerStateChange(ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE);
+                    MakeServerStateChange(ServerStateEnum.PRIMARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE);
                 }
-            }
-            else
-            {
-                MakeServerStateChange(ServerStateEnum.PRIMARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE);
-            }
-            Logger.LogDebug("Action_ServerState_StartPrimaryStartup starting");
-            try
-            {
-                Action_ServerRole_Recheck();
-                Action_Instance_SwitchOverCheck();
-
-                Logger.LogDebug("Action_ServerState_StartPrimaryStartup ended");
+                Logger.LogDebug("Ended");
             }
             catch (Exception ex)
             {
-                Logger.LogError("Action_ServerState_StartPrimaryStartup: State could not be started.", ex);
+                Logger.LogError("State could not be started.", ex);
                 MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
             }
         }
 
         private void TimedCheck_PrimaryRunningState()
         {
-            if (!SqlServerInstance.Information_RemoteServer_HasAccess())
-            {
-                Action_ServerState_UpdateLocal_MissingRemoteServer();
-                MakeServerStateChange(ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE);
-            }
-            Logger.LogDebug("Action_StartPrimaryRunningState starting");
+            Logger.LogDebug("Starting");
             try
             {
-                if (Information_ServerState_Old.State == ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE ||
-                   Information_ServerState_Old.State == ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE)
+                if (!SqlServerInstance.Information_RemoteServer_HasAccess())
                 {
-                    Logger.LogInfo(string.Format("Action_StartPrimaryRunningState: Resume mirroring if not active"));
-                    if (Action_Instance_ResumeMirroringForAllDatabases())
+                    MakeServerStateChange(ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE);
+                }
+                else if ( ServerState_ActiveCount == 1 && 
+                        (ServerState_Old.State == ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE ||
+                        ServerState_Old.State == ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE))
+                {
+                    Logger.LogInfo("Resume mirroring if not active");
+                    if (SqlServerInstance.Action_Instance_ResumeMirroringForAllDatabases())
                     {
-                        Logger.LogInfo(string.Format("Action_StartPrimaryRunningState: Mirroring resumed on databases needed"));
+                        Logger.LogInfo(string.Format("Mirroring resumed on databases needed"));
                     }
                     else
                     {
-                        Logger.LogWarning(string.Format("Action_StartPrimaryRunningState could not resume on databases. Switching to old state."));
-                        Action_ServerState_MakeChange(Information_ServerState_Old.State);
+                        Logger.LogWarning(string.Format("Could not resume on databases. Switching to old state."));
+                        MakeServerStateChange(ServerState_Old.State);
                     }
                 }
-
-                if (!(Information_Instance_ServerRole == ServerRoleEnum.Primary))
-                {
-                    MakeServerStateChange(ServerStateEnum.PRIMARY_MANUAL_FAILOVER_STATE);
-                }
-                Logger.LogDebug("Action_StartPrimaryRunningState ended.");
+                Logger.LogDebug("Ended");
             }
             catch (Exception ex)
             {
-                Logger.LogError("Action_StartPrimaryRunningState: State could not be started.", ex);
+                Logger.LogError("State could not be started.", ex);
                 MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
             }
         }
 
         private void TimedCheck_PrimaryForcedRunningState()
         {
-            Logger.LogDebug("StartForcedRunningState starting");
+            Logger.LogDebug("Starting");
             try
             {
-                Logger.LogDebug("StartForcedRunningState starting");
+                /* Do nothing special */
             }
             catch (Exception ex)
             {
@@ -488,130 +531,100 @@ namespace MirrorLib
             try
             {
                 /* Does not do something special */
-                Logger.LogDebug("StartShuttingDownState ended");
+                Logger.LogDebug("Ended");
                 MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTDOWN_STATE);
             }
             catch (Exception ex)
             {
-                Logger.LogError("Start Shutting down State could not be started.", ex);
-                MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTDOWN_STATE);
+                Logger.LogError("Start Shutting Down State could not be started.", ex);
+                throw new SqlServerMirroringException("Start Shutting Down State could not be started.", ex);
             }
         }
 
         private void TimedCheck_PrimaryShutdownState()
         {
-            Logger.LogDebug("StartShutdownState starting");
+            Logger.LogDebug("Starting");
             try
             {
                 /* Does not do something special */
-                Logger.LogDebug("StartShutdownState ended");
+                Logger.LogDebug("Ended");
                 Environment.Exit(0);
             }
             catch (Exception ex)
             {
-                Logger.LogError("Start Shutdown State could not be ended.", ex);
+                Logger.LogError("Shutdown State could not be finished", ex);
+                throw new SqlServerMirroringException("Shutdown State could not be finished", ex);
             }
         }
 
         private void TimedCheck_PrimaryMaintainanceState()
         {
-            Logger.LogDebug("Action_StartPrimaryMaintenanceState starting");
+            Logger.LogDebug("Starting");
             try
             {
-                if (Information_ServerState_Old.State == ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE ||
-                   Information_ServerState_Old.State == ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE)
+                if (ServerState_ActiveCount == 1 &&
+                    SqlServerInstance.Information_RemoteServer_HasAccess() &&
+                        (ServerState_Old.State == ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE ||
+                        ServerState_Old.State == ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE))
                 {
-                    Logger.LogInfo(string.Format("Action_StartPrimaryMaintenanceState: Resume mirroring if not active"));
-                    if (Action_Instance_ResumeMirroringForAllDatabases())
+                    Logger.LogInfo("Resume mirroring if not active");
+                    if (SqlServerInstance.Action_Instance_ResumeMirroringForAllDatabases())
                     {
-                        Logger.LogInfo(string.Format("Action_StartPrimaryMaintenanceState: Mirroring resumed on databases needed"));
+                        Logger.LogInfo(string.Format("Mirroring resumed on databases needed"));
                     }
                     else
                     {
-                        Logger.LogWarning(string.Format("Action_StartPrimaryMaintenanceState could not resume on databases."));
+                        Logger.LogWarning(string.Format("Could not resume on databases."));
                     }
                 }
-
-                Logger.LogDebug("Action_StartPrimaryMaintenanceState ended");
+                Logger.LogDebug("Ended");
             }
             catch (Exception ex)
             {
-                Logger.LogError("Action_StartPrimaryMaintenanceState could not be started.", ex);
+                Logger.LogError("State could not be started.", ex);
                 MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
             }
         }
 
         private void TimedCheck_PrimaryManualFailoverState()
         {
-            Logger.LogDebug("StartPrimaryManualFailoverState starting");
+            Logger.LogDebug("Starting");
             try
             {
-                /* TODO Only fail over the fist as all others will join if in witness mode */
-                foreach (ConfigurationForDatabase configuredDatabase in Databases_Configuration.Values)
-                {
-                    try
-                    {
-                        Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
-                        if (database == null)
-                        {
-                            throw new SqlServerMirroringException(string.Format("Action_FailoverAction_Instance_FailoverForAllMirrorDatabasesForAllMirrorDatabases: Could not find database {0}", configuredDatabase.DatabaseName));
-                        }
-
-                        string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER FAILOVER", database.Name);
-
-                        LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
-                        Logger.LogWarning(string.Format("Action_Instance_FailoverForAllMirrorDatabases: Database {0} has been switched over", database.Name));
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new SqlServerMirroringException(string.Format("Action_Instance_FailoverForAllMirrorDatabases: Failover failed for {0}", configuredDatabase.DatabaseName), ex);
-                    }
-                }
-                if (Information_ServerState.State == ServerStateEnum.PRIMARY_MANUAL_FAILOVER_STATE)
-                {
-                    Action_ServerState_MakeChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
-                }
-                else if (Information_ServerState.State == ServerStateEnum.SECONDARY_MANUAL_FAILOVER_STATE)
-                {
-                    Action_ServerState_MakeChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
-                }
-                Logger.LogDebug("StartPrimaryManualFailoverState ended");
+                SqlServerInstance.Action_Instance_FailoverForAllMirrorDatabases();
+                Logger.LogDebug("Ended");
                 MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
             }
             catch (Exception ex)
             {
-                Logger.LogError("Primary Manual Failover State could not be started.", ex);
+                Logger.LogError("State could not be started.", ex);
                 MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
             }
         }
 
         private void TimedCheck_PrimaryRunningNoSecondaryState()
         {
-            if(SqlServerInstance.Information_RemoteServer_HasAccess())
-            {
-                Action_ServerState_UpdateLocal_ConnectedRemoteServer();
-                Action_ServerState_UpdateRemote_ConnectedRemoteServer();
-
-                Action_ServerState_Update(LocalMasterDatabase, true, true, false, Information_Instance_ServerRole, Information_ServerState, 0);
-                MakeServerStateChange(ServerStateEnum.PRIMARY_RUNNING_STATE);
-            }
-            else
-            {
-                Action_ServerState_UpdateLocal_MissingRemoteServer();
-                if (Action_ServerState_UpdatePrimaryRunningNoSecondaryCount_ShiftState())
-                {
-                    MakeServerStateChange(ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE);
-                }
-            }
-            Logger.LogDebug("Action_StartPrimaryRunningNoSecondaryState starting");
+            Logger.LogDebug("Starting");
             try
             {
-                Action_Instance_StartEmergencyBackupTimer();
-                Logger.LogDebug("Action_StartPrimaryRunningNoSecondaryState ended.");
+                if (SqlServerInstance.Information_RemoteServer_HasAccess())
+                {
+                    MakeServerStateChange(ServerStateEnum.PRIMARY_RUNNING_STATE);
+                }
+                else if (ServerState_ActiveCount == 1)
+                {
+                    SqlServerInstance.Action_Instance_StartEmergencyBackupTimer();
+                }
+
+                else
+                {
+                    CheckTimeout(SqlServerInstance.Instance_Configuration.SwitchStateAfterNumberOfChecksInPrimaryRunningNoSecondaryState, ServerStateEnum.PRIMARY_FORCED_RUNNING_STATE);
+                }
+                Logger.LogDebug("Ended.");
             }
             catch (Exception ex)
             {
-                Logger.LogError("Running State could not be started.", ex);
+                Logger.LogError("State could not be started.", ex);
                 MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
             }
         }
@@ -622,34 +635,90 @@ namespace MirrorLib
 
         private void TimedCheck_SecondaryInitialState()
         {
-            if (SqlServerInstance.Information_Instance_ConfigurationComplete)
+            try
             {
-                throw new SqlServerMirroringException("Configuration not set before Initial server state");
-            }
+                if (SqlServerInstance.Information_Instance_ConfigurationComplete)
+                {
+                    Logger.LogError("Configuration not set before Initial server state");
+                    throw new SqlServerMirroringException("Configuration not set before Initial server state");
+                }
 
-            if (SqlServerInstance.Information_Instance_Configured())
-            {
-                MakeServerStateChange(ServerStateEnum.SECONDARY_STARTUP_STATE);
+                if (SqlServerInstance.Information_Instance_Configured())
+                {
+                    MakeServerStateChange(ServerStateEnum.SECONDARY_STARTUP_STATE);
+                }
+                else
+                {
+                    MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_STATE);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_STATE);
+                Logger.LogError("State could not be started.", ex);
+                MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
             }
         }
 
         private void TimedCheck_SecondaryConfigurationState()
         {
-            throw new NotImplementedException();
+            try
+            {
+                if (!SqlServerInstance.Information_ServerState_CheckLocalMasterTable())
+                {
+                    SqlServerInstance.Action_ServerState_CreateMasterTable();
+                }
+
+                if (!SqlServerInstance.Information_DatabaseState_CheckLocalMasterTableExists())
+                {
+                    SqlServerInstance.Action_DatabaseState_CreateMasterTable();
+                }
+
+                if (!SqlServerInstance.Information_Instance_CheckForMirroring())
+                {
+                    SqlServerInstance.Action_Instance_SetupForMirroring();
+                }
+
+                MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed", ex);
+                MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
+            }
         }
 
         private void TimedCheck_SecondaryConfigurationCreateDatabaseFoldersState()
         {
-            throw new NotImplementedException();
+            try
+            {
+                SqlServerInstance.Action_IO_CreateDirectoryAndShare();
+                MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_PRIMARY_BACKUP_FINISH_STATE);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed", ex);
+                MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
+            }
         }
 
         private void TimedCheck_SecondaryConfigurationWaitingForPrimaryBackupFinishState()
         {
-            throw new NotImplementedException();
+            try
+            {
+                if(SqlServerInstance.Information_RemoteServer_BackupFinished())
+                {
+                    MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE);
+                }
+                else
+                {
+                    CheckTimeout(SqlServerInstance.Instance_Configuration.SecondaryConfigurationWaitNumberOfChecksForPrimaryBackupTimeout, ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed", ex);
+                MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
+            }
         }
 
         private void TimedCheck_SecondaryConfigurationRestoringDatabasesState()
@@ -661,97 +730,90 @@ namespace MirrorLib
             }
             catch(Exception ex)
             {
-                Logger.LogError("TimedCheck_SecondaryConfigurationRestoringDatabasesState failed", ex);
+                Logger.LogError("Failed", ex);
                 MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
             }
         }
 
         private void TimedCheck_SecondaryConfigurationWaitingForMirroringState()
         {
-            throw new NotImplementedException();
+            try
+            {
+                if (SqlServerInstance.Information_Instance_MirroringActive())
+                {
+                    MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE);
+                }
+                else
+                {
+                    CheckTimeout(SqlServerInstance.Instance_Configuration.SecondaryConfigurationWaitNumberOfChecksForMirroringTimeout, ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed", ex);
+                MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
+            }
         }
 
         private void TimedCheck_SecondaryStartupState()
         {
-            if (SqlServerInstance.Information_Instance_AllConfiguredDatabasesMirrored())
+            Logger.LogDebug("Starting");
+            try
             {
-                if (SqlServerInstance.Information_RemoteServer_HasAccess())
+                if (SqlServerInstance.Information_Instance_AllConfiguredDatabasesMirrored())
                 {
-                    MakeServerStateChange(ServerStateEnum.SECONDARY_RUNNING_STATE);
+                    if (SqlServerInstance.Information_RemoteServer_HasAccess())
+                    {
+                        MakeServerStateChange(ServerStateEnum.SECONDARY_RUNNING_STATE);
+                    }
+                    else
+                    {
+                        MakeServerStateChange(ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE);
+                    }
                 }
                 else
                 {
-                    MakeServerStateChange(ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE);
+                    MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE);
                 }
-            }
-            else
-            {
-                MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE);
-            }
-            Logger.LogDebug("Action_ServerState_StartSecondaryStartup starting");
-            try
-            {
-                Action_ServerRole_Recheck();
-                Action_Instance_SwitchOverCheck();
-                Logger.LogDebug("Action_ServerState_StartSecondaryStartup ended");
             }
             catch (Exception ex)
             {
-                Logger.LogError("Action_ServerState_StartSecondaryStartup: State could not be started.", ex);
+                Logger.LogError("State could not be started.", ex);
                 MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
             }
         }
 
         private void TimedCheck_SecondaryRunningState()
         {
-            if (!SqlServerInstance.Information_RemoteServer_HasAccess())
-            {
-                Action_ServerState_UpdateLocal_MissingRemoteServer();
-                MakeServerStateChange(ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE);
-            }
-            Logger.LogDebug("Action_StartSecondaryRunningState starting");
+            Logger.LogDebug("Starting");
             try
             {
-                if (Information_ServerState_Old.State == ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE)
+                if (!SqlServerInstance.Information_RemoteServer_HasAccess())
                 {
-                    Logger.LogInfo(string.Format("Action_StartSecondaryRunningState: Resume mirroring if not active"));
-                    if (Action_Instance_ResumeMirroringForAllDatabases())
-                    {
-                        Logger.LogInfo(string.Format("Action_StartSecondaryRunningState: Mirroring resumed on databases needed"));
-                    }
-                    else
-                    {
-                        Logger.LogWarning(string.Format("Action_StartSecondaryRunningState could not resume on databases. Switching to old state."));
-                        Action_ServerState_MakeChange(Information_ServerState_Old.State);
-                    }
+                    MakeServerStateChange(ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE);
                 }
-
-                if (!(Information_Instance_ServerRole == ServerRoleEnum.Secondary))
-                {
-                    MakeServerStateChange(ServerStateEnum.SECONDARY_MANUAL_FAILOVER_STATE);
-                }
-                Logger.LogDebug("Action_StartSecondaryRunningState ended.");
+                /* Does not do something special */
+                Logger.LogDebug("Ended.");
             }
             catch (Exception ex)
             {
-                Logger.LogError("Action_StartSecondaryRunningState: State could not be started.", ex);
-                MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
+                Logger.LogError("State could not be started.", ex);
+                MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
             }
         }
 
         private void TimedCheck_SecondaryShuttingDownState()
         {
-            Logger.LogDebug("StartSecondaryShuttingDownState starting");
+            Logger.LogDebug("Starting");
             try
             {
                 /* Does not do something special */
-                Logger.LogDebug("StartSecondaryShuttingDownState ended");
                 MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTDOWN_STATE);
             }
             catch (Exception ex)
             {
                 Logger.LogError("Start Shutting down State could not be started.", ex);
-                MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTDOWN_STATE);
+                throw new SqlServerMirroringException("Start Shutting Down State could not be started.", ex);
             }
         }
 
@@ -761,147 +823,81 @@ namespace MirrorLib
             try
             {
                 /* Does not do something special */
-                Logger.LogDebug("Action_StartSecondaryShutdownState ended");
+                Logger.LogDebug("Ended");
                 Environment.Exit(0);
             }
             catch (Exception ex)
             {
-                Logger.LogError("Start Shutdown State could not be ended.", ex);
+                Logger.LogError("Shutdown State could not be finished", ex);
+                throw new SqlServerMirroringException("Shutdown State could not be finished", ex);
             }
         }
 
         private void TimedCheck_SecondaryMaintenanceState()
         {
-            Logger.LogDebug("Action_StartSecondaryMaintenanceState starting");
+            Logger.LogDebug("Starting");
             try
             {
-                if (Information_ServerState_Old.State == ServerStateEnum.SECONDARY_RUNNING_NO_PRIMARY_STATE)
-                {
-                    Logger.LogInfo(string.Format("Action_StartSecondaryMaintenanceState: Resume mirroring if not active"));
-                    if (Action_Instance_ResumeMirroringForAllDatabases())
-                    {
-                        Logger.LogInfo(string.Format("Action_StartSecondaryMaintenanceState: Mirroring resumed on databases needed"));
-                    }
-                    else
-                    {
-                        Logger.LogWarning(string.Format("Action_StartSecondaryMaintenanceState could not resume on databases."));
-                    }
-                }
-                Logger.LogDebug("Action_StartSecondaryMaintenanceState starting");
+                /* Does not do something special */
+                Logger.LogDebug("Ended");
             }
             catch (Exception ex)
             {
-                Logger.LogError("Start Shutting down State could not be started.", ex);
+                Logger.LogError("State could not be finished", ex);
                 MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
             }
         }
 
         private void TimedCheck_SecondaryManualFailoverState()
         {
-            Logger.LogDebug("Action_StartSecondaryManualFailoverState starting");
+            Logger.LogDebug("Starting");
             try
             {
-                /* TODO Only fail over the fist as all others will join if in witness mode */
-                foreach (ConfigurationForDatabase configuredDatabase in Databases_Configuration.Values)
-                {
-                    try
-                    {
-                        Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
-                        if (database == null)
-                        {
-                            throw new SqlServerMirroringException(string.Format("Action_FailoverAction_Instance_FailoverForAllMirrorDatabasesForAllMirrorDatabases: Could not find database {0}", configuredDatabase.DatabaseName));
-                        }
-
-                        string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER FAILOVER", database.Name);
-
-                        LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
-                        Logger.LogWarning(string.Format("Action_Instance_FailoverForAllMirrorDatabases: Database {0} has been switched over", database.Name));
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new SqlServerMirroringException(string.Format("Action_Instance_FailoverForAllMirrorDatabases: Failover failed for {0}", configuredDatabase.DatabaseName), ex);
-                    }
-                }
-                else if (Information_ServerState.State == ServerStateEnum.SECONDARY_MANUAL_FAILOVER_STATE)
-                {
-                    Action_ServerState_MakeChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
-                }
-                Logger.LogDebug("Action_StartSecondaryManualFailoverState ended");
+                SqlServerInstance.Action_Instance_FailoverForAllMirrorDatabases();
+                Logger.LogDebug("Ended");
                 MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
             }
             catch (Exception ex)
             {
-                Logger.LogError("Secondary Manual Failover State could not be started.", ex);
+                Logger.LogError("State could not be started.", ex);
                 MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
             }
         }
 
         private void TimedCheck_SecondaryForcedManualFailoverState()
         {
-            Logger.LogDebug("StartForcedManualFailoverState starting");
+            Logger.LogDebug("Starting");
             try
             {
-                /* TODO Only fail over the first as all others will join if on multi mirror server with witness */
-                foreach (ConfigurationForDatabase configuredDatabase in Databases_Configuration.Values)
-                {
-                    try
-                    {
-                        Database database = Information_UserDatabases.Where(s => s.Name.Equals(configuredDatabase.DatabaseName.ToString())).FirstOrDefault();
-                        if (database == null)
-                        {
-                            throw new SqlServerMirroringException(string.Format("Action_Instance_ForceFailoverWithDataLossForAllMirrorDatabases: Could not find database {0}", configuredDatabase.DatabaseName));
-                        }
-                        string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER FORCE_SERVICE_ALLOW_DATA_LOSS", database.Name);
-
-                        LocalMasterDatabase.ExecuteNonQuery(sqlQuery);
-                        Logger.LogWarning(string.Format("Action_Instance_ForceFailoverWithDataLossForAllMirrorDatabases: Database {0} has been switched over with data loss", database.Name));
-
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new SqlServerMirroringException(string.Format("Action_Instance_ForceFailoverWithDataLossForAllMirrorDatabases failed for {0}", configuredDatabase.DatabaseName), ex);
-                    }
-                }
-                if (Information_ServerState.State == ServerStateEnum.SECONDARY_FORCED_MANUAL_FAILOVER_STATE)
-                {
-                    Action_ServerState_MakeChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
-                }
-                Logger.LogDebug("StartForcedManualFailoverState ended");
+                SqlServerInstance.Action_Instance_FailoverForAllMirrorDatabases();
+                Logger.LogDebug("Ended");
+                MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
             }
             catch (Exception ex)
             {
-                Logger.LogError("Start Shutting down State could not be started.", ex);
+                Logger.LogError("State could not be started.", ex);
                 MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
             }
         }
 
         private void TimedCheck_SecondaryRunningNoPrimaryState()
         {
-            if (SqlServerInstance.Information_RemoteServer_HasAccess())
-            {
-                Action_ServerState_UpdateLocal_ConnectedRemoteServer();
-                Action_ServerState_UpdateRemote_ConnectedRemoteServer();
-                Action_ServerState_Update(LocalMasterDatabase, true, true, false, Information_Instance_ServerRole, Information_ServerState, 0);
-                MakeServerStateChange(ServerStateEnum.SECONDARY_RUNNING_STATE);
-            }
-
-            else
-            {
-                Action_ServerState_UpdateLocal_MissingRemoteServer();
-                if (Action_ServerState_UpdateSecondaryRunningNoPrimaryCount_ShiftState())
-                {
-                    MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
-                }
-
-            }
-            Logger.LogDebug("Action_StartSecondaryRunningNoPrimaryState starting");
+            Logger.LogDebug("Starting");
             try
             {
-                Logger.LogDebug("Action_StartSecondaryRunningNoPrimaryState ended.");
+                if (SqlServerInstance.Information_RemoteServer_HasAccess())
+                {
+                    MakeServerStateChange(ServerStateEnum.SECONDARY_RUNNING_STATE);
+                }
+                else
+                {
+                    CheckTimeout(SqlServerInstance.Instance_Configuration.ShutDownAfterNumberOfChecksInSecondaryRunningNoPrimaryState, ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
+                }
+                Logger.LogDebug("Ended.");
             }
             catch (Exception ex)
             {
-                Logger.LogError("Running State could not be started.", ex);
+                Logger.LogError("State could not be started.", ex);
                 MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
             }
         }
@@ -910,7 +906,11 @@ namespace MirrorLib
 
         #endregion
 
-        public void MakeServerStateChange(ServerStateEnum newState)
+        public void MakeServerStateChange(ServerStateEnum newState
+            , [System.Runtime.CompilerServices.CallerMemberName] string callerMemberName = ""
+            , [System.Runtime.CompilerServices.CallerFilePath] string callerSourceFilePath = ""
+            , [System.Runtime.CompilerServices.CallerLineNumber] int callerSourceLineNumber = 0
+            )
         {
             if (ServerState_Active.ValidTransition(newState))
             {
@@ -918,31 +918,50 @@ namespace MirrorLib
                 if (_serverStates.TryGetValue(newState, out newServerState))
                 {
                     Logger.LogInfo(string.Format("Server state changed from {0} to {1}.", ServerState_Active, newServerState));
+                    ServerState_ActiveCount = 0;
                     ServerState_Old = ServerState_Active;
                     ServerState_Active = newServerState;
                     Logger.LogDebug(string.Format("Server in new state {0}.", newServerState));
                 }
                 else
                 {
-                    throw new SqlServerMirroringException(string.Format("Server in state {0} could not get new state {1}.", ServerState_Active, newState));
+                    throw new SqlServerMirroringException(string.Format("Server in state {0} could not get new state {1}.", ServerState_Active, newState), callerMemberName, callerSourceFilePath, callerSourceLineNumber);
                 }
             }
             else
             {
-                throw new SqlServerMirroringException(string.Format("Server in state {0} does not allow state shange to {1}.", ServerState_Active, newState));
+                throw new SqlServerMirroringException(string.Format("Server in state {0} does not allow state shange to {1}.", ServerState_Active, newState), callerMemberName, callerSourceFilePath, callerSourceLineNumber);
             }
         }
+        private void CheckTimeout(int timeoutNumber, ServerStateEnum serverStateToShiftToOnTimeout
+            , [System.Runtime.CompilerServices.CallerMemberName] string callerMemberName = ""
+            , [System.Runtime.CompilerServices.CallerFilePath] string callerSourceFilePath = ""
+            , [System.Runtime.CompilerServices.CallerLineNumber] int callerSourceLineNumber = 0
+            )
+        {
+            if(ServerState_Active.CountStates == CountStates.No)
+            {
+                throw new SqlServerMirroringException(string.Format("State {0} has CountStates set to No but uses CheckTimeout function assuming a Yes", ServerState_Active.State), callerMemberName, callerSourceFilePath, callerSourceLineNumber);
+            }
+
+            if (ServerState_ActiveCount > timeoutNumber)
+            {
+                Logger.LogError(string.Format("{0} timed out", callerMemberName),callerMemberName, callerSourceFilePath, callerSourceLineNumber);
+                MakeServerStateChange(serverStateToShiftToOnTimeout);
+            }
+        }
+
 
         public void StartPrimary()
         {
             MakeServerStateChange(ServerStateEnum.PRIMARY_INITIAL_STATE);
-            TimedCheck();
+            SqlServerInstance.Action_ServerState_StartTimedCheckTimer();
         }
 
         public void StartSecondary()
         {
             MakeServerStateChange(ServerStateEnum.SECONDARY_INITIAL_STATE);
-            TimedCheck();
+            SqlServerInstance.Action_ServerState_StartTimedCheckTimer();
         }
     }
 }

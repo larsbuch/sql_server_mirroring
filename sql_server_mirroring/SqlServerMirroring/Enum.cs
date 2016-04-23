@@ -42,11 +42,7 @@ namespace MirrorLib
         EMERGENCY = 5,
         OFFLINE = 6,
         COPYING = 7,
-        OFFLINE_SECONDARY = 10/*,
-        READY_FOR_MIRRORING = 200,
-        READY_FOR_RESTORE = 201,
-        BACKUP_DELIVERED = 202,
-        BACKUP_REPORTED_DELIVERED = 203*/
+        OFFLINE_SECONDARY = 10
     }
 
     public enum MirroringSafetyLevelEnum
@@ -109,9 +105,21 @@ namespace MirrorLib
         SECONDARY_RUNNING_NO_PRIMARY_STATE
     }
 
-    public enum Server
+    public enum ServerPlacement
     {
         Local,
         Remote
+    }
+
+    public enum CountStates
+    {
+        Yes,
+        No
+    }
+
+    public enum MirrorState
+    {
+        Mirrored,
+        Degraded
     }
 }

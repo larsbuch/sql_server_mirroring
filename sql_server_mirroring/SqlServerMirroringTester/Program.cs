@@ -186,7 +186,7 @@ namespace MirrorLibTester
 
         private static void Test_Action_RestoreForAllConfiguredDatabases()
         {
-            SqlServer.Action_Instance_RestoreForAllConfiguredDatabases();
+            SqlServer.Action_Instance_RestoreDatabases();
 
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
@@ -286,7 +286,11 @@ namespace MirrorLibTester
                 24,
                 true,
                 new BackupTime(03,00),
-                5
+                5,
+                60,
+                30,
+                60,
+                30
                 );
         }
 
