@@ -25,7 +25,7 @@ namespace MirrorLibTester
 
             ConsoleTest.AddTest("Information", "Get local instance status", () => Test_Information_InstanceStatus());
             ConsoleTest.AddTest("Information", "Get instance information", () => Test_Information_Instance());
-            ConsoleTest.AddTest("Information", "Get sql agent information", () => Test_Information_SqlAgent());
+            //ConsoleTest.AddTest("Information", "Get sql agent information", () => Test_Information_SqlAgent());
             ConsoleTest.AddTest("Information", "Check Windows Authentification", () => Test_Information_WindowsAuthentificationActive());
             ConsoleTest.AddTest("Information", "Check Sql Server Authentification", () => Test_Information_SqlServerAuthentificationActive());
             ConsoleTest.AddTest("Information", "Check for instance readyness for mirroring", () => Test_Information_CheckInstanceForMirroring());
@@ -69,16 +69,16 @@ namespace MirrorLibTester
             ConsoleTest.GetNextInput("Press Enter to exit test.");
         }
 
-        private static void Test_Information_SqlAgent()
-        {
-            Console.WriteLine("Sql Server Agent Information:");
-            foreach (KeyValuePair<string, string> pair in SqlServer.Information_SqlAgent())
-            {
-                Console.WriteLine(string.Format("{0}: {1}", pair.Key, pair.Value));
-            }
+        //private static void Test_Information_SqlAgent()
+        //{
+        //    Console.WriteLine("Sql Server Agent Information:");
+        //    foreach (KeyValuePair<string, string> pair in SqlServer.Information_SqlAgent())
+        //    {
+        //        Console.WriteLine(string.Format("{0}: {1}", pair.Key, pair.Value));
+        //    }
 
-            ConsoleTest.GetNextInput("Press Enter to exit test.");
-        }
+        //    ConsoleTest.GetNextInput("Press Enter to exit test.");
+        //}
 
         private static void Test_Information_WindowsAuthentificationActive()
         {

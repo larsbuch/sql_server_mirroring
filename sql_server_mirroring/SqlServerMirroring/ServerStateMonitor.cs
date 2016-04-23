@@ -410,7 +410,7 @@ namespace MirrorLib
         {
             try
             {
-                if(SqlServerInstance.Information_ServerState_SecondaryRestoreFinished())
+                if(SqlServerInstance.Information_RemoteServer_SecondaryRestoreFinished())
                 {
                     Logger.LogDebug("Restore on secondary finished");
                     MakeServerStateChange(ServerStateEnum.PRIMARY_CONFIGURATION_STARTING_MIRRORING_STATE);
@@ -451,7 +451,7 @@ namespace MirrorLib
             Logger.LogDebug("Starting");
             try
             {
-                SqlServerInstance.Action_Instance_StartBackupTimer();
+                SqlServerInstance.Action_Instance_StartDelayedBackupTimer();
 
                 if (SqlServerInstance.Information_Instance_AllConfiguredDatabasesMirrored())
                 {
@@ -739,7 +739,7 @@ namespace MirrorLib
         {
             try
             {
-                if (SqlServerInstance.Information_Instance_MirroringActive())
+                if (SqlServerInstance.Information_Instance_AllConfiguredDatabasesMirrored())
                 {
                     MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE);
                 }
