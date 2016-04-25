@@ -688,6 +688,8 @@ namespace MirrorLib
                 {
                     try
                     {
+                        SECONDARY_CONFIGURATION_WAITING_FOR_MIRRORING_STATE // Check for state
+
                         Logger.LogDebug(string.Format("Trying to resume mirroring for {0}"
                             , databaseMirrorState.DatabaseName));
                         string sqlQuery = string.Format("ALTER DATABASE {0} SET PARTNER RESUME", databaseMirrorState.DatabaseName);

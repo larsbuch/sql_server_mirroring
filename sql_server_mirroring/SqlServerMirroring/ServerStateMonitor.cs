@@ -506,6 +506,9 @@ namespace MirrorLib
                         ServerState_Old.State == ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE))
                 {
                     Logger.LogInfo("Resume mirroring if not active");
+                    no //missing check for mirroring states suspended
+                                            SECONDARY_CONFIGURATION_WAITING_FOR_MIRRORING_STATE // Check for state
+
                     if (SqlServerInstance.Action_Instance_ResumeMirroringForAllDatabases())
                     {
                         Logger.LogInfo(string.Format("Mirroring resumed on databases needed"));
