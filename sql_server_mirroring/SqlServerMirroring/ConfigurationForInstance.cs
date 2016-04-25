@@ -30,10 +30,12 @@ namespace MirrorLib
         private bool _backupToMirrorServer;
         private BackupTime _backupTime;
         private int _backupDelayEmergencyBackupMin;
+        private bool _stopRunAfterConfiguration;
         private int _primaryConfigurationWaitNumberOfChecksForSecondaryRestoreTimeout;
         private int _primaryConfigurationWaitNumberOfChecksForMirroringStartTimeout;
         private int _secondaryConfigurationWaitNumberOfChecksForPrimaryBackupTimeout;
         private int _secondaryConfigurationWaitNumberOfChecksForMirroringTimeout;
+        private int _secondaryConfigurationWaitNumberOfChecksLookingForBackupTimeout;
 
         public ConfigurationForInstance(
             ServerName localServer,
@@ -58,10 +60,12 @@ namespace MirrorLib
             bool backupToMirrorServer,
             BackupTime backupTime,
             int backupDelayEmergencyBackupMin,
+            bool stopRunAfterConfiguration,
             int primaryConfigurationWaitNumberOfChecksForSecondaryRestoreTimeout,
             int primaryConfigurationWaitNumberOfChecksForMirroringStartTimeout,
             int secondaryConfigurationWaitNumberOfChecksForPrimaryBackupTimeout,
-            int secondaryConfigurationWaitNumberOfChecksForMirroringTimeout
+            int secondaryConfigurationWaitNumberOfChecksForMirroringTimeout,
+            int secondaryConfigurationWaitNumberOfChecksLookingForBackupTimeout
             )
         {
             _localServer = localServer;
@@ -86,10 +90,12 @@ namespace MirrorLib
             _backupToMirrorServer = backupToMirrorServer;
             _backupTime = backupTime;
             _backupDelayEmergencyBackupMin = backupDelayEmergencyBackupMin;
+            _stopRunAfterConfiguration = stopRunAfterConfiguration;
             _primaryConfigurationWaitNumberOfChecksForSecondaryRestoreTimeout = primaryConfigurationWaitNumberOfChecksForSecondaryRestoreTimeout;
             _primaryConfigurationWaitNumberOfChecksForMirroringStartTimeout = primaryConfigurationWaitNumberOfChecksForMirroringStartTimeout;
             _secondaryConfigurationWaitNumberOfChecksForPrimaryBackupTimeout = secondaryConfigurationWaitNumberOfChecksForPrimaryBackupTimeout;
             _secondaryConfigurationWaitNumberOfChecksForMirroringTimeout = secondaryConfigurationWaitNumberOfChecksForMirroringTimeout;
+            _secondaryConfigurationWaitNumberOfChecksLookingForBackupTimeout = secondaryConfigurationWaitNumberOfChecksLookingForBackupTimeout;
         }
         public ServerName LocalServer
         {
@@ -405,6 +411,14 @@ namespace MirrorLib
             }
         }
 
+        public bool StopRunAfterConfiguration
+        {
+            get
+            {
+                return _stopRunAfterConfiguration;
+            }
+        }
+
         public int PrimaryConfigurationWaitNumberOfChecksForSecondaryRestoreTimeout
         {
             get
@@ -434,6 +448,14 @@ namespace MirrorLib
             get
             {
                 return _secondaryConfigurationWaitNumberOfChecksForMirroringTimeout;
+            }
+        }
+
+        public int SecondaryConfigurationWaitNumberOfChecksLookingForBackupTimeout
+        {
+            get
+            {
+                return _secondaryConfigurationWaitNumberOfChecksLookingForBackupTimeout;
             }
         }
     }

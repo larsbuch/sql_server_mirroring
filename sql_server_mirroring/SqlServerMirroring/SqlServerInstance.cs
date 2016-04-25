@@ -760,6 +760,12 @@ namespace MirrorLib
             return true;
         }
 
+        internal bool Information_RemoteServer_ServeredMirroring()
+        {
+            throw new NotImplementedException();
+            int error;
+        }
+
         public bool Action_Instance_FailoverForAllMirrorDatabases()
         {
             Logger.LogDebug("Started");
@@ -778,6 +784,12 @@ namespace MirrorLib
             }
             Logger.LogDebug("Ended");
             return true;
+        }
+
+        internal bool Information_IO_BackupLocatedForAllDatabases()
+        {
+            throw new NotImplementedException();
+            int error;
         }
 
         public bool Action_Instance_BackupForAllConfiguredDatabasesForMirrorServer()

@@ -105,12 +105,16 @@ namespace MirrorLib
 
             _serverStates.Add(ServerStateEnum.SECONDARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE
                 , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
-                { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_PRIMARY_BACKUP_FINISH_STATE}));
+                { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_PRIMARY_BACKUP_FINISH_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_LOOKING_FOR_BACKUP_STATE}));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_PRIMARY_BACKUP_FINISH_STATE
                 , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_PRIMARY_BACKUP_FINISH_STATE, CountStates.Yes, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE}));
 
+            _serverStates.Add(ServerStateEnum.SECONDARY_CONFIGURATION_LOOKING_FOR_BACKUP_STATE
+                , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_LOOKING_FOR_BACKUP_STATE, CountStates.Yes, MirrorState.Degraded, new List<ServerStateEnum>()
+                { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE}));
+            
             _serverStates.Add(ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE
                 , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_MIRRORING_STATE}));
@@ -289,6 +293,9 @@ namespace MirrorLib
                 case ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_PRIMARY_BACKUP_FINISH_STATE:
                     TimedCheck_SecondaryConfigurationWaitingForPrimaryBackupFinishState();
                     break;
+                case ServerStateEnum.SECONDARY_CONFIGURATION_LOOKING_FOR_BACKUP_STATE:
+                    TimedCheck_SecondaryConfigurationLookingForBackupState();
+                    break;
                 case ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE:
                     TimedCheck_SecondaryConfigurationRestoringDatabasesState();
                     break;
@@ -432,7 +439,14 @@ namespace MirrorLib
                 if(SqlServerInstance.Action_Instance_CheckStartMirroring())
                 {
                     Logger.LogInfo("Mirroring started");
-                    MakeServerStateChange(ServerStateEnum.PRIMARY_STARTUP_STATE);
+                    if (SqlServerInstance.Instance_Configuration.StopRunAfterConfiguration)
+                    {
+                        MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
+                    }
+                    else
+                    {
+                        MakeServerStateChange(ServerStateEnum.PRIMARY_STARTUP_STATE);
+                    }
                 }
                 else
                 {
@@ -692,7 +706,14 @@ namespace MirrorLib
             try
             {
                 SqlServerInstance.Action_IO_CreateDirectoryAndShare();
-                MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_PRIMARY_BACKUP_FINISH_STATE);
+                if (SqlServerInstance.Information_RemoteServer_ServeredMirroring())
+                {
+                    MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_LOOKING_FOR_BACKUP_STATE);
+                }
+                else
+                {
+                    MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_PRIMARY_BACKUP_FINISH_STATE);
+                }
             }
             catch (Exception ex)
             {
@@ -712,6 +733,26 @@ namespace MirrorLib
                 else
                 {
                     CheckTimeout(SqlServerInstance.Instance_Configuration.SecondaryConfigurationWaitNumberOfChecksForPrimaryBackupTimeout, ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed", ex);
+                MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
+            }
+        }
+
+        private void TimedCheck_SecondaryConfigurationLookingForBackupState()
+        {
+            try
+            {
+                if (SqlServerInstance.Information_IO_BackupLocatedForAllDatabases())
+                {
+                    MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE);
+                }
+                else
+                {
+                    CheckTimeout(SqlServerInstance.Instance_Configuration.SecondaryConfigurationWaitNumberOfChecksLookingForBackupTimeout, ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
                 }
             }
             catch (Exception ex)
@@ -741,7 +782,14 @@ namespace MirrorLib
             {
                 if (SqlServerInstance.Information_Instance_AllConfiguredDatabasesMirrored())
                 {
-                    MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_RESTORING_DATABASES_STATE);
+                    if (SqlServerInstance.Instance_Configuration.StopRunAfterConfiguration)
+                    {
+                        MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE);
+                    }
+                    else
+                    {
+                        MakeServerStateChange(ServerStateEnum.SECONDARY_STARTUP_STATE);
+                    }
                 }
                 else
                 {
