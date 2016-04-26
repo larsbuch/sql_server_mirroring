@@ -12,16 +12,23 @@ namespace MirrorLibTester
 
         static void Main(string[] args)
         {
-            Configuration.Add(LOCALSERVER, ConsoleTest.GetNextInput("Local Server: ", "10.10.60.2"));
-            Configuration.Add(REMOTESERVER, ConsoleTest.GetNextInput("Remote Server: ", "10.10.60.2"));
-            Configuration.Add(DIRECORYFORLOCALBACKUP, ConsoleTest.GetNextInput("Directory for local backup: ", @"F:\BGSystems\5945-HKIA\dbmirror\backup"));
-            Configuration.Add(DIRECORYFORLOCALSHARE, ConsoleTest.GetNextInput("Directory for local share: ", @"F:\BGSystems\5945-HKIA\dbmirror\share"));
-            Configuration.Add(DIRECORYFORLOCALRESTORE, ConsoleTest.GetNextInput("Directory for local restore: ", @"F:\BGSystems\5945-HKIA\dbmirror\restore"));
-            Configuration.Add(LOCALSHARENAME, ConsoleTest.GetNextInput("Local share name: ", "MirrorShare"));
+            //Configuration.Add(LOCALSERVER, ConsoleTest.GetNextInput("Local Server: ", "10.10.60.2"));
+            //Configuration.Add(REMOTESERVER, ConsoleTest.GetNextInput("Remote Server: ", "10.10.60.2"));
+            //Configuration.Add(DIRECORYFORLOCALBACKUP, ConsoleTest.GetNextInput("Directory for local backup: ", @"F:\BGSystems\5945-HKIA\dbmirror\backup"));
+            //Configuration.Add(DIRECORYFORLOCALSHARE, ConsoleTest.GetNextInput("Directory for local share: ", @"F:\BGSystems\5945-HKIA\dbmirror\share"));
+            //Configuration.Add(DIRECORYFORLOCALRESTORE, ConsoleTest.GetNextInput("Directory for local restore: ", @"F:\BGSystems\5945-HKIA\dbmirror\restore"));
+            //Configuration.Add(LOCALSHARENAME, ConsoleTest.GetNextInput("Local share name: ", "MirrorShare"));
+            Configuration.Add(LOCALSERVER, ConsoleTest.GetNextInput("Local Server: ", "192.168.2.20"));
+            Configuration.Add(REMOTESERVER, ConsoleTest.GetNextInput("Remote Server: ", "192.168.2.20"));
+            Configuration.Add(DIRECORYFORLOCALBACKUP, ConsoleTest.GetNextInput("Directory for local backup: ", @"C:\Test\LocalBackup"));
+            Configuration.Add(DIRECORYFORLOCALSHARE, ConsoleTest.GetNextInput("Directory for local share: ", @"C:\Test\LocalShare"));
+            Configuration.Add(DIRECORYFORLOCALRESTORE, ConsoleTest.GetNextInput("Directory for local restore: ", @"C:\Test\LocalRestore"));
+            Configuration.Add(LOCALSHARENAME, ConsoleTest.GetNextInput("Local share name: ", "LocalShare"));
             Configuration.Add(ENDPOINT_NAME, ConsoleTest.GetNextInput("Endpoint Name: ", "Mirroring_Endpoint"));
             Configuration.Add(ENDPOINT_LISTENERPORT, ConsoleTest.GetNextInput("Endpoint Listener Port: ", "7022"));
             Configuration.Add(REMOTESERVERCOMMUNICATIONTIMEOUT, ConsoleTest.GetNextInput("Remote Communication Timeout: ", 10.ToString()));
-            Configuration.Add(DATABASESFORMIRRORING, ConsoleTest.GetNextInput("Databases for mirroring (comma separates): ", "5945-HKIAAlarmLinkDB,5945-HKIACWS,cis_dbStatistics"));
+//            Configuration.Add(DATABASESFORMIRRORING, ConsoleTest.GetNextInput("Databases for mirroring (comma separates): ", "5945-HKIAAlarmLinkDB,5945-HKIACWS,cis_dbStatistics"));
+            Configuration.Add(DATABASESFORMIRRORING, ConsoleTest.GetNextInput("Databases for mirroring (comma separates): ", "TestMirror1,TestMirror2"));
 
             ConsoleTest.AddTest("Information", "Get local instance status", () => Test_Information_InstanceStatus());
             ConsoleTest.AddTest("Information", "Get instance information", () => Test_Information_Instance());
@@ -254,9 +261,7 @@ namespace MirrorLibTester
             {
                 if (_sqlServerInstance == null)
                 {
-                    _sqlServerInstance = new SqlServerInstance(Logger, GetConfiguration(LOCALSERVER));
-                    _sqlServerInstance.Databases_Configuration = BuildDatabaseConfiguration();
-                    _sqlServerInstance.Instance_Configuration = BuildInstanceConfiguration();
+                    _sqlServerInstance = new SqlServerInstance(Logger, GetConfiguration(LOCALSERVER), BuildInstanceConfiguration(), BuildDatabaseConfiguration());
                 }
                 return _sqlServerInstance;
             }

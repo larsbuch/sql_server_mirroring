@@ -39,7 +39,7 @@ namespace MirrorLib
         private Table _localServerStateTable;
 
 
-        public SqlServerInstance(ILogger logger, string serverName)
+        public SqlServerInstance(ILogger logger, string serverName, ConfigurationForInstance instanceConfiguration, Dictionary<string, ConfigurationForDatabase> databasesConfiguration)
         {
             _logger = new SqlServerLogger(logger);
             SqlConnectionStringBuilder connectionBuilder = new SqlConnectionStringBuilder();
@@ -52,6 +52,8 @@ namespace MirrorLib
             _managedComputer = new ManagedComputer("(local)");
             _serverStateMonitor = new ServerStateMonitor(this);
             _synchronizeInvoke = new SqlServerInstanceSynchronizeInvoke();
+            Instance_Configuration = instanceConfiguration;
+            Databases_Configuration = databasesConfiguration;
         }
 
         #region Public Properties
@@ -123,7 +125,7 @@ namespace MirrorLib
             {
                 return _databases_Configuration;
             }
-            set
+            private set
             {
                 _databases_Configuration = value;
             }
@@ -135,7 +137,7 @@ namespace MirrorLib
             {
                 return _instance_Configuration;
             }
-            set
+            private set
             {
                 _instance_Configuration = value;
             }
@@ -595,9 +597,17 @@ namespace MirrorLib
             {
                 Action_RemoteServer_CheckAccess();
                 Action_Instance_CheckDatabaseMirrorStates();
-                Action_Instance_CheckDatabaseStates();
+                if (Information_ServerState.State != ServerStateEnum.NOT_SET &&
+                        Information_ServerState.State != ServerStateEnum.PRIMARY_INITIAL_STATE &&
+                        Information_ServerState.State != ServerStateEnum.PRIMARY_CONFIGURATION_STATE &&
+                        Information_ServerState.State != ServerStateEnum.SECONDARY_INITIAL_STATE &&
+                        Information_ServerState.State != ServerStateEnum.SECONDARY_CONFIGURATION_STATE
+                    )
+                {
+                    Action_Instance_CheckDatabaseStates();// Needed ?
+                    Action_DatabaseState_TimedCheck();
+                }
                 Action_ServerRole_Recheck();
-                Action_DatabaseState_TimedCheck();
                 Action_ServerStateMonitor_TimedCheck();
                 Action_Instance_SwitchOverCheck();
             }
@@ -624,13 +634,13 @@ namespace MirrorLib
                     if (databaseMirrorState.DatabaseState != DatabaseStateEnum.ONLINE)
                     {
                         databaseErrorState = true;
-                        Logger.LogError(string.Format("Action_DatabaseState_TimedCheck: Server Role {0}: Database {1} has error status {2}."
+                        Logger.LogError(string.Format("Server Role {0}: Database {1} has error status {2}."
                             , Information_Instance_ServerRole, databaseMirrorState.DatabaseName, databaseMirrorState.DatabaseState));
                         Action_DatabaseState_Update(databaseMirrorState.DatabaseName, databaseMirrorState.DatabaseState, Information_Instance_ServerRole, true, 1);
                     }
                     else
                     {
-                        Logger.LogDebug(string.Format("Action_DatabaseState_TimedCheck: Server Role {0}: Database {1} has status {2}."
+                        Logger.LogDebug(string.Format("Server Role {0}: Database {1} has status {2}."
                             , Information_Instance_ServerRole, databaseMirrorState.DatabaseName, databaseMirrorState.DatabaseState));
                         Action_DatabaseState_Update(databaseMirrorState.DatabaseName, databaseMirrorState.DatabaseState, Information_Instance_ServerRole, false, 0);
                     }
@@ -640,13 +650,13 @@ namespace MirrorLib
                     if (databaseMirrorState.DatabaseState != DatabaseStateEnum.RESTORING)
                     {
                         databaseErrorState = true;
-                        Logger.LogError(string.Format("Action_DatabaseState_TimedCheck: Server Role {0}: Database {1} has error status {2}."
+                        Logger.LogError(string.Format("Server Role {0}: Database {1} has error status {2}."
                             , Information_Instance_ServerRole, databaseMirrorState.DatabaseName, databaseMirrorState.DatabaseState));
                         Action_DatabaseState_Update(databaseMirrorState.DatabaseName, databaseMirrorState.DatabaseState, Information_Instance_ServerRole, true, 1);
                     }
                     else
                     {
-                        Logger.LogDebug(string.Format("Action_DatabaseState_TimedCheck: Server Role {0}: Database {1} has status {2}."
+                        Logger.LogDebug(string.Format("Server Role {0}: Database {1} has status {2}."
                             , Information_Instance_ServerRole, databaseMirrorState.DatabaseName, databaseMirrorState.DatabaseState));
                         Action_DatabaseState_Update(databaseMirrorState.DatabaseName, databaseMirrorState.DatabaseState, Information_Instance_ServerRole, false, 0);
                     }
@@ -654,7 +664,7 @@ namespace MirrorLib
                 else
                 {
                     databaseErrorState = true;
-                    Logger.LogError(string.Format("Action_DatabaseState_TimedCheck: Server Role {0}", Information_Instance_ServerRole));
+                    Logger.LogError(string.Format("Server Role {0}", Information_Instance_ServerRole));
                     Action_DatabaseState_Update(databaseMirrorState.DatabaseName, databaseMirrorState.DatabaseState, Information_Instance_ServerRole, true, 1);
                 }
             }
@@ -667,13 +677,13 @@ namespace MirrorLib
                 }
                 else
                 {
-                    Logger.LogDebug(string.Format("Action_DatabaseState_TimedCheck: Found Server Role {0}, Server State {1} and will shut down after {2} checks."
+                    Logger.LogDebug(string.Format("Found Server Role {0}, Server State {1} and will shut down after {2} checks."
                         , Information_Instance_ServerRole, Information_ServerState, Instance_Configuration.ShutDownAfterNumberOfChecksForDatabaseState));
                 }
             }
             else
             {
-                Logger.LogDebug(string.Format("Action_DatabaseState_TimedCheck: Found Server Role {0} and Server State {1}."
+                Logger.LogDebug(string.Format("Found Server Role {0} and Server State {1}."
                     , Information_Instance_ServerRole, Information_ServerState));
             }
         }
@@ -688,7 +698,7 @@ namespace MirrorLib
                 {
                     try
                     {
-                        SECONDARY_CONFIGURATION_WAITING_FOR_MIRRORING_STATE // Check for state
+                        //SECONDARY_CONFIGURATION_WAITING_FOR_MIRRORING_STATE // TODO Check for state
 
                         Logger.LogDebug(string.Format("Trying to resume mirroring for {0}"
                             , databaseMirrorState.DatabaseName));
@@ -3024,12 +3034,19 @@ namespace MirrorLib
             try
             {
                 Logger.LogDebug("Started.");
-                Action_ServerState_Update(LocalMasterDatabase, ServerPlacement.Local, ServerPlacement.Local, Information_RemoteServer_HasAccess(), Information_Instance_ServerRole, Information_ServerState, serverState_Active.ServerStateCount);
-                if(Information_RemoteServer_HasAccess())
+                if (Information_ServerState.State != ServerStateEnum.NOT_SET &&
+                        Information_ServerState.State != ServerStateEnum.PRIMARY_INITIAL_STATE &&
+                        Information_ServerState.State != ServerStateEnum.PRIMARY_CONFIGURATION_STATE &&
+                        Information_ServerState.State != ServerStateEnum.SECONDARY_INITIAL_STATE &&
+                        Information_ServerState.State != ServerStateEnum.SECONDARY_CONFIGURATION_STATE
+                    )
                 {
-                    Action_ServerState_Update(RemoteMasterDatabase, ServerPlacement.Remote, ServerPlacement.Remote, true, Information_Instance_ServerRole, Information_ServerState, serverState_Active.ServerStateCount);
+                    Action_ServerState_Update(LocalMasterDatabase, ServerPlacement.Local, ServerPlacement.Local, Information_RemoteServer_HasAccess(), Information_Instance_ServerRole, Information_ServerState, serverState_Active.ServerStateCount);
+                    if (Information_RemoteServer_HasAccess())
+                    {
+                        Action_ServerState_Update(RemoteMasterDatabase, ServerPlacement.Remote, ServerPlacement.Remote, true, Information_Instance_ServerRole, Information_ServerState, serverState_Active.ServerStateCount);
+                    }
                 }
-
                 Logger.LogDebug("Ended.");
             }
             catch (Exception ex)

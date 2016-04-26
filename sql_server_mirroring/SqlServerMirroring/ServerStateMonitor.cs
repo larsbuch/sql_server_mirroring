@@ -33,11 +33,11 @@ namespace MirrorLib
             /* Add Primary Role server states */
             _serverStates.Add(ServerStateEnum.PRIMARY_INITIAL_STATE
                 , new ServerState(ServerStateEnum.PRIMARY_INITIAL_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
-                { ServerStateEnum.PRIMARY_CONFIGURATION_STATE, ServerStateEnum.PRIMARY_STARTUP_STATE}));
+                { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_CONFIGURATION_STATE, ServerStateEnum.PRIMARY_STARTUP_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_CONFIGURATION_STATE
                 , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
-                { ServerStateEnum.PRIMARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE}));
+                { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE
                 , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_CREATE_DATABASE_FOLDERS_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
@@ -97,7 +97,7 @@ namespace MirrorLib
             /* Add Secondary Role server states */
             _serverStates.Add(ServerStateEnum.SECONDARY_INITIAL_STATE
                 , new ServerState(ServerStateEnum.SECONDARY_INITIAL_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
-                { ServerStateEnum.SECONDARY_CONFIGURATION_STATE, ServerStateEnum.SECONDARY_STARTUP_STATE}));
+                { ServerStateEnum.SECONDARY_SHUTTING_DOWN_STATE, ServerStateEnum.SECONDARY_CONFIGURATION_STATE, ServerStateEnum.SECONDARY_STARTUP_STATE}));
 
             _serverStates.Add(ServerStateEnum.SECONDARY_CONFIGURATION_STATE
                 , new ServerState(ServerStateEnum.SECONDARY_CONFIGURATION_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
@@ -506,8 +506,8 @@ namespace MirrorLib
                         ServerState_Old.State == ServerStateEnum.PRIMARY_RUNNING_NO_SECONDARY_STATE))
                 {
                     Logger.LogInfo("Resume mirroring if not active");
-                    no //missing check for mirroring states suspended
-                                            SECONDARY_CONFIGURATION_WAITING_FOR_MIRRORING_STATE // Check for state
+//                    no //TODO missing check for mirroring states suspended
+//                                            SECONDARY_CONFIGURATION_WAITING_FOR_MIRRORING_STATE //TODO Check for state
 
                     if (SqlServerInstance.Action_Instance_ResumeMirroringForAllDatabases())
                     {
@@ -709,11 +709,12 @@ namespace MirrorLib
             try
             {
                 SqlServerInstance.Action_IO_CreateDirectoryAndShare();
-                if (SqlServerInstance.Information_RemoteServer_ServeredMirroring())
-                {
-                    MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_LOOKING_FOR_BACKUP_STATE);
-                }
-                else
+                // TODO Make split
+                //if (SqlServerInstance.Information_RemoteServer_ServeredMirroring())
+                //{
+                //    MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_LOOKING_FOR_BACKUP_STATE);
+                //}
+                //else
                 {
                     MakeServerStateChange(ServerStateEnum.SECONDARY_CONFIGURATION_WAITING_FOR_PRIMARY_BACKUP_FINISH_STATE);
                 }
