@@ -52,7 +52,7 @@ namespace MirrorLib
                 { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_CONFIGURATION_STARTING_MIRRORING_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_CONFIGURATION_STARTING_MIRRORING_STATE
-                , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_STARTING_MIRRORING_STATE, CountStates.No, MirrorState.Degraded, new List<ServerStateEnum>()
+                , new ServerState(ServerStateEnum.PRIMARY_CONFIGURATION_STARTING_MIRRORING_STATE, CountStates.Yes, MirrorState.Degraded, new List<ServerStateEnum>()
                 { ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE, ServerStateEnum.PRIMARY_STARTUP_STATE}));
 
             _serverStates.Add(ServerStateEnum.PRIMARY_STARTUP_STATE

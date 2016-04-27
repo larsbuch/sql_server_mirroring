@@ -281,7 +281,7 @@ namespace MirrorLibTester
                 12,
                 0,
                 12,
-                1,
+                10,
                 int.Parse(GetConfiguration(REMOTESERVERCOMMUNICATIONTIMEOUT)),
                 GetConfiguration(ENDPOINT_NAME),
                 120,

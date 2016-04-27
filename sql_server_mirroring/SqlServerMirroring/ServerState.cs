@@ -117,6 +117,15 @@ namespace MirrorLib
             }
         }
 
+        public bool FailOnNoRemoteAccess
+        {
+            get
+            {
+                return State.ToString().StartsWith("PRIMARY_CONFIGURATION") ||
+                    State.ToString().StartsWith("SECONDARY_CONFIGURATION");
+            }
+        }
+
         #endregion
     }
 }

@@ -36,7 +36,7 @@ namespace MirrorLib
                 DateTime start = new DateTime(now.Year, now.Month, now.Day, _hour, _minute, 0);
                 if(now > start)
                 {
-                    start.AddDays(1);
+                    start = start.AddDays(1);
                 }
                 return start.Subtract(now).TotalSeconds *1000;
             }

@@ -36,7 +36,7 @@ namespace MirrorLib
         private Timer _backupTimer;
         private SqlServerInstanceSynchronizeInvoke _synchronizeInvoke;
         private bool _remoteServer_HasAccess;
-        private Table _localServerStateTable;
+//        private string _remoteServer_ConnectionString;
 
 
         public SqlServerInstance(ILogger logger, string serverName, ConfigurationForInstance instanceConfiguration, Dictionary<string, ConfigurationForDatabase> databasesConfiguration)
@@ -60,6 +60,22 @@ namespace MirrorLib
 
         #region Public Properties
 
+        //private string RemoteServer_ConnectionString
+        //{
+        //    get
+        //    {
+        //        if(string.IsNullOrWhiteSpace(_remoteServer_ConnectionString))
+        //        {
+        //            _remoteServer_ConnectionString = string.Format("Server={0};Integrated Security=True;MultipleActiveResultSets=True;Connection Timeout={1}", Instance_Configuration.RemoteServer.ToString(), Instance_Configuration.RemoteServerAccessTimeoutSeconds);
+
+        //            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(_remoteServer_ConnectionString);
+
+        //            Logger.LogDebug(string.Format("ConnectionString: {0}", _remoteServer_ConnectionString));
+        //        }
+        //        return _remoteServer_ConnectionString;
+        //    }
+        //}
+
         public bool Information_RemoteServer_HasAccess()
         {
             return _remoteServer_HasAccess;
@@ -69,22 +85,28 @@ namespace MirrorLib
         {
             try
             {
-                SqlConnectionStringBuilder connectionBuilder = new SqlConnectionStringBuilder();
-                connectionBuilder.DataSource = Instance_Configuration.RemoteServer.ToString();
-                connectionBuilder.MultipleActiveResultSets = true;
-                connectionBuilder.IntegratedSecurity = true;
-                connectionBuilder.ConnectTimeout = Instance_Configuration.RemoteServerAccessTimeoutSeconds;
-
-                SqlConnection sqlConnection = new SqlConnection(connectionBuilder.ToString());
-
-                sqlConnection.Open();
-                Logger.LogDebug("Access to remote server.");
-                _remoteServer_HasAccess = true;
+                if (RemoteDatabaseServerInstance.Status == ServerStatus.Online)
+                {
+                    Logger.LogDebug("Access to remote server.");
+                    _remoteServer_HasAccess = true;
+                }
+                else
+                {
+                    Logger.LogInfo("No access to remote server.");
+                    _remoteServer_HasAccess = false;
+                }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 Logger.LogInfo("No access to remote server.");
-                _remoteServer_HasAccess = false;
+                if (Information_ServerState.FailOnNoRemoteAccess)
+                {
+                    throw new SqlServerMirroringException("No access to remote server in configuration stage", ex);
+                }
+                else
+                {
+                    _remoteServer_HasAccess = false;
+                }
             }
         }
 
@@ -109,17 +131,17 @@ namespace MirrorLib
         }
 
 
-        private Table LocalServerStateTable
-        {
-            get
-            {
-                return _localServerStateTable;
-            }
-            set
-            {
-                _localServerStateTable = value;
-            }
-        }
+        //private Table LocalServerStateTable
+        //{
+        //    get
+        //    {
+        //        return _localServerStateTable;
+        //    }
+        //    set
+        //    {
+        //        _localServerStateTable = value;
+        //    }
+        //}
 
         public Dictionary<string, ConfigurationForDatabase> Databases_Configuration
         {
@@ -239,9 +261,9 @@ namespace MirrorLib
                     connectionBuilder.IntegratedSecurity = true;
                     _remoteServer = new Server(new ServerConnection(new SqlConnection(connectionBuilder.ToString())));
                 }
-                if(!Information_RemoteServer_HasAccess())
+                if (_remoteServer.Status != ServerStatus.Online)
                 {
-                    Logger.LogWarning("Trying to access without ability to connect.");
+                    Logger.LogWarning("Remote server not online.");
                 }
                 return _remoteServer;
             }
@@ -319,6 +341,10 @@ namespace MirrorLib
         {
             get
             {
+                if(_databaseMirrorStates == null)
+                {
+                    _databaseMirrorStates = Information_Instance_CheckDatabaseMirrorStates(LocalMasterDatabase);
+                }
                 return _databaseMirrorStates;
             }
             set
@@ -1017,31 +1043,27 @@ namespace MirrorLib
 
         public void Action_Instance_RestoreDatabases()
         {
-            Logger.LogDebug("Action_Instance_RestoreNeeded started");
+            Logger.LogDebug("Started");
             foreach (ConfigurationForDatabase configurationDatabase in Databases_Configuration.Values)
             {
-                DatabaseState databaseState;
-                if (Information_DatabaseStates.TryGetValue(configurationDatabase.DatabaseName, out databaseState))
+                if (Action_Databases_RestoreDatabase(configurationDatabase))
                 {
-                    if (Action_Databases_RestoreDatabase(configurationDatabase))
-                    {
-                        Logger.LogInfo("Action_Instance_RestoreNeeded: Restored backup");
-                    }
-                    else
-                    {
-                        Logger.LogInfo("Action_Instance_RestoreNeeded: Moved database from remote share and restored Backup");
-                    }
-                    if (Action_Databases_RestoreDatabaseLog(configurationDatabase))
-                    {
-                        Logger.LogInfo("Action_Instance_RestoreNeeded: Restored log backup");
-                    }
-                    else
-                    {
-                        Logger.LogInfo("Action_Instance_RestoreNeeded: Moved database from remote share and restored log Backup");
-                    }
+                    Logger.LogInfo("Restored backup");
+                }
+                else
+                {
+                    Logger.LogInfo("Moved database from remote share and restored Backup");
+                }
+                if (Action_Databases_RestoreDatabaseLog(configurationDatabase))
+                {
+                    Logger.LogInfo("Restored log backup");
+                }
+                else
+                {
+                    Logger.LogInfo("Moved database from remote share and restored log Backup");
                 }
             }
-            Logger.LogDebug("Action_Instance_RestoreNeeded ended");
+            Logger.LogDebug("Ended");
         }
 
         internal void Action_Instance_SetupForMirroring()
@@ -1147,7 +1169,7 @@ namespace MirrorLib
                 Column column4 = new Column(localServerStateTable, "LastRole", DataType.NVarChar(50));
                 column4.Nullable = false;
                 localServerStateTable.Columns.Add(column4);
-                Column column5 = new Column(localServerStateTable, "LastState", DataType.NVarChar(50));
+                Column column5 = new Column(localServerStateTable, "LastState", DataType.NVarChar(100));
                 column5.Nullable = false;
                 localServerStateTable.Columns.Add(column5);
                 Column column6 = new Column(localServerStateTable, "LastWriteDate", DataType.DateTime2(7));
@@ -1158,7 +1180,6 @@ namespace MirrorLib
                 localServerStateTable.Columns.Add(column7);
 
                 localServerStateTable.Create();
-                LocalServerStateTable = localServerStateTable;
                 Logger.LogDebug("Action_ServerState_CreateMasterTable ended.");
                 Action_ServerState_InsertBaseState();
             }
@@ -1902,28 +1923,27 @@ namespace MirrorLib
             
             try
             {
-                Table localServerStateTable = new Table(LocalMasterDatabase, "DatabaseState");
-                Column column1 = new Column(localServerStateTable, "DatabaseName", DataType.NVarChar(128));
+                Table localDatabaseStateTable = new Table(LocalMasterDatabase, "DatabaseState");
+                Column column1 = new Column(localDatabaseStateTable, "DatabaseName", DataType.NVarChar(128));
                 column1.Nullable = false;
-                localServerStateTable.Columns.Add(column1);
-                Column column2 = new Column(localServerStateTable, "DatabaseState", DataType.NVarChar(50));
+                localDatabaseStateTable.Columns.Add(column1);
+                Column column2 = new Column(localDatabaseStateTable, "DatabaseState", DataType.NVarChar(50));
                 column2.Nullable = false;
-                localServerStateTable.Columns.Add(column2);
-                Column column3 = new Column(localServerStateTable, "ServerRole", DataType.NVarChar(50));
+                localDatabaseStateTable.Columns.Add(column2);
+                Column column3 = new Column(localDatabaseStateTable, "ServerRole", DataType.NVarChar(50));
                 column3.Nullable = false;
-                localServerStateTable.Columns.Add(column3);
-                Column column4 = new Column(localServerStateTable, "LastWriteDate", DataType.DateTime2(7));
+                localDatabaseStateTable.Columns.Add(column3);
+                Column column4 = new Column(localDatabaseStateTable, "LastWriteDate", DataType.DateTime2(7));
                 column4.Nullable = false;
-                localServerStateTable.Columns.Add(column4);
-                Column column5 = new Column(localServerStateTable, "ErrorDatabaseState", DataType.Bit);
+                localDatabaseStateTable.Columns.Add(column4);
+                Column column5 = new Column(localDatabaseStateTable, "ErrorDatabaseState", DataType.Bit);
                 column5.Nullable = false;
-                localServerStateTable.Columns.Add(column5);
-                Column column6 = new Column(localServerStateTable, "ErrorCount", DataType.Int);
+                localDatabaseStateTable.Columns.Add(column5);
+                Column column6 = new Column(localDatabaseStateTable, "ErrorCount", DataType.Int);
                 column6.Nullable = false;
-                localServerStateTable.Columns.Add(column6);
+                localDatabaseStateTable.Columns.Add(column6);
 
-                localServerStateTable.Create();
-                LocalServerStateTable = localServerStateTable;
+                localDatabaseStateTable.Create();
                 Logger.LogDebug("Ended.");
             }
             catch (Exception ex)
@@ -2167,19 +2187,22 @@ namespace MirrorLib
 
                 Logger.LogDebug(string.Format("SqlQuery {0}", sqlQuery));
                 DataSet dataSet = LocalMasterDatabase.ExecuteWithResults(sqlQuery);
-                foreach (DataTable table in dataSet.Tables)
+                if (dataSet.Tables.Count > 0)
                 {
-                    foreach (DataRow row in table.Rows)
+                    foreach (DataTable table in dataSet.Tables)
                     {
-                        foreach (DataColumn column in row.Table.Columns)
+                        foreach (DataRow row in table.Rows)
                         {
-                            if (column.DataType == typeof(Int32))
+                            foreach (DataColumn column in row.Table.Columns)
                             {
-                                int? returnValue = (int?)row[column];
-                                Logger.LogDebug(string.Format("For {0} ended with value {1}", returnValue));
-                                if (returnValue.HasValue)
+                                if (column.DataType == typeof(Int32))
                                 {
-                                    return true;
+                                    int? returnValue = (int?)row[column];
+                                    Logger.LogDebug(string.Format("For {0} ended with value {1}", sqlQuery, returnValue));
+                                    if (returnValue.HasValue)
+                                    {
+                                        return true;
+                                    }
                                 }
                             }
                         }
