@@ -10,7 +10,7 @@ namespace MirrorLib
             , [System.Runtime.CompilerServices.CallerMemberName] string callerMemberName = ""
             , [System.Runtime.CompilerServices.CallerFilePath] string callerSourceFilePath = ""
             , [System.Runtime.CompilerServices.CallerLineNumber] int callerSourceLineNumber = 0
-            ) : base(string.Format("{0} ({2}): {3}", callerMemberName, callerSourceFilePath, callerSourceLineNumber, message))
+            ) : base(string.Format("{0} ({1}: {2}): {3}", callerMemberName, callerSourceFilePath, callerSourceLineNumber, message))
         {
         }
 
@@ -18,7 +18,7 @@ namespace MirrorLib
             , [System.Runtime.CompilerServices.CallerMemberName] string callerMemberName = ""
             , [System.Runtime.CompilerServices.CallerFilePath] string callerSourceFilePath = ""
             , [System.Runtime.CompilerServices.CallerLineNumber] int callerSourceLineNumber = 0
-            ) : base(string.Format("{0} ({2}): {3}", callerMemberName, callerSourceFilePath, callerSourceLineNumber, message), innerException)
+            ) : base(string.Format("{0} ({1}: {2}): {3}", callerMemberName, callerSourceFilePath, callerSourceLineNumber, message), innerException)
         {
         }
 

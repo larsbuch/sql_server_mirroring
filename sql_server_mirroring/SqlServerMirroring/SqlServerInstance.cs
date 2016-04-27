@@ -48,12 +48,14 @@ namespace MirrorLib
             connectionBuilder.IntegratedSecurity = true;
 
             _server = new Server(new ServerConnection(new SqlConnection(connectionBuilder.ToString())));
-            _databases_Configuration = new Dictionary<string, ConfigurationForDatabase>();
-            _managedComputer = new ManagedComputer("(local)");
-            _serverStateMonitor = new ServerStateMonitor(this);
-            _synchronizeInvoke = new SqlServerInstanceSynchronizeInvoke();
+
             Instance_Configuration = instanceConfiguration;
             Databases_Configuration = databasesConfiguration;
+            _managedComputer = new ManagedComputer("(local)");
+            _synchronizeInvoke = new SqlServerInstanceSynchronizeInvoke();
+
+            /* Starts heartbeat */
+            _serverStateMonitor = new ServerStateMonitor(this);
         }
 
         #region Public Properties
