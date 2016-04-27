@@ -105,6 +105,17 @@ namespace MirrorLib
             }
         }
 
+        public bool MasterDatabaseTablesSafeToAccess
+        {
+            get
+            {
+                return State != ServerStateEnum.NOT_SET &&
+                        State != ServerStateEnum.PRIMARY_INITIAL_STATE &&
+                        State != ServerStateEnum.PRIMARY_CONFIGURATION_STATE &&
+                        State != ServerStateEnum.SECONDARY_INITIAL_STATE &&
+                        State != ServerStateEnum.SECONDARY_CONFIGURATION_STATE;
+            }
+        }
 
         #endregion
     }

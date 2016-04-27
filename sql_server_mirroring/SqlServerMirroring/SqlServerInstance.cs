@@ -599,14 +599,10 @@ namespace MirrorLib
             {
                 Action_RemoteServer_CheckAccess();
                 Action_Instance_CheckDatabaseMirrorStates();
-                if (Information_ServerState.State != ServerStateEnum.NOT_SET &&
-                        Information_ServerState.State != ServerStateEnum.PRIMARY_INITIAL_STATE &&
-                        Information_ServerState.State != ServerStateEnum.PRIMARY_CONFIGURATION_STATE &&
-                        Information_ServerState.State != ServerStateEnum.SECONDARY_INITIAL_STATE &&
-                        Information_ServerState.State != ServerStateEnum.SECONDARY_CONFIGURATION_STATE
-                    )
+                if (Information_ServerState.MasterDatabaseTablesSafeToAccess)
                 {
-                    Action_Instance_CheckDatabaseStates();// Needed ?
+                    Logger.LogDebug("Server not in Not Set, Initial and Configuration states so it is safe to look at database tables");
+                    Action_Instance_CheckDatabaseStates();
                     Action_DatabaseState_TimedCheck();
                 }
                 Action_ServerRole_Recheck();
@@ -886,6 +882,15 @@ namespace MirrorLib
                 Logger.LogWarning(string.Format("Action_ForceShutDownMirroringService: Force shutdown of service with role {0} in state {1}.", Information_Instance_ServerRole, Information_ServerState));
                 ServerStateMonitor.MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTTING_DOWN_STATE);
                 return true;
+            }
+        }
+
+        internal void Action_Instance_ShutDownTimer()
+        {
+            _timedCheckTimer.Stop();
+            if (_backupTimer != null)
+            {
+                _backupTimer.Stop();
             }
         }
 
@@ -3036,12 +3041,7 @@ namespace MirrorLib
             try
             {
                 Logger.LogDebug("Started.");
-                if (Information_ServerState.State != ServerStateEnum.NOT_SET &&
-                        Information_ServerState.State != ServerStateEnum.PRIMARY_INITIAL_STATE &&
-                        Information_ServerState.State != ServerStateEnum.PRIMARY_CONFIGURATION_STATE &&
-                        Information_ServerState.State != ServerStateEnum.SECONDARY_INITIAL_STATE &&
-                        Information_ServerState.State != ServerStateEnum.SECONDARY_CONFIGURATION_STATE
-                    )
+                if (Information_ServerState.MasterDatabaseTablesSafeToAccess)
                 {
                     Action_ServerState_Update(LocalMasterDatabase, ServerPlacement.Local, ServerPlacement.Local, Information_RemoteServer_HasAccess(), Information_Instance_ServerRole, Information_ServerState, serverState_Active.ServerStateCount);
                     if (Information_RemoteServer_HasAccess())

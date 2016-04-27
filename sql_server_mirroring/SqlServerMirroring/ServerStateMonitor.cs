@@ -335,10 +335,14 @@ namespace MirrorLib
         {
             try
             {
-                if (SqlServerInstance.Information_Instance_ConfigurationComplete)
+                if (!SqlServerInstance.Information_Instance_ConfigurationComplete)
                 {
                     Logger.LogError("Configuration not set before Initial server state");
                     throw new SqlServerMirroringException("Configuration not set before Initial server state");
+                }
+                else
+                {
+                    Logger.LogDebug("Configuration set. Safe to shift state.");
                 }
 
                 if (SqlServerInstance.Information_Instance_Configured())
@@ -547,8 +551,8 @@ namespace MirrorLib
             Logger.LogDebug("StartShuttingDownState starting");
             try
             {
-                /* Does not do something special */
-                Logger.LogDebug("Ended");
+                SqlServerInstance.Action_Instance_ShutDownTimer();
+
                 MakeServerStateChange(ServerStateEnum.PRIMARY_SHUTDOWN_STATE);
             }
             catch (Exception ex)
@@ -654,10 +658,14 @@ namespace MirrorLib
         {
             try
             {
-                if (SqlServerInstance.Information_Instance_ConfigurationComplete)
+                if (!SqlServerInstance.Information_Instance_ConfigurationComplete)
                 {
                     Logger.LogError("Configuration not set before Initial server state");
                     throw new SqlServerMirroringException("Configuration not set before Initial server state");
+                }
+                else
+                {
+                    Logger.LogDebug("Configuration set. Safe to shift state.");
                 }
 
                 if (SqlServerInstance.Information_Instance_Configured())
@@ -859,7 +867,8 @@ namespace MirrorLib
             Logger.LogDebug("Starting");
             try
             {
-                /* Does not do something special */
+                SqlServerInstance.Action_Instance_ShutDownTimer();
+
                 MakeServerStateChange(ServerStateEnum.SECONDARY_SHUTDOWN_STATE);
             }
             catch (Exception ex)

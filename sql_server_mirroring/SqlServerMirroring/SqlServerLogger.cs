@@ -1,6 +1,7 @@
 ﻿using HelperFunctions;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -29,7 +30,7 @@ namespace MirrorLib
             , [System.Runtime.CompilerServices.CallerLineNumber] int callerSourceLineNumber = 0
             )
         {
-            _logger.LogDebug(string.Format("{0} ({1}: {2}): {3}", callerMemberName, callerSourceFilePath, callerSourceLineNumber, message));
+            _logger.LogDebug(string.Format("{3}: {0} ({1}: {2})", callerMemberName, Path.GetFileName(callerSourceFilePath), callerSourceLineNumber, message));
         }
 
         public void LogInfo(string message
@@ -38,7 +39,7 @@ namespace MirrorLib
             , [System.Runtime.CompilerServices.CallerLineNumber] int callerSourceLineNumber = 0
             )
         {
-            _logger.LogInfo(string.Format("{0} ({1}: {2}): {3}", callerMemberName, callerSourceFilePath, callerSourceLineNumber, message));
+            _logger.LogInfo(string.Format("{3}: {0} ({1}: {2})", callerMemberName, Path.GetFileName(callerSourceFilePath), callerSourceLineNumber, message));
         }
 
         public void LogWarning(string message
@@ -47,7 +48,7 @@ namespace MirrorLib
             , [System.Runtime.CompilerServices.CallerLineNumber] int callerSourceLineNumber = 0
             )
         {
-            _logger.LogWarning(string.Format("{0} ({1}: {2}): {3}", callerMemberName, callerSourceFilePath, callerSourceLineNumber, message));
+            _logger.LogWarning(string.Format("{3}: {0} ({1}: {2})", callerMemberName, Path.GetFileName(callerSourceFilePath), callerSourceLineNumber, message));
         }
 
         public void LogError(string message
@@ -56,7 +57,7 @@ namespace MirrorLib
             , [System.Runtime.CompilerServices.CallerLineNumber] int callerSourceLineNumber = 0
             )
         {
-            _logger.LogError(string.Format("{0} ({1}: {2}): {3}", callerMemberName, callerSourceFilePath, callerSourceLineNumber, message));
+            _logger.LogError(string.Format("{3}: {0} ({1}: {2})", callerMemberName, Path.GetFileName(callerSourceFilePath), callerSourceLineNumber, message));
         }
 
         public void LogError(string message, Exception exception
@@ -65,7 +66,7 @@ namespace MirrorLib
             , [System.Runtime.CompilerServices.CallerLineNumber] int callerSourceLineNumber = 0
             )
         {
-            _logger.LogError(string.Format("{0} ({1}: {2}): {3}", callerMemberName, callerSourceFilePath, callerSourceLineNumber, message), exception);
+            _logger.LogError(string.Format("{3}: {0} ({1}: {2})", callerMemberName, Path.GetFileName(callerSourceFilePath), callerSourceLineNumber, message), exception);
         }
 
     }

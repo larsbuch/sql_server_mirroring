@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Runtime.Serialization;
 
 namespace MirrorLib
@@ -10,7 +11,7 @@ namespace MirrorLib
             , [System.Runtime.CompilerServices.CallerMemberName] string callerMemberName = ""
             , [System.Runtime.CompilerServices.CallerFilePath] string callerSourceFilePath = ""
             , [System.Runtime.CompilerServices.CallerLineNumber] int callerSourceLineNumber = 0
-            ) : base(string.Format("{0} ({1}: {2}): {3}", callerMemberName, callerSourceFilePath, callerSourceLineNumber, message))
+            ) : base(string.Format("{3}: {0} ({1}: {2})", callerMemberName, Path.GetFileName(callerSourceFilePath), callerSourceLineNumber, message))
         {
         }
 
@@ -18,7 +19,7 @@ namespace MirrorLib
             , [System.Runtime.CompilerServices.CallerMemberName] string callerMemberName = ""
             , [System.Runtime.CompilerServices.CallerFilePath] string callerSourceFilePath = ""
             , [System.Runtime.CompilerServices.CallerLineNumber] int callerSourceLineNumber = 0
-            ) : base(string.Format("{0} ({1}: {2}): {3}", callerMemberName, callerSourceFilePath, callerSourceLineNumber, message), innerException)
+            ) : base(string.Format("{3}: {0} ({1}: {2})", callerMemberName, Path.GetFileName(callerSourceFilePath), callerSourceLineNumber, message), innerException)
         {
         }
 
